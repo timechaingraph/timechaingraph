@@ -12,9 +12,10 @@ import type { WalletData, WalletRole } from '@/types/wallet';
  * Concentric-ring seed positions for the force-directed layout.
  *
  * Satoshi pinned to origin (the brass-gold center). Whales hug closest,
- * miners next, significant out further, dust on the rim. The force
- * simulation pulls bonded nodes together while keeping unrelated nodes
- * apart, so clusters emerge naturally on top of this seed.
+ * miners next, significant out further, dust on the rim. Pre-birth
+ * wallets stay pinned at their seed until the scrubber crosses their
+ * firstSeenBlock — then they un-pin and join the simulation, the
+ * lattice "grows in" as you scrub forward through history.
  */
 const RING_RADIUS: Record<WalletRole, number> = {
   satoshi: 0,
@@ -32,6 +33,11 @@ const PHYSICS = {
   damping: 0.86,
   maxStep: 1 / 30,
 };
+
+/** Edge fade window per project spec — bonds fade to alpha 0 over 10 blocks of inactivity. */
+const EDGE_FADE_BLOCKS = 10;
+/** Base alpha for fully-active edges (lower = sparser graph; tuned for visibility). */
+const EDGE_BASE_ALPHA = 0.4;
 
 const FIXTURE_LATEST_BLOCK = FREE_TIER_50.reduce(
   (max, w) => Math.max(max, w.lastActiveBlock),
@@ -69,25 +75,29 @@ type Body = {
   halo: Graphics | null;
 };
 
-type Link = { a: number; b: number; strength: number };
+type Link = { a: number; b: number; strength: number; bondLastActive: number };
 
 /**
  * GraphView — force-directed Obsidian-style renderer for timechaingraph.com.
  *
- * Renders FREE_TIER_50 + FREE_TIER_50_BONDS as a living lattice with
- * drag-to-pin interactivity (Obsidian-graph-engine feel). Velocity-Verlet
- * physics each tick: gravity toward origin (∝ mass), pairwise Coulomb
- * repulsion, Hooke springs on every bond. Satoshi permanent-pinned at
- * (0, 0). Other nodes follow physics until grabbed; dragged nodes pin
- * to the cursor; release un-pins and the system resettles.
+ * Renders FREE_TIER_50 + FREE_TIER_50_BONDS as a living lattice with:
+ *  - Velocity-Verlet physics (gravity + Coulomb repulsion + Hooke springs)
+ *  - Drag-to-pin (Obsidian-graph-engine feel)
+ *  - Scrubber-driven node visibility — pre-birth wallets alpha=0 + pinned
+ *    at seed; un-pin + alpha=1 once scrubber crosses firstSeenBlock
+ *  - Edge fade per spec — alpha = max(0, 1 - max(0, currentBlock -
+ *    max(a.lastActive, b.lastActive)) / 10) so bonds fade out over 10
+ *    blocks of bilateral inactivity
+ *  - Satoshi permanent-anchored at (0, 0)
  *
  * Phase-C v0.1 progress:
- *   ✓ skeleton (single dot)                          (0f0a161)
- *   ✓ render 50-wallet fixture + hover/click         (983a0b9)
- *   ✓ force simulation + bonds fixture               (20b58ab)
- *   ✓ drag-and-drop                                  (this commit)
- *   · pan / zoom                                     (later)
- *   · real BitcoinChainAdapter                       (later)
+ *   ✓ skeleton                                      (0f0a161)
+ *   ✓ render fixture + hover/click + Inspector      (983a0b9)
+ *   ✓ force simulation + bonds                      (20b58ab)
+ *   ✓ drag-to-pin                                   (ce5feef)
+ *   ✓ scrubber-driven fade + edge fade              (this commit)
+ *   · pan / zoom                                    (next)
+ *   · real BitcoinChainAdapter                      (later)
  */
 export function GraphView() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -98,6 +108,7 @@ export function GraphView() {
 
     const app = new Application();
     let cancelled = false;
+    const cleanupFns: Array<() => void> = [];
 
     const { setSelectedWallet, setActiveDockPanel, setLatestBlock, setCurrentBlock } =
       useTimegridStore.getState();
@@ -146,6 +157,14 @@ export function GraphView() {
       let draggedBody: Body | null = null;
       let dragOffsetX = 0;
       let dragOffsetY = 0;
+      let currentBlock = useTimegridStore.getState().currentBlock;
+
+      function shouldBePinned(body: Body): boolean {
+        if (body === draggedBody) return true;
+        if (body.wallet.role === 'satoshi') return true;
+        if (body.wallet.firstSeenBlock > currentBlock) return true;
+        return false;
+      }
 
       // Build bodies + node graphics
       const bodies: Body[] = FREE_TIER_50.map((wallet) => {
@@ -171,7 +190,7 @@ export function GraphView() {
           vx: 0,
           vy: 0,
           mass: massOf(wallet),
-          pinned: wallet.role === 'satoshi',
+          pinned: false, // computed properly below
           graphics: dot,
           halo: null,
         };
@@ -187,6 +206,9 @@ export function GraphView() {
           setActiveDockPanel('wallet-inspector');
         });
         dot.on('pointerdown', (e: { global: { x: number; y: number } }) => {
+          // Pre-birth wallets are alpha=0; ignore drag attempts so the
+          // user can't grab invisible nodes.
+          if (body.wallet.firstSeenBlock > currentBlock) return;
           draggedBody = body;
           body.pinned = true;
           body.vx = 0;
@@ -210,12 +232,11 @@ export function GraphView() {
           body.halo = halo;
         }
 
+        body.pinned = shouldBePinned(body);
         return body;
       });
 
       // Stage-level pointer handlers — the dragged body follows the cursor
-      // until release. Only one drag at a time. Pointer capture covers the
-      // whole canvas so the user can drag past the node's tiny hitbox.
       app.stage.eventMode = 'static';
       app.stage.hitArea = app.screen;
       app.stage.on('pointermove', (e: { global: { x: number; y: number } }) => {
@@ -228,13 +249,12 @@ export function GraphView() {
 
       function endDrag(): void {
         if (!draggedBody) return;
-        draggedBody.graphics.cursor = 'grab';
-        draggedBody.graphics.alpha = 1;
-        // Permanent anchors stay pinned; everything else returns to physics
-        if (draggedBody.wallet.role !== 'satoshi') {
-          draggedBody.pinned = false;
-        }
+        const body = draggedBody;
         draggedBody = null;
+        body.graphics.cursor = 'grab';
+        body.graphics.alpha =
+          body.wallet.firstSeenBlock <= currentBlock ? 1 : 0;
+        body.pinned = shouldBePinned(body);
       }
 
       app.stage.on('pointerup', endDrag);
@@ -249,8 +269,43 @@ export function GraphView() {
         if (a === undefined || b === undefined) continue;
         const strength =
           PHYSICS.spring * (Math.log10(Number(bond.sats) + 1) * 0.1 + 0.6);
-        links.push({ a, b, strength });
+        const bondLastActive = Math.max(
+          bodies[a].wallet.lastActiveBlock,
+          bodies[b].wallet.lastActiveBlock,
+        );
+        links.push({ a, b, strength, bondLastActive });
       }
+
+      function applyScrubberState(): void {
+        for (const body of bodies) {
+          const born = body.wallet.firstSeenBlock <= currentBlock;
+          // Skip alpha update for currently-dragged body — drag handler
+          // holds it at 0.85 until release.
+          if (body !== draggedBody) {
+            body.graphics.alpha = born ? 1 : 0;
+            if (body.halo) body.halo.alpha = born ? 0.75 : 0;
+          }
+          const wasPinned = body.pinned;
+          body.pinned = shouldBePinned(body);
+          // Just-born wallets pop in from their seed with zero velocity
+          // — feels like emergence, not flying-from-genesis chaos.
+          if (!body.pinned && wasPinned && body !== draggedBody) {
+            body.vx = 0;
+            body.vy = 0;
+          }
+        }
+      }
+
+      const unsubscribe = useTimegridStore.subscribe((state, prev) => {
+        if (state.currentBlock !== prev.currentBlock) {
+          currentBlock = state.currentBlock;
+          applyScrubberState();
+        }
+      });
+
+      // Apply initial state — covers the case where the store was already
+      // seeded by another viewer or carries state across navigation.
+      applyScrubberState();
 
       function tick(): void {
         const dt = Math.min(app.ticker.deltaMS / 1000, PHYSICS.maxStep);
@@ -306,10 +361,7 @@ export function GraphView() {
           }
         }
 
-        // Damping + integration + position update.
-        // Pinned bodies (satoshi + the drag target) skip integration but
-        // still get their graphics position resynced with their authoritative
-        // x/y — necessary because the drag handler writes directly to body.x/y.
+        // Damping + integration + position update
         for (const body of bodies) {
           if (!body.pinned) {
             body.vx *= PHYSICS.damping;
@@ -321,21 +373,37 @@ export function GraphView() {
           if (body.halo) body.halo.position.set(cx + body.x, cy + body.y);
         }
 
-        // Redraw edges
+        // Redraw edges with per-bond alpha:
+        //   alpha = max(0, 1 - max(0, currentBlock - bondLastActive) / 10)
+        // Multiplied by EDGE_BASE_ALPHA so even fresh bonds aren't blinding.
+        // PIXI 8 commits a styled subpath per stroke() call — separate
+        // strokes are needed for varying alpha, and at fixture scale (~80
+        // bonds) this is well within budget.
         edges.clear();
         for (const link of links) {
           const a = bodies[link.a];
           const b = bodies[link.b];
-          edges.moveTo(cx + a.x, cy + a.y).lineTo(cx + b.x, cy + b.y);
+          // Skip edges whose endpoints aren't both born
+          if (a.graphics.alpha === 0 || b.graphics.alpha === 0) continue;
+          const blocksAfter = Math.max(0, currentBlock - link.bondLastActive);
+          const fade = Math.max(0, 1 - blocksAfter / EDGE_FADE_BLOCKS);
+          const alpha = fade * EDGE_BASE_ALPHA;
+          if (alpha <= 0) continue;
+          edges
+            .moveTo(cx + a.x, cy + a.y)
+            .lineTo(cx + b.x, cy + b.y)
+            .stroke({ width: 0.6, color: 0xc28840, alpha });
         }
-        edges.stroke({ width: 0.6, color: 0xc28840, alpha: 0.35 });
       }
 
       app.ticker.add(tick);
+
+      cleanupFns.push(unsubscribe);
     })();
 
     return () => {
       cancelled = true;
+      for (const fn of cleanupFns) fn();
       app.destroy(true, { children: true });
     };
   }, []);
@@ -344,7 +412,7 @@ export function GraphView() {
     <div
       ref={containerRef}
       className="aspect-square w-full"
-      aria-label="Timechain Graph lattice — force-directed Obsidian-style placement of Bitcoin wallets, drag any node to pull it through the layout"
+      aria-label="Timechain Graph lattice — force-directed Obsidian-style placement of Bitcoin wallets, scrub the halving timeline to watch the lattice grow in, drag any node to play with the layout"
     />
   );
 }
