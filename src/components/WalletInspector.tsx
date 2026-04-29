@@ -3,6 +3,7 @@
 import { useTimegridStore } from '@/store/timegridStore';
 import { FREE_TIER_50 } from '@/data/__fixtures__/free-tier-50';
 import { FREE_TIER_50_BONDS } from '@/data/__fixtures__/free-tier-50-bonds';
+import { COIN_ROSTER_DEMO } from '@/data/__fixtures__/coin-roster';
 import { ROLE_LABEL, ROLE_CSS } from '@/lib/role-visuals';
 import type { WalletData } from '@/types/wallet';
 
@@ -45,6 +46,20 @@ function findNeighbors(address: string): WalletData[] {
   return result;
 }
 
+/**
+ * Coin count from the demo roster — Phase F coin-real-estate fixture.
+ * v0 model: ownerAddress === minterAddress (no transfers tracked).
+ * Once the multi-input pipeline lands the count reflects current
+ * ownership rather than mint history.
+ */
+function countCoins(address: string): number {
+  let count = 0;
+  for (const c of COIN_ROSTER_DEMO) {
+    if (c.ownerAddress === address) count++;
+  }
+  return count;
+}
+
 const MAX_NEIGHBORS_SHOWN = 5;
 
 export function WalletInspector() {
@@ -53,6 +68,7 @@ export function WalletInspector() {
     ? FREE_TIER_50.find((w) => w.address === selectedAddress)
     : null;
   const neighbors = wallet ? findNeighbors(wallet.address) : [];
+  const coinsOwned = wallet ? countCoins(wallet.address) : 0;
 
   if (!wallet) {
     return (
@@ -95,6 +111,16 @@ export function WalletInspector() {
         <Field label="First seen" value={`block ${wallet.firstSeenBlock.toLocaleString()}`} />
         <Field label="Last active" value={`block ${wallet.lastActiveBlock.toLocaleString()}`} />
       </dl>
+      {coinsOwned > 0 && (
+        <p className="mt-4 text-mono text-xs">
+          <span className="text-[color:var(--color-text-muted)]">
+            Coins owned (demo roster):{' '}
+          </span>
+          <span className="font-semibold text-[color:var(--color-amber)]">
+            {coinsOwned.toLocaleString()}
+          </span>
+        </p>
+      )}
       {neighbors.length > 0 && (
         <div className="mt-5 border-t border-[color:var(--color-card-border)] pt-4">
           <p className="text-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-text-muted)]">
