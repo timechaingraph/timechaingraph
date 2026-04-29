@@ -6,3 +6,5 @@
 :- consult('rules/transitive.pl').
 :- consult('rules/clustering.pl').
 :- consult('rules/miners.pl').
+:- consult('rules/temporal.pl').
+:- consult('rules/queries.pl').

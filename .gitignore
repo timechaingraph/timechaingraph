@@ -37,3 +37,14 @@ debug.log
 
 # parquet snapshots fetched from CDN at dev time
 public/data/
+
+# chain-tools build artifacts (substrate dumps + parquet outputs from
+# the operator pipeline) — regenerated locally, never committed.
+/chain-tools/out/
+
+# Python bytecode cache (anywhere in tree)
+__pycache__/
+*.pyc
+
+# local assistant tooling session state — local-only, regenerated per session
+internal session files/scheduled_tasks.lock

@@ -164,15 +164,32 @@ These shapes are the public contract. From v0.1 forward:
 
 For now, the pipeline is operator-side and gated on bitcoind
 hosting (see `DEPLOY.md` Decisions to confirm). Until the operator
-provisions infra:
+provisions infra, **the fixture-to-parquet bridge is fully
+operational** — the schema set is exercised end-to-end without
+bitcoind:
 
-- The fixture-backed `FIXTURE_SUBSTRATE` (TypeScript) supplies the
-  same data shape via `src/data/substrate.ts`. Both vault generators
-  consume it. No parquet output yet.
-- `chain-tools/ingest/extract_wallets.py::write_parquet(rows,
-  output)` is implementable + testable without bitcoind. Future
-  `chain-tools/ingest/from_fixture.py` will convert
-  `FIXTURE_SUBSTRATE` to parquet, exercising the schema end-to-end.
+```bash
+# Step 1: dump TS FIXTURE_SUBSTRATE to JSON
+npm run substrate:dump
+# writes chain-tools/out/substrate-dump.json (~1.5 MB)
+
+# Step 2: convert JSON to parquet
+pip install -r chain-tools/ingest/requirements.txt   # pyarrow
+python3 chain-tools/ingest/from_fixture.py \
+    --input chain-tools/out/substrate-dump.json \
+    --output-dir chain-tools/out/
+# writes wallets.parquet, bonds.parquet, coins.parquet
+```
+
+Three parquet files matching `WALLETS_SCHEMA` / `BONDS_SCHEMA` /
+`COINS_SCHEMA` exactly. Operator can validate downstream readers
+(brain-vault generator, coin-vault generator, browser
+DuckDB-Wasm queries) against this real-shape data before bitcoind
+is online.
+
+`chain-tools/ingest/extract_wallets.py::write_parquet(rows, output)`
+is the same writer the eventual full pipeline calls after RPC
+walking; the bridge proves it produces valid parquet.
 
 When bitcoind is online, the full pipeline runs:
 
