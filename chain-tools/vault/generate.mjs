@@ -393,6 +393,107 @@ for (const h of HALVING_BLOCKS.slice(1)) {
   halvingFilesWritten++;
 }
 
+// ---------- emit: notable non-halving blocks --------------------------------
+//
+// A small curated set of historically significant blocks beyond
+// halvings. These are the points in chain history a casual reader
+// would recognise — first peer-to-peer transaction, Mt.Gox halt,
+// SegWit activation, Taproot lock-in. Vault becomes more
+// narratively rich; Obsidian's graph view shows these as additional
+// hubs around the temporal axis.
+//
+// Future tooling can extend this list — each entry is a pure
+// (height, slug, title, body) tuple with no fixture dependency, so
+// the chain-tools pipeline can append more notable blocks per epoch
+// without changing the generator's shape.
+const NOTABLE_BLOCKS = [
+  {
+    height: 170,
+    slug: 'first-p2p-tx',
+    title: 'First peer-to-peer Bitcoin transaction',
+    body:
+      'Block 170 contains the first non-coinbase Bitcoin transaction: 10 BTC sent from [[1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa|Satoshi]] to Hal Finney on January 12, 2009. The transaction proved the protocol worked end-to-end — coins could be transferred between addresses without any intermediary. Hal had downloaded the v0.1 client a few days earlier; the test send was both a working-as-designed verification and a quiet inauguration of a peer-to-peer monetary network.',
+    tags: ['block', 'notable', 'epoch/0', 'milestone/first-tx'],
+  },
+  {
+    height: 277_316,
+    slug: 'mtgox-halt',
+    title: 'Mt. Gox halts withdrawals',
+    body:
+      'On February 7, 2014, Mt. Gox — at the time handling ~70% of all Bitcoin trading volume — suspended withdrawals citing "transaction malleability" issues. Block 277,316 is approximately the height when the halt notice spread; the price dropped from ~$830 to ~$130 over the following weeks. The exchange filed for bankruptcy on February 28, 2014, with ~850,000 BTC missing. The event reshaped the ecosystem — custody risk became visible, exchange diversity grew, and "not your keys, not your coins" entered common parlance.',
+    tags: ['block', 'notable', 'epoch/1', 'milestone/mt-gox'],
+  },
+  {
+    height: 481_824,
+    slug: 'segwit-activation',
+    title: 'SegWit activation',
+    body:
+      'Block 481,824 (August 24, 2017) was the first block produced under SegWit (BIP-141) — Segregated Witness, the soft-fork upgrade that moved signature data outside the transaction body and fixed transaction malleability (the same issue Mt. Gox had cited). SegWit unlocked ~75% throughput gains within the existing 1MB block limit and laid the groundwork for the Lightning Network. Activation came after a year-long signaling battle (the "scaling debate"); the New York Agreement, BIP-148 user-activated soft-fork threats, and the Bitcoin Cash hard fork all preceded it.',
+    tags: ['block', 'notable', 'epoch/2', 'milestone/segwit'],
+  },
+  {
+    height: 689_832,
+    slug: 'taproot-lockin',
+    title: 'Taproot signaling lock-in',
+    body:
+      'Block 689,832 (June 12, 2021) confirmed that 90% of blocks in the previous difficulty period had signalled support for Taproot (BIP-340/341/342) — the activation lock-in. The actual upgrade went live at block 709,632 in November 2021. Taproot brought Schnorr signatures (smaller + privacy-friendly multi-sig), MAST (Merkelized Abstract Syntax Trees for cheaper complex scripts), and improved fungibility — multi-sig and complex contracts now look identical to a regular spend on-chain.',
+    tags: ['block', 'notable', 'epoch/3', 'milestone/taproot'],
+  },
+];
+
+function notableMarkdown(notable) {
+  const epoch = Math.floor(notable.height / 210_000);
+  const subsidyBtc = subsidyBtcAt(notable.height);
+  const supplyBtc = cumulativeSupplyBtcAt(notable.height);
+  const dateApprox = (() => {
+    const minutesFromGenesis = notable.height * 10;
+    const genesisMs = Date.UTC(2009, 0, 3, 18, 15, 0);
+    const ms = genesisMs + minutesFromGenesis * 60_000;
+    return new Date(ms).toISOString().slice(0, 10);
+  })();
+  const fm = [
+    '---',
+    `block: ${notable.height}`,
+    `kind: notable`,
+    `slug: ${notable.slug}`,
+    `epoch: ${epoch}`,
+    `subsidyBtc: ${subsidyBtc}`,
+    `supplyBtcApprox: ${Math.round(supplyBtc)}`,
+    `dateApprox: ${dateApprox}`,
+    `tags: [${notable.tags.join(', ')}]`,
+    '---',
+    '',
+  ].join('\n');
+  return [
+    fm,
+    `# ${notable.title}`,
+    '',
+    notable.body,
+    '',
+    '## Block context',
+    '',
+    `- **Height**: ${notable.height.toLocaleString()}`,
+    `- **Epoch**: ${epoch} (subsidy ${subsidyBtc} BTC/block at this height)`,
+    `- **Cumulative supply (approx)**: ${Math.round(supplyBtc).toLocaleString()} BTC`,
+    `- **Approx date**: ${dateApprox}`,
+    '',
+    '## Cross-references',
+    '',
+    `- [[blocks/halvings/${String(epoch * 210_000).padStart(7, '0')}|Epoch ${epoch} start]]`,
+    `- [[epochs/epoch-${String(epoch).padStart(4, '0')}|Epoch ${epoch} summary]]`,
+    '',
+  ].join('\n');
+}
+
+let notableFilesWritten = 0;
+for (const n of NOTABLE_BLOCKS) {
+  writeFile(
+    `blocks/notable/${String(n.height).padStart(7, '0')}-${n.slug}.md`,
+    notableMarkdown(n),
+  );
+  notableFilesWritten++;
+}
+
 // ---------- emit: epoch markdown summaries -----------------------------------
 
 function epochMarkdown(epoch) {
@@ -772,6 +873,7 @@ writeFile('wallets/INDEX.md', walletsIndexMarkdown());
 const summary = {
   walletFiles: walletFilesWritten,
   halvingFiles: halvingFilesWritten,
+  notableBlockFiles: notableFilesWritten,
   epochFiles: epochFilesWritten,
   activitySidecars: sidecarsWritten,
   prologFactsWritten: 2,
