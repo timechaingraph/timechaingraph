@@ -6,6 +6,7 @@ import { FREE_TIER_50 } from '@/data/__fixtures__/free-tier-50';
 import { FREE_TIER_50_BONDS } from '@/data/__fixtures__/free-tier-50-bonds';
 import { ROLE_COLOR, ROLE_RADIUS } from '@/lib/role-visuals';
 import { useTimegridStore } from '@/store/timegridStore';
+import { BRAND_TAGLINE } from '@/lib/site-config';
 import type { WalletData, WalletRole } from '@/types/wallet';
 
 const RING_RADIUS: Record<WalletRole, number> = {
@@ -93,6 +94,7 @@ type Link = { a: number; b: number; strength: number; bondLastActive: number };
  */
 export function GraphView() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const currentBlock = useTimegridStore((s) => s.currentBlock);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -477,10 +479,27 @@ export function GraphView() {
   }, []);
 
   return (
-    <div
-      ref={containerRef}
-      className="aspect-square w-full cursor-grab active:cursor-grabbing"
-      aria-label="Timechain Graph lattice — force-directed Obsidian-style placement of Bitcoin wallets, drag empty space to pan, scroll to zoom, drag any wallet to pull it through the layout"
-    />
+    <div className="relative aspect-square w-full overflow-hidden">
+      <div
+        ref={containerRef}
+        className="absolute inset-0 cursor-grab active:cursor-grabbing"
+        aria-label="Timechain Graph lattice — force-directed Obsidian-style placement of Bitcoin wallets, drag empty space to pan, scroll to zoom, drag any wallet to pull it through the layout"
+      />
+      <div
+        aria-hidden
+        className="text-mono pointer-events-none absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.28em] text-[color:var(--color-gold)] mix-blend-screen"
+      >
+        {BRAND_TAGLINE}
+      </div>
+      <div
+        aria-hidden
+        className="text-mono pointer-events-none absolute bottom-3 right-3 text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-text-muted)]"
+      >
+        Block{' '}
+        <span className="text-[color:var(--color-text-primary)]">
+          {currentBlock.toLocaleString()}
+        </span>
+      </div>
+    </div>
   );
 }
