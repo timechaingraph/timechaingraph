@@ -11,10 +11,25 @@ vi.mock('pixi.js', () => {
     destroy = vi.fn();
   }
   class Graphics {
+    eventMode: string = 'none';
+    cursor: string = 'auto';
+    hitArea: unknown = null;
     circle() {
       return this;
     }
     fill() {
+      return this;
+    }
+    moveTo() {
+      return this;
+    }
+    lineTo() {
+      return this;
+    }
+    stroke() {
+      return this;
+    }
+    on() {
       return this;
     }
   }

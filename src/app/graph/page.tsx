@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
-import { UnderDevelopment } from '@/components/UnderDevelopment';
+import { GraphView } from '@/components/views/GraphView';
+import { WalletInspector } from '@/components/WalletInspector';
 
 export const metadata: Metadata = {
   title: 'Graph view',
   description:
-    'Force-directed Obsidian-style graph of Bitcoin wallets. Position emerges from transaction frequency. timechaingraph.com.',
+    'Force-directed Obsidian-style graph of Bitcoin wallets. Position emerges from transaction frequency. Drag nodes to play with the layout. timechaingraph.com.',
 };
 
 export default function GraphHome() {
@@ -26,11 +27,13 @@ export default function GraphHome() {
         the brass-gold center.
       </p>
 
-      <div className="mt-10">
-        <UnderDevelopment
-          targetVersion="v0.1"
-          description="The PixiJS-rendered Graph is in development. Phase F adds a parallel artifact: a literal Obsidian vault of every wallet, cloneable from GitHub, openable in any Obsidian client."
-        />
+      <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="brass-panel rounded-lg overflow-hidden">
+          <GraphView />
+        </div>
+        <div className="lg:sticky lg:top-6 lg:self-start">
+          <WalletInspector />
+        </div>
       </div>
 
       <div className="mt-12 grid gap-6 md:grid-cols-3">
