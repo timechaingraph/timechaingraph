@@ -2,7 +2,9 @@
 
 import { useTimegridStore } from '@/store/timegridStore';
 import { FREE_TIER_50 } from '@/data/__fixtures__/free-tier-50';
+import { FREE_TIER_50_BONDS } from '@/data/__fixtures__/free-tier-50-bonds';
 import { ROLE_LABEL, ROLE_CSS } from '@/lib/role-visuals';
+import type { WalletData } from '@/types/wallet';
 
 /**
  * WalletInspector — read-only side panel that shows metadata for the
@@ -29,11 +31,28 @@ function shortAddress(addr: string): string {
   return `${addr.slice(0, 8)}…${addr.slice(-4)}`;
 }
 
+function findNeighbors(address: string): WalletData[] {
+  const neighborAddrs = new Set<string>();
+  for (const bond of FREE_TIER_50_BONDS) {
+    if (bond.fromAddress === address) neighborAddrs.add(bond.toAddress);
+    else if (bond.toAddress === address) neighborAddrs.add(bond.fromAddress);
+  }
+  const result: WalletData[] = [];
+  for (const addr of neighborAddrs) {
+    const w = FREE_TIER_50.find((w) => w.address === addr);
+    if (w) result.push(w);
+  }
+  return result;
+}
+
+const MAX_NEIGHBORS_SHOWN = 5;
+
 export function WalletInspector() {
   const selectedAddress = useTimegridStore((s) => s.selectedWallet);
   const wallet = selectedAddress
     ? FREE_TIER_50.find((w) => w.address === selectedAddress)
     : null;
+  const neighbors = wallet ? findNeighbors(wallet.address) : [];
 
   if (!wallet) {
     return (
@@ -76,6 +95,38 @@ export function WalletInspector() {
         <Field label="First seen" value={`block ${wallet.firstSeenBlock.toLocaleString()}`} />
         <Field label="Last active" value={`block ${wallet.lastActiveBlock.toLocaleString()}`} />
       </dl>
+      {neighbors.length > 0 && (
+        <div className="mt-5 border-t border-[color:var(--color-card-border)] pt-4">
+          <p className="text-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-text-muted)]">
+            Connections ({neighbors.length})
+          </p>
+          <ul className="mt-3 space-y-1.5 text-mono text-[10px]">
+            {neighbors.slice(0, MAX_NEIGHBORS_SHOWN).map((n) => (
+              <li key={n.address} className="flex items-center gap-2">
+                <span
+                  aria-hidden
+                  className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ background: ROLE_CSS[n.role] }}
+                />
+                <span
+                  className="truncate text-[color:var(--color-text-secondary)]"
+                  title={n.address}
+                >
+                  {n.address.slice(0, 8)}…{n.address.slice(-4)}
+                </span>
+                <span className="ml-auto shrink-0 text-[color:var(--color-text-muted)]">
+                  {ROLE_LABEL[n.role]}
+                </span>
+              </li>
+            ))}
+            {neighbors.length > MAX_NEIGHBORS_SHOWN && (
+              <li className="pt-1 text-[9px] text-[color:var(--color-text-muted)]">
+                + {neighbors.length - MAX_NEIGHBORS_SHOWN} more
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

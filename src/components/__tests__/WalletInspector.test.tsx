@@ -23,8 +23,10 @@ describe('<WalletInspector>', () => {
   it('shows the role label when a wallet is selected', () => {
     const wallet = FREE_TIER_50.find((w) => w.role === 'whale')!;
     useTimegridStore.getState().setSelectedWallet(wallet.address);
-    const { getByText } = render(<WalletInspector />);
-    expect(getByText('Whale')).toBeTruthy();
+    const { getAllByText } = render(<WalletInspector />);
+    // "Whale" appears as the main role label AND in the Connections
+    // section if any neighbor is also a whale; just assert ≥1 match.
+    expect(getAllByText('Whale').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows the satoshi-marked address as Satoshi', () => {
