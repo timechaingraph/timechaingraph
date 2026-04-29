@@ -28,7 +28,10 @@ export const SISTER_TAGLINE = 'a stationary node grid of Bitcoin';
 export const SISTER_ACCENT = 'cyan' as const;
 export const SISTER_URL = `https://${SISTER_DOMAIN}`;
 
+export const BRAND_TAGLINE = 'Bitcoin Visualised';
+
 export const SITE_URL = `https://${VIEW_DOMAIN}`;
 export const SITE_TITLE = `Timechain ${VIEW_BRAND}`;
+export const SITE_TITLE_FULL = `${BRAND_TAGLINE} — Timechain ${VIEW_BRAND}`;
 export const SITE_DESCRIPTION =
-  'Force-directed Obsidian-style graph of every economically significant Bitcoin wallet. Position emerges from transaction frequency. Public, privacy-first, no third-party scripts.';
+  'Bitcoin Visualised. Force-directed Obsidian-style graph of every economically significant Bitcoin wallet. Position emerges from transaction frequency. Public, privacy-first, no third-party scripts.';

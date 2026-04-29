@@ -2,13 +2,18 @@ import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { NavBar } from '@/components/NavBar';
 import { SiteFooter } from '@/components/SiteFooter';
-import { SITE_URL, SITE_TITLE, SITE_DESCRIPTION } from '@/lib/site-config';
+import {
+  SITE_URL,
+  SITE_TITLE,
+  SITE_TITLE_FULL,
+  SITE_DESCRIPTION,
+} from '@/lib/site-config';
 import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: SITE_TITLE,
+    default: SITE_TITLE_FULL,
     template: `%s · ${SITE_TITLE}`,
   },
   description: SITE_DESCRIPTION,
@@ -28,13 +33,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     url: SITE_URL,
-    title: SITE_TITLE,
+    title: SITE_TITLE_FULL,
     description: SITE_DESCRIPTION,
     siteName: SITE_TITLE,
   },
   twitter: {
     card: 'summary_large_image',
-    title: SITE_TITLE,
+    title: SITE_TITLE_FULL,
     description: SITE_DESCRIPTION,
   },
   robots: {
