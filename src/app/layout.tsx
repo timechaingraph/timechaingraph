@@ -33,13 +33,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     url: SITE_URL,
-    title: SITE_TITLE_FULL,
+    title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     siteName: SITE_TITLE,
   },
   twitter: {
     card: 'summary_large_image',
-    title: SITE_TITLE_FULL,
+    title: SITE_TITLE,
     description: SITE_DESCRIPTION,
   },
   robots: {

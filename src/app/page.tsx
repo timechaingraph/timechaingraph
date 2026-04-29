@@ -7,11 +7,11 @@ import {
   VIEW_HERO_BOTTOM,
   VIEW_HERO_DESCRIPTION,
   VIEW_DOMAIN,
-  BRAND_TAGLINE,
   SISTER_BRAND,
   SISTER_DOMAIN,
   SISTER_TAGLINE,
   SISTER_URL,
+  BRAND_TAGLINE,
 } from '@/lib/site-config';
 
 /**
@@ -44,10 +44,10 @@ function Hero() {
     <section className="grid gap-10 py-14 md:grid-cols-[1.05fr_1fr] md:gap-14 md:py-20">
       <div className="flex flex-col justify-center gap-7">
         <p
-          className="text-mono text-xs uppercase tracking-[0.32em] text-[color:var(--color-amber)]"
+          className="text-mono text-xs uppercase tracking-[0.32em] text-[color:var(--color-accent-cyan)]"
           style={{ animation: 'drift-up 0.7s ease-out 0.05s both' }}
         >
-          {BRAND_TAGLINE} · {VIEW_DOMAIN}
+          {BRAND_TAGLINE} · 2009 → now
         </p>
         <h1
           className="text-display text-5xl font-semibold leading-[1.05] md:text-7xl"
@@ -67,7 +67,7 @@ function Hero() {
           className="flex flex-wrap items-center gap-3 text-mono text-xs text-[color:var(--color-text-muted)]"
           style={{ animation: 'drift-up 0.7s ease-out 0.35s both' }}
         >
-          <Pill>Public ledger · 2009 → now</Pill>
+          <Pill>This view · {VIEW_DOMAIN}</Pill>
           <Pill>Sister · {SISTER_DOMAIN}</Pill>
           <Pill>~880,000 blocks</Pill>
           <Pill>self-hosted bitcoind</Pill>
