@@ -719,6 +719,8 @@ writeFile(
 );
 
 // Master loader file so a SWI-Prolog session can `consult('all.pl')`.
+// Order matters: facts must load before rules; rules with cross-file
+// dependencies (queries.pl uses transitive + miners + temporal) load last.
 writeFile(
   'prolog/all.pl',
   [
@@ -730,6 +732,8 @@ writeFile(
     ":- consult('rules/transitive.pl').",
     ":- consult('rules/clustering.pl').",
     ":- consult('rules/miners.pl').",
+    ":- consult('rules/temporal.pl').",
+    ":- consult('rules/queries.pl').",
     '',
   ].join('\n'),
 );
