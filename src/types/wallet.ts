@@ -1,13 +1,30 @@
 import type { LatticeNode } from '@/types/lattice';
 
 /**
- * A Bitcoin wallet (address) as rendered on the lattice. Extends the base
- * LatticeNode contract with on-chain metadata derived from the offline
- * extraction pipeline (chain-tools/ingest).
+ * Role classification used for color encoding on both views.
+ *
+ *   satoshi      → brass-gold, special-cased; reserved for the genesis miner
+ *   miner        → red;        every coinbase recipient ever
+ *   whale        → gold;       > 1,000 BTC ever held
+ *   significant  → cyan;       > 1 BTC ever held OR > 100 lifetime txs
+ *   dust         → grey;       below the significance threshold
  */
-export interface WalletNode extends LatticeNode {
-  /** Bitcoin address, the visual identity. */
+export type WalletRole = 'satoshi' | 'miner' | 'whale' | 'significant' | 'dust';
+
+/**
+ * Bitcoin wallet metadata, position-free. Both Grid and Graph views consume
+ * the same WalletData[] from `src/data/__fixtures__/` and from the eventual
+ * BitcoinChainAdapter; each view computes its own coordinates from this
+ * metadata.
+ *
+ *   Grid view  → position derived deterministically from address hash
+ *   Graph view → position emerges from force simulation over txCount edges
+ */
+export interface WalletData {
+  /** Bitcoin address — the visual identity, also used as node id. */
   address: string;
+  /** Role classification for color encoding. */
+  role: WalletRole;
   /** Block height at which this wallet first received any output. */
   firstSeenBlock: number;
   /** Block height of the wallet's most recent activity (input or output). */
@@ -19,6 +36,13 @@ export interface WalletNode extends LatticeNode {
   /** True if this address has ever received a coinbase output. */
   isMiner: boolean;
 }
+
+/**
+ * A wallet placed onto the lattice. Each view's placement function takes a
+ * WalletData and returns a WalletNode (assigning `id` and `position` from
+ * the view-specific algorithm).
+ */
+export interface WalletNode extends LatticeNode, WalletData {}
 
 /**
  * Per-block activity slice. The browser fetches the slice for the current
