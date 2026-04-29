@@ -318,6 +318,100 @@ for (const w of FREE_TIER_50) {
   walletFilesWritten++;
 }
 
+// ---------- emit: synapse markdown (first-class bonds) -----------------------
+//
+// The brain metaphor wants synapses-as-nodes — neurons don't connect
+// directly, they connect via synapses. Each bond becomes a markdown
+// note that wikilinks to both endpoints; in Obsidian's graph view the
+// topology is wallet ↔ synapse ↔ wallet (vs the plain wallet ↔ wallet
+// edges of the wikilink-only model). Density doubles; the wiring
+// reads as anatomy rather than as a tangle of point-to-point lines.
+//
+// Filename uses the lexicographically-sorted endpoint pair joined
+// by `--` so both directions resolve to the same file (bonds are
+// undirected in the data model even though the type has from/to).
+
+function bondMarkdown(bond, formationBlock) {
+  const from = byAddr.get(bond.fromAddress);
+  const to = byAddr.get(bond.toAddress);
+  const fromAlias = aliasFor(from);
+  const toAlias = aliasFor(to);
+  const sats = bond.sats;
+  const btc = sats / SATS_PER_BTC;
+  const lastActive = Math.max(from.lastActiveBlock, to.lastActiveBlock);
+  // Role-pair tag for Obsidian color groups; sort lexicographically
+  // so order-symmetric (`miner-whale` regardless of from/to direction).
+  const roles = [from.role, to.role].sort();
+  const rolePairTag = `synapse/${roles[0]}-${roles[1]}`;
+  const headline = `${fromAlias} ↔ ${toAlias}`;
+  const fm = [
+    '---',
+    `kind: bond`,
+    `from: ${bond.fromAddress}`,
+    `to: ${bond.toAddress}`,
+    `fromAlias: ${fromAlias}`,
+    `toAlias: ${toAlias}`,
+    `fromRole: ${from.role}`,
+    `toRole: ${to.role}`,
+    `sats: ${sats}`,
+    `btc: ${btc}`,
+    `formationBlock: ${formationBlock}`,
+    `lastActiveBlock: ${lastActive}`,
+    `tags: [bond, synapse, ${rolePairTag}]`,
+    '---',
+    '',
+  ].join('\n');
+  const formationEpoch = epochAt(formationBlock);
+  return [
+    fm,
+    `# ${headline}`,
+    '',
+    `Synapse between [[${bond.fromAddress}|${fromAlias}]] (${from.role}) and [[${bond.toAddress}|${toAlias}]] (${to.role}). Aggregate weight ${btc.toLocaleString()} BTC; formed at block ${formationBlock.toLocaleString()} (epoch ${formationEpoch}, subsidy ${subsidyBtcAt(formationBlock)} BTC).`,
+    '',
+    '## Endpoints',
+    '',
+    `- [[${bond.fromAddress}|${fromAlias}]] — ${from.role}`,
+    `- [[${bond.toAddress}|${toAlias}]] — ${to.role}`,
+    '',
+    '## Activity',
+    '',
+    `- Formation block: ${formationBlock.toLocaleString()}`,
+    `- Last active (max of endpoints): ${lastActive.toLocaleString()}`,
+    `- Aggregate sats: ${sats.toLocaleString()}`,
+    `- Aggregate BTC: ${btc.toLocaleString()}`,
+    '',
+    '## Cross-references',
+    '',
+    `- [[epochs/epoch-${String(formationEpoch).padStart(4, '0')}|Epoch ${formationEpoch}]] (formation)`,
+    formationBlock === 0
+      ? '- [[blocks/genesis|Block 0 (Genesis)]]'
+      : null,
+    '',
+  ].filter((l) => l !== null).join('\n');
+}
+
+// Compute formation blocks once; reuse for both bond markdown and
+// activity sidecar emission below.
+const bondFormationByBond = new Map();
+for (const b of FREE_TIER_50_BONDS) {
+  bondFormationByBond.set(b, bondFormationBlock(b));
+}
+
+// Build the slug for a bond filename — lexicographic pair joined by
+// `--`. Bond is undirected in the data model so order-canonicalising
+// here gives a stable filename regardless of from/to.
+function bondSlug(bond) {
+  const [a, b] = [bond.fromAddress, bond.toAddress].sort();
+  return `${a}--${b}`;
+}
+
+let bondFilesWritten = 0;
+for (const b of FREE_TIER_50_BONDS) {
+  const formationBlock = bondFormationByBond.get(b);
+  writeFile(`bonds/${bondSlug(b)}.md`, bondMarkdown(b, formationBlock));
+  bondFilesWritten++;
+}
+
 // ---------- emit: halving block markdown files -------------------------------
 
 // The actual Bitcoin genesis-block coinbase scriptSig contains a hidden
@@ -567,7 +661,7 @@ for (const w of FREE_TIER_50) {
   });
 }
 for (const b of FREE_TIER_50_BONDS) {
-  const block = bondFormationBlock(b);
+  const block = bondFormationByBond.get(b);
   addActivity(block, {
     kind: 'bond-form',
     fromAddress: b.fromAddress,
@@ -854,6 +948,7 @@ writeFile('wallets/INDEX.md', walletsIndexMarkdown());
 
 const summary = {
   walletFiles: walletFilesWritten,
+  bondFiles: bondFilesWritten,
   halvingFiles: halvingFilesWritten,
   notableBlockFiles: notableFilesWritten,
   epochFiles: epochFilesWritten,
