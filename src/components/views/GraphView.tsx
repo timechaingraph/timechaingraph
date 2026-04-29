@@ -361,11 +361,21 @@ export function GraphView() {
       }
 
       function applyScrubberState(): void {
+        // Three-state alpha (mirrors sister's activity-bloom on Grid):
+        //   pre-birth (firstSeen > currentBlock):   alpha 0   + pinned
+        //   alive    (firstSeen ≤ now ≤ lastActive): alpha 1   + un-pinned
+        //   gone-dark (currentBlock > lastActive):  alpha 0.3 + un-pinned
+        // Gone-dark wallets stay in the simulation — bonded neighbors
+        // still pull on them physically — but they fade visually so the
+        // user can read "alive vs dormant" at a glance.
         for (const body of bodies) {
           const born = body.wallet.firstSeenBlock <= currentBlock;
+          const active = born && body.wallet.lastActiveBlock >= currentBlock;
+          const alpha = !born ? 0 : active ? 1 : 0.3;
+
           if (body !== draggedBody) {
-            body.graphics.alpha = born ? 1 : 0;
-            if (body.halo) body.halo.alpha = born ? 0.75 : 0;
+            body.graphics.alpha = alpha;
+            if (body.halo) body.halo.alpha = alpha === 0 ? 0 : 0.75 * alpha;
           }
           const wasPinned = body.pinned;
           body.pinned = shouldBePinned(body);

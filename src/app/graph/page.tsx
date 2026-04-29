@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { GraphView } from '@/components/views/GraphView';
 import { WalletInspector } from '@/components/WalletInspector';
+import { Scrubber } from '@/components/Scrubber';
+import { HalvingTimeline } from '@/components/HalvingTimeline';
 
 export const metadata: Metadata = {
   title: 'Graph view',
@@ -28,8 +30,12 @@ export default function GraphHome() {
       </p>
 
       <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="brass-panel rounded-lg overflow-hidden">
-          <GraphView />
+        <div className="flex flex-col gap-4">
+          <div className="brass-panel rounded-lg overflow-hidden">
+            <GraphView />
+          </div>
+          <Scrubber />
+          <HalvingTimeline />
         </div>
         <div className="lg:sticky lg:top-6 lg:self-start">
           <WalletInspector />
