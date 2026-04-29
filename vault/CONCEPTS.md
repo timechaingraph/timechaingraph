@@ -26,7 +26,9 @@ and surveyable.
 | **Pulse** | A block. ~10 minutes apart. Each block fires the wallets that transacted in it; the activity sidecar (`vault/activity/block-N.json`) is the firing log for that pulse. |
 | **Learning** | The chain's evolution. As blocks accumulate, neurons spawn, synapses form, the wiring diagram thickens. Watch genesis to tip and the brain assembles itself in front of you. |
 | **Reflexes** | Halving cycles. Every 210,000 blocks the issuance reflex contracts — the brain's metabolism slows on a 4-year clock, never deviating. |
-| **Memory** | The Prolog fact base. `wallet/5`, `bond/4`, `coinbase/3` are the brain's recall. `transitive`, `clustering`, `miner` rules are how it reasons about its own history. |
+| **Memory** | The Prolog fact base. `wallet/5`, `bond/4`, `coinbase/3` are the brain's recall. `transitive`, `clustering`, `miner`, `temporal`, `queries` rules are how it reasons about its own history. |
+| **Lineage** | An empire — the BFS descendant tree from a seed wallet through the bond graph. Satoshi's empire is the chain's origin lineage (everyone reachable from genesis). Each miner has their own empire of downstream counterparties. The brain reads its own ancestry. |
+| **Synapse** | A `vault/bonds/<from>--<to>.md` note. First-class anatomy: neurons connect *via* synapses, not directly. The Obsidian graph view shows wallet ↔ synapse ↔ wallet — density doubles, the wiring reads as a brain. |
 
 ## Why both surfaces matter
 

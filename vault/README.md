@@ -26,32 +26,51 @@ pipeline ships in v0.2+.
 vault/
 ├── README.md                     ← this file
 ├── wallets/
+│   ├── INDEX.md                  ← all wallets grouped by role + first-seen
 │   ├── satoshi/                  ← 1 file: the genesis recipient
-│   ├── miners/                   ← coinbase recipients
-│   ├── whales/                   ← > 1,000 BTC ever held
-│   ├── significant/              ← > 1 BTC OR > 100 txs
-│   └── dust/                     ← just-over-threshold
+│   ├── miners/                   ← coinbase recipients (5 in v0.1)
+│   ├── whales/                   ← > 1,000 BTC ever held (10)
+│   ├── significant/              ← > 1 BTC OR > 100 txs (25)
+│   └── dust/                     ← just-over-threshold (9)
+├── bonds/                        ← synapses — first-class notes per bond
+│   └── <from>--<to>.md           ← 121 files; wikilinks to both endpoints
+├── empires/                      ← BFS lineage trees from seeds
+│   ├── satoshi.md                ← 49 descendants, 3 hops max
+│   └── 1MockMinerNNN.md          ← 5 files; each miner's downstream network
 ├── blocks/
-│   ├── genesis.md                ← block 0
-│   └── halvings/
-│       ├── 0210000.md
-│       ├── 0420000.md
-│       ├── 0630000.md
-│       └── 0840000.md
+│   ├── genesis.md                ← block 0 + the famous Times quote
+│   ├── halvings/
+│   │   ├── 0210000.md → 0840000.md  (4 halvings)
+│   └── notable/
+│       ├── 0000170-first-p2p-tx.md       ← Satoshi → Hal Finney
+│       ├── 0277316-mtgox-halt.md         ← Mt. Gox 2014
+│       ├── 0481824-segwit-activation.md
+│       └── 0689832-taproot-lockin.md
+├── epochs/                       ← per-halving-epoch summary notes
+│   └── epoch-0000.md → epoch-0004.md  (5 epochs)
 ├── activity/
-│   └── block-NNNNNNN.json        ← per-block sidecars (~150 files
-│                                   in v0.1; one per block where
-│                                   something happens — wallet birth,
-│                                   bond formation, halving)
-└── prolog/
-    ├── all.pl                    ← consult this in SWI-Prolog
-    ├── facts/
-    │   ├── wallets.pl            ← auto-generated wallet/5 facts
-    │   └── bonds.pl              ← auto-generated bond/4 facts
-    └── rules/
-        ├── transitive.pl         ← flow tracing
-        ├── clustering.pl         ← common-input heuristic (v0.2 stub)
-        └── miners.pl             ← mining-pool detection
+│   └── block-NNNNNNN.json        ← per-block sidecars (170 files in
+│                                   v0.1; one per block where something
+│                                   happens — wallet-spawn, bond-form,
+│                                   halving — with subsidyBtc +
+│                                   cumulativeSupplyBtc enrichment)
+├── prolog/
+│   ├── all.pl                    ← consult this in SWI-Prolog
+│   ├── facts/
+│   │   ├── wallets.pl            ← auto-generated wallet/5 facts
+│   │   └── bonds.pl              ← auto-generated bond/4 facts
+│   └── rules/
+│       ├── transitive.pl         ← flow tracing (sent_to_transitive)
+│       ├── clustering.pl         ← common-input heuristic (v0.2 stub)
+│       ├── miners.pl             ← mining-pool detection (pool_candidate)
+│       ├── temporal.pl           ← block-range reasoning (alive_at, born_in)
+│       └── queries.pl            ← composed questions (satoshi_descendant,
+│                                   hub, heavy_recipient, richest_alive_at)
+├── .obsidian/                    ← graph + app config (color groups
+│                                   matching the web canvas's ROLE_COLOR)
+├── CONCEPTS.md                   ← the brain metaphor + animation contract
+├── SUMMARY.md                    ← aggregate stats (auto-regenerated)
+└── README.md                     ← this file
 ```
 
 ## Wallet schema
@@ -124,6 +143,22 @@ in real time as the user scrubs through history. Obsidian doesn't
 read JSON sidecars natively, but tooling could be built (community
 plugin) to overlay block-time on the graph view.
 
+## Bonds (synapses) and empires
+
+The brain metaphor wants synapses-as-nodes — neurons don't connect
+directly, they connect via synapses. Each bond in `vault/bonds/` is
+a markdown note with wikilinks to both endpoint wallets, the
+aggregate satoshis transferred, and the formation block. Open the
+vault in Obsidian: the graph view shows wallet ↔ synapse ↔ wallet
+topology, not plain wallet ↔ wallet edges. Density doubles; the
+wiring reads as anatomy.
+
+Empires (`vault/empires/`) are BFS lineage trees from a seed wallet
+through the bond graph. `satoshi.md` is the chain's origin lineage —
+49 descendants across 3 hops (every wallet in v0.1 is in Satoshi's
+empire). Each miner has their own empire showing their downstream
+payout network.
+
 ## Querying with Prolog
 
 The vault ships with a [SWI-Prolog](https://www.swi-prolog.org/)
@@ -131,12 +166,30 @@ fact base and rule library. Run from the vault root:
 
 ```bash
 swipl prolog/all.pl
+
+% Coinbase + mining
 ?- miner(X).                                 % all coinbase recipients
 ?- pool_candidate(X).                        % miners spanning >1 epoch
+?- mining_pool_with_span(P, S).              % pools + their epoch span
+
+% Satoshi lineage
+?- findall(W, satoshi_descendant(W), Ws), length(Ws, N).
+                                             % count of Satoshi descendants
+
+% Transitive flow
 ?- sent_to_transitive(X, '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa').
                                              % anyone who ever sent to Satoshi
 ?- reachable(X, '1MockWhale001XXXXXXXXXXXXXXXXXXXX').
                                              % connected component of a whale
+
+% Hub + degree
+?- hub(W, 5).                                % wallets with degree >= 5
+?- degree('1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa', D).
+
+% Temporal queries
+?- alive_at(W, 100000).                      % wallets alive at block 100k
+?- born_in(W, 200000, 400000).               % wallets born in window
+?- richest_alive_at(10, 840000, Top).        % top-10 incoming-sats at h4
 ```
 
 The `clustering.pl` rules require multi-input transaction data
