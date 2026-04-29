@@ -3,6 +3,7 @@ import { GraphView } from '@/components/views/GraphView';
 import { WalletInspector } from '@/components/WalletInspector';
 import { BlockStats } from '@/components/BlockStats';
 import { Scrubber } from '@/components/Scrubber';
+import { Playback } from '@/components/Playback';
 import { HalvingTimeline } from '@/components/HalvingTimeline';
 
 export const metadata: Metadata = {
@@ -36,6 +37,7 @@ export default function GraphHome() {
             <GraphView />
           </div>
           <Scrubber />
+          <Playback />
           <HalvingTimeline />
         </div>
         <div className="lg:sticky lg:top-6 lg:self-start lg:flex lg:flex-col lg:gap-4">
