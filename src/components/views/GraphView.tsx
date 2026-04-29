@@ -30,6 +30,9 @@ const PHYSICS = {
 const EDGE_FADE_BLOCKS = 10;
 const EDGE_BASE_ALPHA = 0.4;
 
+/** Hover-spotlight multiplier for non-neighbors (Obsidian-graph signature). */
+const SPOTLIGHT_DIM = 0.15;
+
 const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 5;
 const ZOOM_STEP = 0.0015;
@@ -170,12 +173,41 @@ export function GraphView() {
       let panning = false;
       let panStart = { x: 0, y: 0 };
       let panStartCam = { x: 0, y: 0 };
+      let hoveredAddress: string | null = null;
+      const neighborsByAddr = new Map<string, Set<string>>();
 
       function shouldBePinned(body: Body): boolean {
         if (body === draggedBody) return true;
         if (body.wallet.role === 'satoshi') return true;
         if (body.wallet.firstSeenBlock > currentBlock) return true;
         return false;
+      }
+
+      // Three orthogonal alpha layers compose multiplicatively here:
+      //   activity (alive 1 / gone-dark 0.3 / pre-birth 0)
+      //   × spotlight (1 if hovered or a neighbor; else 0.15)
+      //   = final node alpha
+      // Drag has its own visual cue (alpha 0.85 set inline) and bypasses
+      // this path entirely.
+      function nodeAlpha(body: Body): number {
+        const born = body.wallet.firstSeenBlock <= currentBlock;
+        const active = born && body.wallet.lastActiveBlock >= currentBlock;
+        const activityA = !born ? 0 : active ? 1 : 0.3;
+        if (!hoveredAddress) return activityA;
+        if (body.wallet.address === hoveredAddress) return activityA;
+        if (neighborsByAddr.get(hoveredAddress)?.has(body.wallet.address)) {
+          return activityA;
+        }
+        return activityA * SPOTLIGHT_DIM;
+      }
+
+      function applyAlpha(): void {
+        for (const body of bodies) {
+          if (body === draggedBody) continue;
+          const alpha = nodeAlpha(body);
+          body.graphics.alpha = alpha;
+          if (body.halo) body.halo.alpha = alpha === 0 ? 0 : 0.75 * alpha;
+        }
       }
 
       // Convert screen-space cursor to viewport-local coords. Required
@@ -219,10 +251,16 @@ export function GraphView() {
         };
 
         dot.on('pointerover', () => {
-          if (!draggedBody && !panning) setSelectedWallet(wallet.address);
+          if (draggedBody || panning) return;
+          setSelectedWallet(wallet.address);
+          hoveredAddress = wallet.address;
+          applyAlpha();
         });
         dot.on('pointerout', () => {
-          if (!draggedBody && !panning) setSelectedWallet(null);
+          if (draggedBody || panning) return;
+          setSelectedWallet(null);
+          hoveredAddress = null;
+          applyAlpha();
         });
         dot.on('pointertap', () => {
           setSelectedWallet(wallet.address);
@@ -360,23 +398,21 @@ export function GraphView() {
         links.push({ a, b, strength, bondLastActive });
       }
 
-      function applyScrubberState(): void {
-        // Three-state alpha (mirrors sister's activity-bloom on Grid):
-        //   pre-birth (firstSeen > currentBlock):   alpha 0   + pinned
-        //   alive    (firstSeen ≤ now ≤ lastActive): alpha 1   + un-pinned
-        //   gone-dark (currentBlock > lastActive):  alpha 0.3 + un-pinned
-        // Gone-dark wallets stay in the simulation — bonded neighbors
-        // still pull on them physically — but they fade visually so the
-        // user can read "alive vs dormant" at a glance.
-        for (const body of bodies) {
-          const born = body.wallet.firstSeenBlock <= currentBlock;
-          const active = born && body.wallet.lastActiveBlock >= currentBlock;
-          const alpha = !born ? 0 : active ? 1 : 0.3;
+      // Build the neighbor map once — used by hover-spotlight to flag
+      // every wallet bonded to the hovered node.
+      for (const link of links) {
+        const aAddr = bodies[link.a].wallet.address;
+        const bAddr = bodies[link.b].wallet.address;
+        if (!neighborsByAddr.has(aAddr)) neighborsByAddr.set(aAddr, new Set());
+        if (!neighborsByAddr.has(bAddr)) neighborsByAddr.set(bAddr, new Set());
+        neighborsByAddr.get(aAddr)!.add(bAddr);
+        neighborsByAddr.get(bAddr)!.add(aAddr);
+      }
 
-          if (body !== draggedBody) {
-            body.graphics.alpha = alpha;
-            if (body.halo) body.halo.alpha = alpha === 0 ? 0 : 0.75 * alpha;
-          }
+      function applyScrubberState(): void {
+        // Pin/un-pin per current-block; alpha is computed downstream by
+        // applyAlpha() which composes activity-bloom with hover-spotlight.
+        for (const body of bodies) {
           const wasPinned = body.pinned;
           body.pinned = shouldBePinned(body);
           if (!body.pinned && wasPinned && body !== draggedBody) {
@@ -384,6 +420,7 @@ export function GraphView() {
             body.vy = 0;
           }
         }
+        applyAlpha();
       }
 
       const unsubscribeBlock = useTimegridStore.subscribe((state, prev) => {
@@ -466,10 +503,24 @@ export function GraphView() {
         for (const link of links) {
           const a = bodies[link.a];
           const b = bodies[link.b];
+          // Skip edges where either endpoint is fully invisible (pre-birth)
           if (a.graphics.alpha === 0 || b.graphics.alpha === 0) continue;
           const blocksAfter = Math.max(0, currentBlock - link.bondLastActive);
           const fade = Math.max(0, 1 - blocksAfter / EDGE_FADE_BLOCKS);
-          const alpha = fade * EDGE_BASE_ALPHA;
+          let alpha = fade * EDGE_BASE_ALPHA;
+          // Edge spotlight: hot iff both endpoints are hovered or neighbors
+          // of hovered. Otherwise dim by the same factor as non-neighbor
+          // nodes — visually "the connection isn't relevant right now."
+          if (hoveredAddress) {
+            const aAddr = a.wallet.address;
+            const bAddr = b.wallet.address;
+            const neighbors = neighborsByAddr.get(hoveredAddress);
+            const aHot =
+              aAddr === hoveredAddress || (neighbors?.has(aAddr) ?? false);
+            const bHot =
+              bAddr === hoveredAddress || (neighbors?.has(bAddr) ?? false);
+            if (!(aHot && bHot)) alpha *= SPOTLIGHT_DIM;
+          }
           if (alpha <= 0) continue;
           edges
             .moveTo(cx + a.x, cy + a.y)
