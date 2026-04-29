@@ -409,6 +409,25 @@ export function GraphView() {
         document.removeEventListener('keydown', onKeyDown);
       });
 
+      // Reset Layout — re-seed every non-satoshi position to its ring
+      // origin and zero velocities. Triggered by the React reset button
+      // via a custom DOM event so the React tree doesn't have to hold a
+      // ref into PIXI internals.
+      const onReset = (): void => {
+        for (const body of bodies) {
+          if (body.wallet.role === 'satoshi') continue;
+          const seed = seedPosition(body.wallet);
+          body.x = seed.x;
+          body.y = seed.y;
+          body.vx = 0;
+          body.vy = 0;
+        }
+      };
+      document.addEventListener('graphview:reset', onReset);
+      cleanupFns.push(() => {
+        document.removeEventListener('graphview:reset', onReset);
+      });
+
       // Wheel zoom on the canvas DOM element. preventDefault stops the
       // page from scrolling while the user explores the lattice.
       const onWheel = (event: WheelEvent): void => {
@@ -582,13 +601,25 @@ export function GraphView() {
     };
   }, []);
 
+  const handleReset = (): void => {
+    document.dispatchEvent(new Event('graphview:reset'));
+  };
+
   return (
     <div className="relative aspect-square w-full overflow-hidden">
       <div
         ref={containerRef}
         className="absolute inset-0 cursor-grab active:cursor-grabbing"
-        aria-label="Timechain Graph lattice — force-directed Obsidian-style placement of Bitcoin wallets, drag empty space to pan, scroll to zoom, drag any wallet to pull it through the layout"
+        aria-label="Timechain Graph lattice — force-directed Obsidian-style placement of Bitcoin wallets, drag empty space to pan, scroll to zoom, drag any wallet to pull it through the layout, click a wallet to focus on its neighborhood, ESC to clear focus"
       />
+      <button
+        type="button"
+        onClick={handleReset}
+        className="text-mono absolute left-3 top-3 rounded-full border border-[color:var(--color-card-border)] bg-[color:var(--color-background)]/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-text-muted)] backdrop-blur-sm transition-colors hover:border-[color:var(--color-gold)]/60 hover:text-[color:var(--color-gold)]"
+        aria-label="Reset lattice positions"
+      >
+        ↺ Reset
+      </button>
       <div
         aria-hidden
         className="text-mono pointer-events-none absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.28em] text-[color:var(--color-gold)] mix-blend-screen"
