@@ -24,12 +24,6 @@ const RING_RADIUS: Record<WalletRole, number> = {
   dust: 290,
 };
 
-/**
- * Force-sim tuning. Tuned empirically for ~50 nodes + ~80 bonds; produces
- * a breathing layout that converges in ~2s and stays alive thereafter.
- * Larger graphs will need quad-tree-Barnes-Hut for repulsion; for v0.1
- * naive O(n²) on 50 nodes is well within 60fps budget.
- */
 const PHYSICS = {
   gravity: 0.04,
   repulsion: 600,
@@ -80,16 +74,18 @@ type Link = { a: number; b: number; strength: number };
 /**
  * GraphView — force-directed Obsidian-style renderer for timechaingraph.com.
  *
- * Renders FREE_TIER_50 + FREE_TIER_50_BONDS as a living lattice. Velocity-
- * Verlet physics: gravity toward origin (∝ mass), pairwise Coulomb-like
- * repulsion, Hooke springs on every bond. Satoshi pinned to (0,0) as the
- * permanent anchor.
+ * Renders FREE_TIER_50 + FREE_TIER_50_BONDS as a living lattice with
+ * drag-to-pin interactivity (Obsidian-graph-engine feel). Velocity-Verlet
+ * physics each tick: gravity toward origin (∝ mass), pairwise Coulomb
+ * repulsion, Hooke springs on every bond. Satoshi permanent-pinned at
+ * (0, 0). Other nodes follow physics until grabbed; dragged nodes pin
+ * to the cursor; release un-pins and the system resettles.
  *
  * Phase-C v0.1 progress:
  *   ✓ skeleton (single dot)                          (0f0a161)
  *   ✓ render 50-wallet fixture + hover/click         (983a0b9)
- *   ✓ force simulation + bonds fixture               (this commit)
- *   · drag-and-drop                                  (next)
+ *   ✓ force simulation + bonds fixture               (20b58ab)
+ *   ✓ drag-and-drop                                  (this commit)
  *   · pan / zoom                                     (later)
  *   · real BitcoinChainAdapter                       (later)
  */
@@ -146,6 +142,11 @@ export function GraphView() {
       const edges = new Graphics();
       app.stage.addChild(edges);
 
+      // Drag state — single drag at a time; null when idle.
+      let draggedBody: Body | null = null;
+      let dragOffsetX = 0;
+      let dragOffsetY = 0;
+
       // Build bodies + node graphics
       const bodies: Body[] = FREE_TIER_50.map((wallet) => {
         const seed = seedPosition(wallet);
@@ -155,32 +156,15 @@ export function GraphView() {
         dot.circle(0, 0, radius).fill(ROLE_COLOR[wallet.role]);
         dot.position.set(cx + seed.x, cy + seed.y);
         dot.eventMode = 'static';
-        dot.cursor = 'pointer';
+        dot.cursor = 'grab';
         dot.hitArea = {
           contains: (mx: number, my: number) => {
             const hitR = Math.max(radius, 6);
             return mx * mx + my * my <= hitR * hitR;
           },
         };
-        dot.on('pointerover', () => setSelectedWallet(wallet.address));
-        dot.on('pointerout', () => setSelectedWallet(null));
-        dot.on('pointertap', () => {
-          setSelectedWallet(wallet.address);
-          setActiveDockPanel('wallet-inspector');
-        });
-        app.stage.addChild(dot);
 
-        let halo: Graphics | null = null;
-        if (wallet.role === 'satoshi') {
-          halo = new Graphics();
-          halo
-            .circle(0, 0, ROLE_RADIUS.satoshi + 7)
-            .stroke({ width: 1.4, color: ROLE_COLOR.satoshi, alpha: 0.75 });
-          halo.position.set(cx + seed.x, cy + seed.y);
-          app.stage.addChild(halo);
-        }
-
-        return {
+        const body: Body = {
           wallet,
           x: seed.x,
           y: seed.y,
@@ -189,9 +173,72 @@ export function GraphView() {
           mass: massOf(wallet),
           pinned: wallet.role === 'satoshi',
           graphics: dot,
-          halo,
+          halo: null,
         };
+
+        dot.on('pointerover', () => {
+          if (!draggedBody) setSelectedWallet(wallet.address);
+        });
+        dot.on('pointerout', () => {
+          if (!draggedBody) setSelectedWallet(null);
+        });
+        dot.on('pointertap', () => {
+          setSelectedWallet(wallet.address);
+          setActiveDockPanel('wallet-inspector');
+        });
+        dot.on('pointerdown', (e: { global: { x: number; y: number } }) => {
+          draggedBody = body;
+          body.pinned = true;
+          body.vx = 0;
+          body.vy = 0;
+          dragOffsetX = e.global.x - (cx + body.x);
+          dragOffsetY = e.global.y - (cy + body.y);
+          dot.cursor = 'grabbing';
+          dot.alpha = 0.85;
+          setSelectedWallet(wallet.address);
+        });
+
+        app.stage.addChild(dot);
+
+        if (wallet.role === 'satoshi') {
+          const halo = new Graphics();
+          halo
+            .circle(0, 0, ROLE_RADIUS.satoshi + 7)
+            .stroke({ width: 1.4, color: ROLE_COLOR.satoshi, alpha: 0.75 });
+          halo.position.set(cx + seed.x, cy + seed.y);
+          app.stage.addChild(halo);
+          body.halo = halo;
+        }
+
+        return body;
       });
+
+      // Stage-level pointer handlers — the dragged body follows the cursor
+      // until release. Only one drag at a time. Pointer capture covers the
+      // whole canvas so the user can drag past the node's tiny hitbox.
+      app.stage.eventMode = 'static';
+      app.stage.hitArea = app.screen;
+      app.stage.on('pointermove', (e: { global: { x: number; y: number } }) => {
+        if (!draggedBody) return;
+        draggedBody.x = e.global.x - dragOffsetX - cx;
+        draggedBody.y = e.global.y - dragOffsetY - cy;
+        draggedBody.vx = 0;
+        draggedBody.vy = 0;
+      });
+
+      function endDrag(): void {
+        if (!draggedBody) return;
+        draggedBody.graphics.cursor = 'grab';
+        draggedBody.graphics.alpha = 1;
+        // Permanent anchors stay pinned; everything else returns to physics
+        if (draggedBody.wallet.role !== 'satoshi') {
+          draggedBody.pinned = false;
+        }
+        draggedBody = null;
+      }
+
+      app.stage.on('pointerup', endDrag);
+      app.stage.on('pointerupoutside', endDrag);
 
       // Address → body index for fast bond lookup
       const idxByAddr = new Map(bodies.map((b, i) => [b.wallet.address, i]));
@@ -215,7 +262,7 @@ export function GraphView() {
           body.vy += -body.y * PHYSICS.gravity * body.mass * dt;
         }
 
-        // Pairwise repulsion (O(n²) — fine for 50 nodes)
+        // Pairwise repulsion
         for (let i = 0; i < bodies.length; i++) {
           for (let j = i + 1; j < bodies.length; j++) {
             const bi = bodies[i];
@@ -238,7 +285,7 @@ export function GraphView() {
           }
         }
 
-        // Spring forces on bonds (Hooke)
+        // Spring forces on bonds
         for (const link of links) {
           const a = bodies[link.a];
           const b = bodies[link.b];
@@ -259,13 +306,17 @@ export function GraphView() {
           }
         }
 
-        // Damping + integration + position update
+        // Damping + integration + position update.
+        // Pinned bodies (satoshi + the drag target) skip integration but
+        // still get their graphics position resynced with their authoritative
+        // x/y — necessary because the drag handler writes directly to body.x/y.
         for (const body of bodies) {
-          if (body.pinned) continue;
-          body.vx *= PHYSICS.damping;
-          body.vy *= PHYSICS.damping;
-          body.x += body.vx * dt;
-          body.y += body.vy * dt;
+          if (!body.pinned) {
+            body.vx *= PHYSICS.damping;
+            body.vy *= PHYSICS.damping;
+            body.x += body.vx * dt;
+            body.y += body.vy * dt;
+          }
           body.graphics.position.set(cx + body.x, cy + body.y);
           if (body.halo) body.halo.position.set(cx + body.x, cy + body.y);
         }
@@ -293,7 +344,7 @@ export function GraphView() {
     <div
       ref={containerRef}
       className="aspect-square w-full"
-      aria-label="Timechain Graph lattice — force-directed Obsidian-style placement of Bitcoin wallets, drag nodes to play with the layout"
+      aria-label="Timechain Graph lattice — force-directed Obsidian-style placement of Bitcoin wallets, drag any node to pull it through the layout"
     />
   );
 }
