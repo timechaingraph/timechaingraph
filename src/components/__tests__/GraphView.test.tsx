@@ -4,7 +4,9 @@ import { GraphView } from '../views/GraphView';
 
 vi.mock('pixi.js', () => {
   class Application {
-    canvas = document.createElement('canvas');
+    canvas = Object.assign(document.createElement('canvas'), {
+      style: { cursor: '' },
+    });
     screen = { width: 800, height: 600 };
     stage = {
       addChild: vi.fn(),
@@ -15,6 +17,11 @@ vi.mock('pixi.js', () => {
     ticker = { add: vi.fn(), deltaMS: 16 };
     init = vi.fn().mockResolvedValue(undefined);
     destroy = vi.fn();
+  }
+  class Container {
+    position = { set: vi.fn(), x: 0, y: 0 };
+    scale = { set: vi.fn(), x: 1, y: 1 };
+    addChild = vi.fn();
   }
   class Graphics {
     eventMode: string = 'none';
@@ -44,7 +51,7 @@ vi.mock('pixi.js', () => {
       return this;
     }
   }
-  return { Application, Graphics };
+  return { Application, Container, Graphics };
 });
 
 describe('<GraphView>', () => {
