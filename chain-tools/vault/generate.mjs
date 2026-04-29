@@ -365,6 +365,83 @@ for (const h of HALVING_BLOCKS.slice(1)) {
   halvingFilesWritten++;
 }
 
+// ---------- emit: epoch markdown summaries -----------------------------------
+
+function epochMarkdown(epoch) {
+  const startBlock = epoch * 210_000;
+  const endBlock = (epoch + 1) * 210_000 - 1;
+  const subsidyBtc = 50 / Math.pow(2, epoch);
+  // Wallets whose first-seen falls in this epoch (born here)
+  const bornHere = FREE_TIER_50.filter(
+    (w) => w.firstSeenBlock >= startBlock && w.firstSeenBlock <= endBlock,
+  );
+  // Wallets active at any point during this epoch
+  const activeHere = FREE_TIER_50.filter(
+    (w) => w.firstSeenBlock <= endBlock && w.lastActiveBlock >= startBlock,
+  );
+  const fm = [
+    '---',
+    `epoch: ${epoch}`,
+    `firstBlock: ${startBlock}`,
+    `lastBlock: ${endBlock}`,
+    `subsidyBtc: ${subsidyBtc}`,
+    `walletsBorn: ${bornHere.length}`,
+    `walletsActive: ${activeHere.length}`,
+    `tags: [epoch, epoch/${epoch}]`,
+    '---',
+    '',
+  ].join('\n');
+  const labels = [
+    'Genesis epoch · 50 BTC subsidy',
+    'First halving · 25 BTC subsidy',
+    'Second halving · 12.5 BTC subsidy',
+    'Third halving · 6.25 BTC subsidy',
+    'Fourth halving · 3.125 BTC subsidy',
+  ];
+  return [
+    fm,
+    `# Epoch ${epoch} — ${labels[epoch] ?? `Subsidy ${subsidyBtc} BTC`}`,
+    '',
+    `Blocks ${startBlock.toLocaleString()} through ${endBlock.toLocaleString()} — 210,000 blocks (~4 years at 10-min average). Coinbase subsidy: ${subsidyBtc} BTC per block.`,
+    '',
+    '## Wallets born this epoch',
+    '',
+    bornHere.length === 0
+      ? '_(none in the v0.1 fixture)_'
+      : bornHere
+          .map(
+            (w) => `- [[${w.address}|${aliasFor(w)}]] (${w.role}, first seen block ${w.firstSeenBlock.toLocaleString()})`,
+          )
+          .join('\n'),
+    '',
+    '## Wallets active during this epoch',
+    '',
+    `${activeHere.length} of ${FREE_TIER_50.length} wallets in the fixture had activity overlapping this epoch.`,
+    '',
+    activeHere.length > 0 && activeHere.length <= 30
+      ? activeHere
+          .map((w) => `- [[${w.address}|${aliasFor(w)}]] (${w.role})`)
+          .join('\n')
+      : `Full active-list elided for brevity at this scale; query \`prolog/all.pl\` with \`wallet(X, F, L, _, _), F =< ${endBlock}, L >= ${startBlock}\` for the exact set.`,
+    '',
+    '## Boundary blocks',
+    '',
+    epoch === 0
+      ? `- Start: [[../genesis|Block 0]] (genesis)`
+      : `- Start: [[../halvings/${String(startBlock).padStart(7, '0')}|Block ${startBlock.toLocaleString()}]] (${epoch === 1 ? '1st' : epoch === 2 ? '2nd' : epoch === 3 ? '3rd' : '4th'} halving)`,
+    epoch < 4
+      ? `- End: block ${endBlock.toLocaleString()} (next halving at block ${(epoch + 1) * 210_000})`
+      : `- End: block ${endBlock.toLocaleString()} (next halving at block ${(epoch + 1) * 210_000} — beyond v0.1 fixture range)`,
+    '',
+  ].join('\n');
+}
+
+let epochFilesWritten = 0;
+for (let e = 0; e <= 4; e++) {
+  writeFile(`epochs/epoch-${String(e).padStart(4, '0')}.md`, epochMarkdown(e));
+  epochFilesWritten++;
+}
+
 // ---------- emit: per-block activity sidecars --------------------------------
 
 const activityByBlock = new Map();
@@ -459,6 +536,7 @@ writeFile(
 const summary = {
   walletFiles: walletFilesWritten,
   halvingFiles: halvingFilesWritten,
+  epochFiles: epochFilesWritten,
   activitySidecars: sidecarsWritten,
   prologFactsWritten: 2,
   totalWallets: FREE_TIER_50.length,
