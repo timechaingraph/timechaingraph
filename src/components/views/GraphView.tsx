@@ -31,6 +31,14 @@ const PHYSICS = {
 const EDGE_FADE_BLOCKS = 10;
 const EDGE_BASE_ALPHA = 0.4;
 
+/**
+ * Bond-formation ramp. A synapse fades in over its first N blocks
+ * of life (rather than appearing fully formed). The brain learns
+ * one connection at a time; new synapses ease in as the chain
+ * scrubber crosses their formation block.
+ */
+const BOND_FORMATION_BLOCKS = 10;
+
 /** Hover-spotlight multiplier for non-neighbors (Obsidian-graph signature). */
 const SPOTLIGHT_DIM = 0.15;
 
@@ -74,7 +82,12 @@ type Body = {
   halo: Graphics | null;
 };
 
-type Link = PhysicsLink & { bondLastActive: number };
+type Link = PhysicsLink & {
+  /** Most recent activity from either endpoint — drives the fade-out math. */
+  bondLastActive: number;
+  /** Synapse formation block — drives the fade-in animation. */
+  formationBlock: number;
+};
 
 /**
  * GraphView — force-directed Obsidian-style renderer for timechaingraph.com.
@@ -454,11 +467,24 @@ export function GraphView() {
         if (a === undefined || b === undefined) continue;
         const strength =
           PHYSICS.spring * (Math.log10(Number(bond.sats) + 1) * 0.1 + 0.6);
+        const aWallet = bodies[a].wallet;
+        const bWallet = bodies[b].wallet;
         const bondLastActive = Math.max(
-          bodies[a].wallet.lastActiveBlock,
-          bodies[b].wallet.lastActiveBlock,
+          aWallet.lastActiveBlock,
+          bWallet.lastActiveBlock,
         );
-        links.push({ a, b, strength, bondLastActive });
+        // Formation block: deterministic djb2 pick within the
+        // overlap window of the two endpoints' active ranges.
+        // Mirrors chain-tools/vault/generate.mjs::bondFormationBlock
+        // so the canvas + the vault sidecars agree on synapse
+        // birth times.
+        const lo = Math.max(aWallet.firstSeenBlock, bWallet.firstSeenBlock);
+        const hi = Math.min(aWallet.lastActiveBlock, bWallet.lastActiveBlock);
+        const formationBlock =
+          hi <= lo
+            ? lo
+            : lo + (djb2(`${bond.fromAddress}|${bond.toAddress}`) % (hi - lo));
+        links.push({ a, b, strength, bondLastActive, formationBlock });
       }
 
       // Build the neighbor map once — used by hover-spotlight to flag
@@ -518,13 +544,20 @@ export function GraphView() {
           const b = bodies[link.b];
           // Skip edges where either endpoint is fully invisible (pre-birth)
           if (a.graphics.alpha === 0 || b.graphics.alpha === 0) continue;
+          // Synapse formation ramp — 0 → 1 over the bond's first
+          // BOND_FORMATION_BLOCKS blocks. Pre-formation: edge invisible.
+          const formationAge = currentBlock - link.formationBlock;
+          if (formationAge < 0) continue;
+          const formationAlpha =
+            formationAge >= BOND_FORMATION_BLOCKS
+              ? 1
+              : formationAge / BOND_FORMATION_BLOCKS;
+          // Existing fade-out math past last activity.
           const blocksAfter = Math.max(0, currentBlock - link.bondLastActive);
-          const fade = Math.max(0, 1 - blocksAfter / EDGE_FADE_BLOCKS);
-          let alpha = fade * EDGE_BASE_ALPHA;
+          const fadeAlpha = Math.max(0, 1 - blocksAfter / EDGE_FADE_BLOCKS);
+          let alpha = formationAlpha * fadeAlpha * EDGE_BASE_ALPHA;
           // Edge spotlight: hot iff both endpoints are hovered/focused or
-          // neighbors thereof. Otherwise dim by the same factor as non-
-          // neighbor nodes — visually "the connection isn't relevant
-          // right now."
+          // neighbors thereof.
           const target = spotlightTarget();
           if (target) {
             const aAddr = a.wallet.address;
