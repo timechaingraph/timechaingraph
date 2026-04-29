@@ -43,14 +43,19 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  SATS_PER_BTC,
+  HALVING_BLOCKS,
+  TIP_BLOCK,
+  epochAt,
+  subsidyBtcAt,
+  cumulativeSupplyBtcAt,
+  dateApproxAt,
+} from '../lib/chain.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const VAULT_ROOT = path.join(REPO_ROOT, 'vault');
-
-const SATS_PER_BTC = 100_000_000n;
-const HALVING_BLOCKS = [0, 210_000, 420_000, 630_000, 840_000];
-const TIP_BLOCK = 876_000;
 
 // ---------- fixture re-synthesis (must match free-tier-50.ts) -----------------
 
@@ -322,15 +327,9 @@ const GENESIS_COINBASE_QUOTE =
   'The Times 03/Jan/2009 Chancellor on brink of second bailout for banks';
 
 function halvingMarkdown(height) {
-  const epoch = Math.floor(height / 210_000);
-  const subsidyBtc = 50 / Math.pow(2, epoch);
-  const dateApprox = (() => {
-    if (height === 0) return '2009-01-03';
-    const minutesFromGenesis = height * 10;
-    const genesisMs = Date.UTC(2009, 0, 3, 18, 15, 0);
-    const ms = genesisMs + minutesFromGenesis * 60_000;
-    return new Date(ms).toISOString().slice(0, 10);
-  })();
+  const epoch = epochAt(height);
+  const subsidyBtc = subsidyBtcAt(height);
+  const dateApprox = dateApproxAt(height);
   const fm = [
     '---',
     `block: ${height}`,
@@ -367,24 +366,9 @@ function halvingMarkdown(height) {
   ].filter(Boolean).join('\n');
 }
 
-// Cumulative-supply formula: for each epoch e, 210k blocks emit a
-// subsidy of 50 / 2^e BTC. A block at height H lives in epoch
-// floor(H / 210k); supply at H is the sum of completed epochs +
-// the partial epoch up through H (inclusive of H = +1 block).
-function cumulativeSupplyBtcAt(height) {
-  const epoch = Math.floor(height / 210_000);
-  let supply = 0;
-  for (let e = 0; e < epoch; e++) {
-    supply += 210_000 * (50 / Math.pow(2, e));
-  }
-  const blocksInCurrentEpoch = (height - epoch * 210_000) + 1;
-  supply += blocksInCurrentEpoch * (50 / Math.pow(2, epoch));
-  return supply;
-}
-
-function subsidyBtcAt(height) {
-  return 50 / Math.pow(2, Math.floor(height / 210_000));
-}
+// (Subsidy + cumulative supply now imported from
+// `../lib/chain.mjs` — single source of truth for both
+// vault generators.)
 
 writeFile('blocks/genesis.md', halvingMarkdown(0));
 let halvingFilesWritten = 1;
@@ -442,15 +426,10 @@ const NOTABLE_BLOCKS = [
 ];
 
 function notableMarkdown(notable) {
-  const epoch = Math.floor(notable.height / 210_000);
+  const epoch = epochAt(notable.height);
   const subsidyBtc = subsidyBtcAt(notable.height);
   const supplyBtc = cumulativeSupplyBtcAt(notable.height);
-  const dateApprox = (() => {
-    const minutesFromGenesis = notable.height * 10;
-    const genesisMs = Date.UTC(2009, 0, 3, 18, 15, 0);
-    const ms = genesisMs + minutesFromGenesis * 60_000;
-    return new Date(ms).toISOString().slice(0, 10);
-  })();
+  const dateApprox = dateApproxAt(notable.height);
   const fm = [
     '---',
     `block: ${notable.height}`,
@@ -499,7 +478,7 @@ for (const n of NOTABLE_BLOCKS) {
 function epochMarkdown(epoch) {
   const startBlock = epoch * 210_000;
   const endBlock = (epoch + 1) * 210_000 - 1;
-  const subsidyBtc = 50 / Math.pow(2, epoch);
+  const subsidyBtc = subsidyBtcAt(startBlock);
   // Wallets whose first-seen falls in this epoch (born here)
   const bornHere = FREE_TIER_50.filter(
     (w) => w.firstSeenBlock >= startBlock && w.firstSeenBlock <= endBlock,
@@ -602,14 +581,13 @@ for (const h of HALVING_BLOCKS) {
 
 let sidecarsWritten = 0;
 for (const [block, events] of activityByBlock) {
-  const epoch = Math.floor(block / 210_000);
   const filename = `block-${String(block).padStart(7, '0')}.json`;
   writeFile(
     `activity/${filename}`,
     JSON.stringify(
       {
         block,
-        epoch,
+        epoch: epochAt(block),
         subsidyBtc: subsidyBtcAt(block),
         cumulativeSupplyBtc: cumulativeSupplyBtcAt(block),
         events,
