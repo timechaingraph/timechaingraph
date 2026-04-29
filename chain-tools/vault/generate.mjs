@@ -515,6 +515,70 @@ for (const b of FREE_TIER_50_BONDS) {
 bondFacts.push('');
 writeFile('prolog/facts/bonds.pl', bondFacts.join('\n'));
 
+// ---------- emit: Obsidian graph-view config --------------------------------
+//
+// Pre-configured `.obsidian/graph.json` so the vault renders with
+// correct color groups OOTB. Obsidian reads this on first open —
+// no manual setup required. Colors match the web canvas's ROLE_COLOR
+// (brass-gold satoshi, red miners, gold whales, cyan significant,
+// grey dust). Obsidian uses RGB-as-int: (R << 16) | (G << 8) | B.
+//
+// Obsidian uses dashed JSON keys (collapse-filter, etc.); we emit
+// the same shape so re-saving inside Obsidian doesn't churn the diff.
+const obsidianColorGroups = [
+  { query: 'tag:#role/satoshi', color: { a: 1, rgb: 16766720 } }, // FFD700
+  { query: 'tag:#role/whale', color: { a: 1, rgb: 16766720 } }, // FFD700
+  { query: 'tag:#role/miner', color: { a: 1, rgb: 15680580 } }, // EF4444
+  { query: 'tag:#role/significant', color: { a: 1, rgb: 54527 } }, // 00D4FF
+  { query: 'tag:#role/dust', color: { a: 1, rgb: 6574475 } }, // 64748B
+  { query: 'tag:#block OR tag:#halving', color: { a: 1, rgb: 11700051 } }, // B28553
+  { query: 'tag:#epoch', color: { a: 1, rgb: 14728767 } }, // E0A656
+];
+
+writeFile(
+  '.obsidian/graph.json',
+  JSON.stringify(
+    {
+      'collapse-filter': false,
+      search: '',
+      showTags: false,
+      showAttachments: false,
+      hideUnresolved: false,
+      showOrphans: true,
+      'collapse-color-groups': false,
+      colorGroups: obsidianColorGroups,
+      'collapse-display': false,
+      showArrow: false,
+      textFadeMultiplier: 0,
+      nodeSizeMultiplier: 1.5,
+      lineSizeMultiplier: 1,
+      'collapse-forces': false,
+      centerStrength: 0.518713248970312,
+      repelStrength: 10,
+      linkStrength: 1,
+      linkDistance: 250,
+      scale: 0.7,
+    },
+    null,
+    2,
+  ) + '\n',
+);
+
+// Sensible app defaults — open files in new tab, default to graph view.
+writeFile(
+  '.obsidian/app.json',
+  JSON.stringify(
+    {
+      promptDelete: false,
+      alwaysUpdateLinks: true,
+      newFileLocation: 'folder',
+      newFileFolderPath: 'wallets',
+    },
+    null,
+    2,
+  ) + '\n',
+);
+
 // Master loader file so a SWI-Prolog session can `consult('all.pl')`.
 writeFile(
   'prolog/all.pl',
