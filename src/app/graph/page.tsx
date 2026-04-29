@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { GraphView } from '@/components/views/GraphView';
 import { WalletInspector } from '@/components/WalletInspector';
+import { BlockStats } from '@/components/BlockStats';
 import { Scrubber } from '@/components/Scrubber';
 import { HalvingTimeline } from '@/components/HalvingTimeline';
 
@@ -37,7 +38,8 @@ export default function GraphHome() {
           <Scrubber />
           <HalvingTimeline />
         </div>
-        <div className="lg:sticky lg:top-6 lg:self-start">
+        <div className="lg:sticky lg:top-6 lg:self-start lg:flex lg:flex-col lg:gap-4">
+          <BlockStats />
           <WalletInspector />
         </div>
       </div>
