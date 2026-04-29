@@ -1,0 +1,18 @@
+{
+  "block": 32946,
+  "epoch": 0,
+  "events": [
+    {
+      "kind": "wallet-spawn",
+      "address": "1MockMiner004XXXXXXXXXXXXXXXXXXXXX",
+      "role": "miner",
+      "isMiner": true
+    },
+    {
+      "kind": "bond-form",
+      "fromAddress": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+      "toAddress": "1MockMiner004XXXXXXXXXXXXXXXXXXXXX",
+      "sats": "5000000000"
+    }
+  ]
+}

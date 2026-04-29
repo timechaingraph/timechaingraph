@@ -1,0 +1,10 @@
+{
+  "block": 840000,
+  "epoch": 4,
+  "events": [
+    {
+      "kind": "halving",
+      "epoch": 4
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "block": 402975,
+  "epoch": 1,
+  "events": [
+    {
+      "kind": "wallet-spawn",
+      "address": "1MockDust002XXXXXXXXXXXXXXXXXXXXXX",
+      "role": "dust",
+      "isMiner": false
+    }
+  ]
+}

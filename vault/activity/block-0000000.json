@@ -1,0 +1,16 @@
+{
+  "block": 0,
+  "epoch": 0,
+  "events": [
+    {
+      "kind": "wallet-spawn",
+      "address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+      "role": "satoshi",
+      "isMiner": true
+    },
+    {
+      "kind": "halving",
+      "epoch": 0
+    }
+  ]
+}

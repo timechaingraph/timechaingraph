@@ -1,0 +1,12 @@
+{
+  "block": 554664,
+  "epoch": 2,
+  "events": [
+    {
+      "kind": "bond-form",
+      "fromAddress": "1MockMiner001XXXXXXXXXXXXXXXXXXXXX",
+      "toAddress": "1MockWhale007XXXXXXXXXXXXXXXXXXXXX",
+      "sats": "4000000000"
+    }
+  ]
+}
