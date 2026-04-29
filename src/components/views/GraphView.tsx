@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Application, Container, Graphics } from 'pixi.js';
 import { FREE_TIER_50 } from '@/data/__fixtures__/free-tier-50';
 import { FREE_TIER_50_BONDS } from '@/data/__fixtures__/free-tier-50-bonds';
@@ -98,6 +98,10 @@ type Link = { a: number; b: number; strength: number; bondLastActive: number };
 export function GraphView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const currentBlock = useTimegridStore((s) => s.currentBlock);
+  // Mirrored from the imperative `focusedAddress` closure inside the
+  // PIXI effect — used only by the HUD render path (conditional ESC
+  // hint). The graphics pipeline never reads React state.
+  const [focusActive, setFocusActive] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -280,11 +284,13 @@ export function GraphView() {
           if (focusedAddress === wallet.address) {
             focusedAddress = null;
             setSelectedWallet(null);
+            setFocusActive(false);
           } else {
             focusedAddress = wallet.address;
             hoveredAddress = null; // focus supersedes hover
             setSelectedWallet(wallet.address);
             setActiveDockPanel('wallet-inspector');
+            setFocusActive(true);
           }
           applyAlpha();
         });
@@ -395,6 +401,7 @@ export function GraphView() {
         if (!focusedAddress) return;
         focusedAddress = null;
         setSelectedWallet(null);
+        setFocusActive(false);
         applyAlpha();
       };
       document.addEventListener('keydown', onKeyDown);
@@ -597,6 +604,17 @@ export function GraphView() {
           {currentBlock.toLocaleString()}
         </span>
       </div>
+      {focusActive && (
+        <div
+          aria-live="polite"
+          className="text-mono pointer-events-none absolute right-3 top-3 rounded-full border border-[color:var(--color-amber)]/40 bg-[color:var(--color-background)]/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-amber)] backdrop-blur-sm"
+        >
+          Focus locked ·{' '}
+          <span className="text-[color:var(--color-text-secondary)]">
+            ESC to clear
+          </span>
+        </div>
+      )}
     </div>
   );
 }
