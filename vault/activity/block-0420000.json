@@ -1,6 +1,8 @@
 {
   "block": 420000,
   "epoch": 2,
+  "subsidyBtc": 12.5,
+  "cumulativeSupplyBtc": 15750012.5,
   "events": [
     {
       "kind": "halving",

@@ -1,6 +1,8 @@
 {
   "block": 166637,
   "epoch": 0,
+  "subsidyBtc": 50,
+  "cumulativeSupplyBtc": 8331900,
   "events": [
     {
       "kind": "wallet-spawn",

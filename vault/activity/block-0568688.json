@@ -1,6 +1,8 @@
 {
   "block": 568688,
   "epoch": 2,
+  "subsidyBtc": 12.5,
+  "cumulativeSupplyBtc": 17608612.5,
   "events": [
     {
       "kind": "bond-form",

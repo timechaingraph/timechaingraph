@@ -315,6 +315,12 @@ for (const w of FREE_TIER_50) {
 
 // ---------- emit: halving block markdown files -------------------------------
 
+// The actual Bitcoin genesis-block coinbase scriptSig contains a hidden
+// message — Satoshi's public commentary at the moment of mining block 0.
+// Decoded from hex (0x04ffff001d0104455468652054696d65732030332f4a616e2f...):
+const GENESIS_COINBASE_QUOTE =
+  'The Times 03/Jan/2009 Chancellor on brink of second bailout for banks';
+
 function halvingMarkdown(height) {
   const epoch = Math.floor(height / 210_000);
   const subsidyBtc = 50 / Math.pow(2, epoch);
@@ -340,7 +346,7 @@ function halvingMarkdown(height) {
     ? '# Genesis · Block 0'
     : `# Halving · Block ${height.toLocaleString()}`;
   const description = height === 0
-    ? 'The genesis block. Mined on January 3rd 2009. The coinbase output (50 BTC) is unspendable by the protocol; the recipient address is the symbolic origin of every subsequent ledger entry. Every projection of the timechain anchors here.'
+    ? 'The genesis block. Mined on January 3rd 2009 by [[1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa|Satoshi]]. The coinbase output (50 BTC) is **unspendable by the protocol** — Satoshi hardcoded a quirk into the genesis transaction so the reward could never be moved. Every projection of the timechain anchors here.'
     : `The ${epoch}${epoch === 1 ? 'st' : epoch === 2 ? 'nd' : epoch === 3 ? 'rd' : 'th'} halving block. From this block forward the coinbase subsidy drops to **${subsidyBtc} BTC** per block. Halvings are the timechain's metronome — every 210,000 blocks (~4 years) the issuance schedule contracts.`;
   return [
     fm,
@@ -348,6 +354,9 @@ function halvingMarkdown(height) {
     '',
     description,
     '',
+    height === 0
+      ? `## Coinbase quote\n\nSatoshi embedded a public commentary in the block-0 coinbase scriptSig. Decoded from the hex:\n\n> ${GENESIS_COINBASE_QUOTE}\n\nA timestamp anchor against any backdated-genesis claim, and a thesis statement about the financial system Bitcoin was built against.\n`
+      : '',
     '## Subsidy',
     '',
     `- **From this block forward**: ${subsidyBtc} BTC per coinbase`,
@@ -356,6 +365,25 @@ function halvingMarkdown(height) {
     '',
     height === 0 ? '## Wallets present at genesis\n\n- [[1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa|Satoshi]] (satoshi)\n' : '',
   ].filter(Boolean).join('\n');
+}
+
+// Cumulative-supply formula: for each epoch e, 210k blocks emit a
+// subsidy of 50 / 2^e BTC. A block at height H lives in epoch
+// floor(H / 210k); supply at H is the sum of completed epochs +
+// the partial epoch up through H (inclusive of H = +1 block).
+function cumulativeSupplyBtcAt(height) {
+  const epoch = Math.floor(height / 210_000);
+  let supply = 0;
+  for (let e = 0; e < epoch; e++) {
+    supply += 210_000 * (50 / Math.pow(2, e));
+  }
+  const blocksInCurrentEpoch = (height - epoch * 210_000) + 1;
+  supply += blocksInCurrentEpoch * (50 / Math.pow(2, epoch));
+  return supply;
+}
+
+function subsidyBtcAt(height) {
+  return 50 / Math.pow(2, Math.floor(height / 210_000));
 }
 
 writeFile('blocks/genesis.md', halvingMarkdown(0));
@@ -477,7 +505,17 @@ for (const [block, events] of activityByBlock) {
   const filename = `block-${String(block).padStart(7, '0')}.json`;
   writeFile(
     `activity/${filename}`,
-    JSON.stringify({ block, epoch, events }, null, 2) + '\n',
+    JSON.stringify(
+      {
+        block,
+        epoch,
+        subsidyBtc: subsidyBtcAt(block),
+        cumulativeSupplyBtc: cumulativeSupplyBtcAt(block),
+        events,
+      },
+      null,
+      2,
+    ) + '\n',
   );
   sidecarsWritten++;
 }
@@ -594,6 +632,140 @@ writeFile(
     '',
   ].join('\n'),
 );
+
+// ---------- emit: vault SUMMARY.md aggregate ---------------------------------
+
+function summaryMarkdown() {
+  const roleCounts = FREE_TIER_50.reduce((acc, w) => {
+    acc[w.role] = (acc[w.role] || 0) + 1;
+    return acc;
+  }, {});
+  const totalSats = FREE_TIER_50.reduce(
+    (acc, w) => acc + w.totalReceivedSats,
+    0n,
+  );
+  const totalBtcWhole = totalSats / SATS_PER_BTC;
+  const oldestWallet = FREE_TIER_50.reduce((a, b) =>
+    a.firstSeenBlock < b.firstSeenBlock ? a : b,
+  );
+  const newestWallet = FREE_TIER_50.reduce((a, b) =>
+    a.firstSeenBlock > b.firstSeenBlock ? a : b,
+  );
+  const tipSupplyBtc = cumulativeSupplyBtcAt(TIP_BLOCK);
+  const fm = [
+    '---',
+    `kind: summary`,
+    `walletsTotal: ${FREE_TIER_50.length}`,
+    `bondsTotal: ${FREE_TIER_50_BONDS.length}`,
+    `lifetimeReceivedBtc: ${totalBtcWhole}`,
+    `tipBlock: ${TIP_BLOCK}`,
+    `tipSupplyBtcApprox: ${Math.round(tipSupplyBtc)}`,
+    `tags: [summary]`,
+    '---',
+    '',
+  ].join('\n');
+  return [
+    fm,
+    '# Vault Summary',
+    '',
+    'A bird\'s-eye view of the v0.1 fixture vault. Regenerated on every `node chain-tools/vault/generate.mjs`.',
+    '',
+    '## Fixture cohort (50 wallets)',
+    '',
+    `- **Satoshi**: ${roleCounts.satoshi || 0}`,
+    `- **Miners**: ${roleCounts.miner || 0}`,
+    `- **Whales**: ${roleCounts.whale || 0}`,
+    `- **Significant**: ${roleCounts.significant || 0}`,
+    `- **Dust**: ${roleCounts.dust || 0}`,
+    '',
+    `Lifetime received across all fixture wallets: **${totalBtcWhole.toLocaleString()} BTC**.`,
+    '',
+    '## Bond graph',
+    '',
+    `- **Total bonds**: ${FREE_TIER_50_BONDS.length} (deterministic from FREE_TIER_50_BONDS via djb2 partner-picking)`,
+    `- **Average degree**: ${(2 * FREE_TIER_50_BONDS.length / FREE_TIER_50.length).toFixed(2)} (each bond contributes to two endpoints)`,
+    '',
+    '## Time axis',
+    '',
+    `- **Genesis**: block ${oldestWallet.firstSeenBlock} → [[wallets/${ROLE_FOLDER[oldestWallet.role]}/${oldestWallet.address}|${aliasFor(oldestWallet)}]]`,
+    `- **Newest birth in fixture**: block ${newestWallet.firstSeenBlock.toLocaleString()} → [[wallets/${ROLE_FOLDER[newestWallet.role]}/${newestWallet.address}|${aliasFor(newestWallet)}]]`,
+    `- **Tip**: block ${TIP_BLOCK.toLocaleString()} (~${tipSupplyBtc.toLocaleString()} BTC issued)`,
+    `- **Halvings crossed**: 4 ([[blocks/genesis|genesis]] → [[blocks/halvings/0210000|h1]] → [[blocks/halvings/0420000|h2]] → [[blocks/halvings/0630000|h3]] → [[blocks/halvings/0840000|h4]])`,
+    '',
+    '## Per-block sidecars',
+    '',
+    `${activityByBlock.size} sidecars written (one per block where wallet-spawn, bond-form, or halving event occurred). Block range: ${oldestWallet.firstSeenBlock} – ${TIP_BLOCK}.`,
+    '',
+    '## Prolog query starting points',
+    '',
+    'From `vault/` root:',
+    '',
+    '```bash',
+    "swipl -t halt -g \"consult('prolog/all.pl'), findall(M, miner(M), Ms), length(Ms, N), format('~w miners~n', [N]).\"",
+    '```',
+    '',
+    'See `prolog/rules/transitive.pl` for flow tracing, `clustering.pl` for common-input heuristic (v0.2 stub), `miners.pl` for pool detection.',
+    '',
+    '## Regeneration',
+    '',
+    'Re-run `node chain-tools/vault/generate.mjs` after any fixture edit. Output is deterministic — same fixture in, same vault out.',
+    '',
+  ].join('\n');
+}
+
+writeFile('SUMMARY.md', summaryMarkdown());
+
+// ---------- emit: vault wallets/INDEX.md navigation aid ---------------------
+
+function walletsIndexMarkdown() {
+  const byRole = (role) =>
+    FREE_TIER_50
+      .filter((w) => w.role === role)
+      .sort((a, b) => a.firstSeenBlock - b.firstSeenBlock);
+  const renderList = (role) => {
+    const list = byRole(role);
+    if (list.length === 0) return '_(none)_';
+    return list
+      .map(
+        (w) =>
+          `- [[${ROLE_FOLDER[w.role]}/${w.address}|${aliasFor(w)}]] · first seen block ${w.firstSeenBlock.toLocaleString()} · ${w.txCount.toLocaleString()} txs`,
+      )
+      .join('\n');
+  };
+  return [
+    '---',
+    'kind: index',
+    'tags: [index, wallets]',
+    '---',
+    '',
+    '# Wallets — Index',
+    '',
+    'All 50 fixture wallets, grouped by role and ordered by `firstSeenBlock`. Click through for full metadata + bonded counterparties.',
+    '',
+    '## Satoshi',
+    '',
+    renderList('satoshi'),
+    '',
+    '## Miners',
+    '',
+    renderList('miner'),
+    '',
+    '## Whales',
+    '',
+    renderList('whale'),
+    '',
+    '## Significant',
+    '',
+    renderList('significant'),
+    '',
+    '## Dust',
+    '',
+    renderList('dust'),
+    '',
+  ].join('\n');
+}
+
+writeFile('wallets/INDEX.md', walletsIndexMarkdown());
 
 // ---------- summary ----------------------------------------------------------
 
