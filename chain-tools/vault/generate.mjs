@@ -412,6 +412,134 @@ for (const b of FREE_TIER_50_BONDS) {
   bondFilesWritten++;
 }
 
+// ---------- emit: empire markdown (BFS lineage from a seed wallet) -----------
+//
+// An empire is the set of wallets reachable from a seed via the bond
+// graph, layered by hop-count. Satoshi's empire is the lineage tree
+// rooted at the genesis recipient — every wallet that ever transitively
+// transacted with the chain's origin. Miners' empires are their downstream
+// payout networks. The brain reads its own lineage.
+//
+// Each empire note carries a layered descendant list:
+//   - hop 0: the seed itself
+//   - hop 1: direct counterparties
+//   - hop 2: counterparties of counterparties
+//   - ...
+//
+// At fixture scale (50 wallets, dense bond graph) most empires reach
+// every wallet within 3 hops. Real chain-tools data will sparsify this
+// considerably — the layered structure becomes more meaningful when
+// 10k+ wallets aren't all 3 hops apart.
+//
+// Backed in Prolog by `satoshi_descendant/1` (queries.pl) — the empire
+// note is the human-readable surface of that query.
+
+function bfsFrom(seedAddress) {
+  const distances = new Map();
+  distances.set(seedAddress, 0);
+  const queue = [seedAddress];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    const currentDist = distances.get(current);
+    for (const neighbor of neighborsByAddr.get(current) || []) {
+      if (!distances.has(neighbor)) {
+        distances.set(neighbor, currentDist + 1);
+        queue.push(neighbor);
+      }
+    }
+  }
+  return distances;
+}
+
+function empireMarkdown(seed) {
+  const distances = bfsFrom(seed.address);
+  const byHop = new Map();
+  for (const [addr, dist] of distances) {
+    if (!byHop.has(dist)) byHop.set(dist, []);
+    byHop.get(dist).push(addr);
+  }
+  const sortedHops = [...byHop.keys()].sort((a, b) => a - b);
+  const totalDescendants = distances.size - 1; // exclude seed itself
+  const maxHop = sortedHops[sortedHops.length - 1];
+  const seedAlias = aliasFor(seed);
+  const fm = [
+    '---',
+    `kind: empire`,
+    `seed: ${seed.address}`,
+    `seedAlias: ${seedAlias}`,
+    `seedRole: ${seed.role}`,
+    `descendants: ${totalDescendants}`,
+    `maxHop: ${maxHop}`,
+    `tags: [empire, lineage, role/${seed.role}]`,
+    '---',
+    '',
+  ].join('\n');
+  const seedDescription = (() => {
+    if (seed.role === 'satoshi') {
+      return `The chain's origin lineage. Every wallet that ever transitively transacted with [[${seed.address}|Satoshi]] — direct miners, downstream whales, the network thickening outward from the genesis coinbase.`;
+    }
+    return `Downstream lineage of [[${seed.address}|${seedAlias}]] (${seed.role}). Wallets connected to ${seedAlias} through one or more bonded hops — a payout network or a custodial flow tree.`;
+  })();
+  const lines = [
+    fm,
+    `# ${seedAlias}'s empire`,
+    '',
+    seedDescription,
+    '',
+    `**${totalDescendants}** wallet${totalDescendants === 1 ? '' : 's'} reachable across **${maxHop}** hop${maxHop === 1 ? '' : 's'} from [[${seed.address}|${seedAlias}]] in the v0.1 fixture bond graph.`,
+    '',
+  ];
+  for (const hop of sortedHops) {
+    const addrs = byHop.get(hop).sort();
+    if (hop === 0) {
+      lines.push(`## Hop 0 — the seed`);
+      lines.push('');
+      const w = byAddr.get(addrs[0]);
+      lines.push(`- [[${w.address}|${aliasFor(w)}]] · ${w.role}`);
+      lines.push('');
+    } else {
+      lines.push(`## Hop ${hop} — ${addrs.length} wallet${addrs.length === 1 ? '' : 's'}`);
+      lines.push('');
+      for (const addr of addrs) {
+        const w = byAddr.get(addr);
+        if (!w) continue;
+        lines.push(`- [[${w.address}|${aliasFor(w)}]] · ${w.role}`);
+      }
+      lines.push('');
+    }
+  }
+  lines.push('## Prolog query');
+  lines.push('');
+  lines.push('Equivalent SWI-Prolog query (consult `prolog/all.pl` first):');
+  lines.push('');
+  lines.push('```prolog');
+  if (seed.role === 'satoshi') {
+    lines.push("?- findall(W, satoshi_descendant(W), Ws), length(Ws, N), format('~w descendants~n', [N]).");
+  } else {
+    lines.push(`?- findall(W, sent_to_transitive('${seed.address}', W), Ws), length(Ws, N), format('~w descendants~n', [N]).`);
+  }
+  lines.push('```');
+  lines.push('');
+  return lines.join('\n');
+}
+
+// Empire seeds: Satoshi (always) + every miner (their downstream payout
+// networks). Adding more seeds is a one-line append to this list.
+const EMPIRE_SEEDS = FREE_TIER_50.filter(
+  (w) => w.role === 'satoshi' || w.role === 'miner',
+);
+
+function empireSlug(wallet) {
+  if (wallet.role === 'satoshi') return 'satoshi';
+  return wallet.address;
+}
+
+let empireFilesWritten = 0;
+for (const seed of EMPIRE_SEEDS) {
+  writeFile(`empires/${empireSlug(seed)}.md`, empireMarkdown(seed));
+  empireFilesWritten++;
+}
+
 // ---------- emit: halving block markdown files -------------------------------
 
 // The actual Bitcoin genesis-block coinbase scriptSig contains a hidden
@@ -949,6 +1077,7 @@ writeFile('wallets/INDEX.md', walletsIndexMarkdown());
 const summary = {
   walletFiles: walletFilesWritten,
   bondFiles: bondFilesWritten,
+  empireFiles: empireFilesWritten,
   halvingFiles: halvingFilesWritten,
   notableBlockFiles: notableFilesWritten,
   epochFiles: epochFilesWritten,
