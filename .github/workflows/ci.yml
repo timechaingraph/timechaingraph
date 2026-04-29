@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Lint, typecheck, test, build, privacy-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Both env values are GitHub-controlled (commit SHA + ref name) and
+      # injected via env: rather than inline ${{ … }} in run: scripts to
+      # eliminate any command-injection surface.
+      NEXT_PUBLIC_BUILD_HASH: ${{ github.sha }}
+      NEXT_PUBLIC_BUILD_VERSION: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test:run
+
+      - name: Build
+        run: npm run build
+
+      - name: Privacy audit
+        run: bash scripts/privacy-audit.sh out

@@ -1,0 +1,40 @@
+{
+  "name": "timechaingraph",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Timechain Graph — force-directed Obsidian-style graph of Bitcoin wallets at timechaingraph.com. Sister project: timechaingrid.com.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "privacy-audit": "bash scripts/privacy-audit.sh out",
+    "deploy": "next build && wrangler pages deploy out --project-name=timechaingraph --branch=main"
+  },
+  "dependencies": {
+    "next": "^16.2.4",
+    "pixi.js": "^8.18.1",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^9",
+    "eslint-config-next": "^16.2.4",
+    "jsdom": "^29.0.2",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^4.1.4",
+    "wrangler": "^4"
+  }
+}

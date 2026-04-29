@@ -1,0 +1,245 @@
+@import "tailwindcss";
+
+/*
+ * Timechain Grid — cyber-steampunk landing CSS.
+ * Brass + cyan palette. No third-party fonts. Mechanical motifs.
+ */
+
+@theme inline {
+  /* Surfaces */
+  --color-background: #08080C;
+  --color-background-light: #11111A;
+  --color-background-lighter: #1A1A28;
+  --color-surface: rgba(255, 255, 255, 0.025);
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+
+  /* Cyber palette (electric tech) */
+  --color-accent-cyan: #00D4FF;
+  --color-accent-cyan-dim: #00A8CC;
+  --color-accent-cyan-deep: #006080;
+
+  /* Steampunk palette (warm metallics) */
+  --color-brass: #C28840;
+  --color-brass-bright: #E0A656;
+  --color-brass-deep: #8C5E29;
+  --color-copper: #B87333;
+  --color-gold: #FFD700;
+  --color-gold-deep: #B8950E;
+  --color-amber: #F5A623;
+  --color-rust: #B5481E;
+
+  /* Text */
+  --color-text-primary: #F4F6FA;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted: #64748B;
+  --color-text-faint: #475569;
+  --color-text-rivet: rgba(245, 246, 250, 0.4);
+
+  /* Borders */
+  --color-card-border: rgba(255, 255, 255, 0.06);
+  --color-card-border-hover: rgba(255, 255, 255, 0.12);
+  --color-brass-border: rgba(194, 136, 64, 0.3);
+  --color-brass-border-bright: rgba(194, 136, 64, 0.6);
+
+  /* Status */
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+
+  /* Fonts (no third-party imports) */
+  --font-sans: system-ui, -apple-system, "Segoe UI", "Roboto", sans-serif;
+  --font-display: "Georgia", "Hoefler Text", "Big Caslon", "Times New Roman", serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", "Menlo", monospace;
+
+  /* Shadows */
+  --shadow-glow-amber: 0 0 24px rgba(245, 166, 35, 0.25);
+  --shadow-glow-cyan: 0 0 24px rgba(0, 212, 255, 0.3);
+  --shadow-glow-cyan-lg: 0 0 48px rgba(0, 212, 255, 0.4);
+  --shadow-glow-gold: 0 0 32px rgba(255, 215, 0, 0.45);
+  --shadow-glow-brass: 0 0 18px rgba(194, 136, 64, 0.35);
+  --shadow-inset-brass: inset 0 1px 0 rgba(224, 166, 86, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+}
+
+html, body {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-height: 100dvh;
+  background-image:
+    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(0, 212, 255, 0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(194, 136, 64, 0.04) 0%, transparent 60%);
+  background-attachment: fixed;
+}
+
+/* Subtle global scanline texture */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0,
+    transparent 3px,
+    rgba(255, 255, 255, 0.012) 3px,
+    rgba(255, 255, 255, 0.012) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Animations ──────────────────────────────────────────── */
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%      { opacity: 1.0; transform: scale(1.5); }
+}
+
+@keyframes pulse-satoshi {
+  0%, 100% { opacity: 0.85; filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.7)); }
+  50%      { opacity: 1.0;  filter: drop-shadow(0 0 18px rgba(255, 215, 0, 1.0)); }
+}
+
+@keyframes drift-up {
+  0%   { opacity: 0; transform: translateY(14px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes drift-fade {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes status-blink {
+  0%, 49%   { opacity: 1; }
+  50%, 100% { opacity: 0.3; }
+}
+
+@keyframes gear-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes gear-rotate-rev {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+@keyframes scanline-sweep {
+  0%   { transform: translateY(-100%); opacity: 0.8; }
+  90%  { opacity: 0.3; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+@keyframes ticker {
+  0%   { opacity: 0.3; }
+  10%, 90% { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Utility classes ─────────────────────────────────────── */
+
+.text-mono { font-family: var(--font-mono); }
+.text-display { font-family: var(--font-display); letter-spacing: -0.01em; }
+
+.glass-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-card-border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 200ms, border-color 200ms;
+}
+
+.glass-panel:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-card-border-hover);
+}
+
+.brass-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%), var(--color-background-light);
+  border: 1px solid var(--color-brass-border);
+  box-shadow: var(--shadow-inset-brass);
+  position: relative;
+}
+
+.brass-panel::before {
+  /* Top-left and top-right rivet dots */
+  content: "";
+  position: absolute;
+  top: 6px; left: 6px;
+  width: 3px; height: 3px;
+  background: var(--color-brass);
+  border-radius: 999px;
+  box-shadow:
+    calc(100% + 0px) 0 0 0 var(--color-brass),
+    0 calc(100% + 0px) 0 0 var(--color-brass),
+    calc(100% + 0px) calc(100% + 0px) 0 0 var(--color-brass);
+}
+
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--color-accent-cyan);
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.7);
+  animation: status-blink 2.2s ease-in-out infinite;
+}
+
+.section-grid-bg {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: center;
+}
+
+.gear-spin {
+  animation: gear-rotate 32s linear infinite;
+  transform-origin: center;
+}
+
+.gear-spin-rev {
+  animation: gear-rotate-rev 24s linear infinite;
+  transform-origin: center;
+}
+
+.scanline-overlay {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanline-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 212, 255, 0.06) 50%, transparent 100%);
+  height: 30%;
+  animation: scanline-sweep 7s linear infinite;
+  pointer-events: none;
+}
+
+.brass-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-brass-deep) 0%,
+    var(--color-brass) 30%,
+    var(--color-brass-bright) 50%,
+    var(--color-brass) 70%,
+    var(--color-brass-deep) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 6s linear infinite;
+}
