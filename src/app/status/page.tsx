@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { UnderDevelopment } from '@/components/UnderDevelopment';
+import { LiveStatus } from '@/components/LiveStatus';
 
 export const metadata: Metadata = {
   title: 'Status',
@@ -19,41 +19,38 @@ export default function StatusPage() {
         <span className="brass-shimmer">vital signs.</span>
       </h1>
       <p className="mt-6 max-w-2xl text-lg leading-relaxed text-[color:var(--color-text-secondary)] md:text-xl">
-        When the chain-tools pipeline is live, this page will show the
-        current Bitcoin block height that the lattice is rendering, the age
-        of the most recent parquet snapshot on the CDN, and whether the
-        bitcoind + electrs operator infrastructure is reachable.
+        Block height, last-block age, and next-block ETA from the
+        snapshot sidecar (<code className="text-mono text-sm">/status.json</code>).
+        For v0.1 this is a static fixture refreshed manually; v0.2+
+        regenerates it on every block from the chain-tools pipeline
+        and serves it from R2.
       </p>
 
-      <div className="mt-10">
-        <UnderDevelopment
-          targetVersion="v0.1"
-          description="Live pipeline status surfaces alongside the first real-data Grid + Graph ship. For now, you can confirm a build is reachable by the version + commit hash in the footer of this page."
-        />
+      <div className="mt-10 grid gap-4 md:grid-cols-2">
+        <LiveStatus />
+        <div className="brass-panel rounded-lg p-5">
+          <p className="text-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-text-muted)]">
+            Pipeline health
+          </p>
+          <ul className="mt-3 space-y-2 text-mono text-xs text-[color:var(--color-text-secondary)]">
+            {[
+              { label: 'bitcoind sync', state: 'stubbed' },
+              { label: 'electrs index', state: 'stubbed' },
+              { label: 'R2 bucket', state: 'stubbed' },
+              { label: 'parquet snapshots', state: 'stubbed' },
+            ].map((row) => (
+              <li key={row.label} className="flex justify-between">
+                <span>{row.label}</span>
+                <span className="text-[color:var(--color-text-faint)]">{row.state}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 text-mono text-[10px] text-[color:var(--color-text-faint)]">
+            bitcoind hosting decision pending — see Decisions to confirm
+            in the master plan.
+          </p>
+        </div>
       </div>
-
-      <div className="mt-12 grid gap-4 md:grid-cols-2">
-        <Metric label="Bitcoin block height" value="—" hint="from operator bitcoind" />
-        <Metric label="Snapshot age" value="—" hint="time since last parquet write" />
-        <Metric label="Free tier nodes" value="—" hint="whales + major miners" />
-        <Metric label="Pipeline health" value="—" hint="bitcoind + electrs + R2" />
-      </div>
-    </div>
-  );
-}
-
-function Metric({ label, value, hint }: { label: string; value: string; hint: string }) {
-  return (
-    <div className="brass-panel rounded-lg p-5">
-      <p className="text-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-text-muted)]">
-        {label}
-      </p>
-      <p className="text-display mt-2 text-2xl font-semibold text-[color:var(--color-text-primary)]">
-        {value}
-      </p>
-      <p className="mt-1 text-mono text-[10px] text-[color:var(--color-text-faint)]">
-        {hint}
-      </p>
     </div>
   );
 }

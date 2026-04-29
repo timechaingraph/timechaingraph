@@ -7,6 +7,7 @@ import { FREE_TIER_50_BONDS } from '@/data/__fixtures__/free-tier-50-bonds';
 import { ROLE_COLOR, ROLE_RADIUS } from '@/lib/role-visuals';
 import { useTimegridStore } from '@/store/timegridStore';
 import { BRAND_TAGLINE } from '@/lib/site-config';
+import { step as physicsStep, type PhysicsLink } from '@/lib/forceLayout';
 import type { WalletData, WalletRole } from '@/types/wallet';
 
 const RING_RADIUS: Record<WalletRole, number> = {
@@ -73,7 +74,7 @@ type Body = {
   halo: Graphics | null;
 };
 
-type Link = { a: number; b: number; strength: number; bondLastActive: number };
+type Link = PhysicsLink & { bondLastActive: number };
 
 /**
  * GraphView — force-directed Obsidian-style renderer for timechaingraph.com.
@@ -500,63 +501,13 @@ export function GraphView() {
       applyCamera();
 
       function tick(): void {
-        const dt = Math.min(app.ticker.deltaMS / 1000, PHYSICS.maxStep);
+        // Physics is pure functions in src/lib/forceLayout — gravity +
+        // repulsion + springs + damping/integrate, all mutating bodies
+        // in place. The graphics resync below is the only PIXI-coupled
+        // part of the tick.
+        physicsStep(bodies, links, app.ticker.deltaMS / 1000, PHYSICS);
 
         for (const body of bodies) {
-          if (body.pinned) continue;
-          body.vx += -body.x * PHYSICS.gravity * body.mass * dt;
-          body.vy += -body.y * PHYSICS.gravity * body.mass * dt;
-        }
-
-        for (let i = 0; i < bodies.length; i++) {
-          for (let j = i + 1; j < bodies.length; j++) {
-            const bi = bodies[i];
-            const bj = bodies[j];
-            const dx = bj.x - bi.x;
-            const dy = bj.y - bi.y;
-            const distSq = dx * dx + dy * dy + 1;
-            const dist = Math.sqrt(distSq);
-            const f = PHYSICS.repulsion / distSq;
-            const ux = dx / dist;
-            const uy = dy / dist;
-            if (!bi.pinned) {
-              bi.vx -= ux * f * dt;
-              bi.vy -= uy * f * dt;
-            }
-            if (!bj.pinned) {
-              bj.vx += ux * f * dt;
-              bj.vy += uy * f * dt;
-            }
-          }
-        }
-
-        for (const link of links) {
-          const a = bodies[link.a];
-          const b = bodies[link.b];
-          const dx = b.x - a.x;
-          const dy = b.y - a.y;
-          const dist = Math.sqrt(dx * dx + dy * dy) + 0.01;
-          const stretch = dist - PHYSICS.springRest;
-          const ux = dx / dist;
-          const uy = dy / dist;
-          const f = stretch * link.strength;
-          if (!a.pinned) {
-            a.vx += ux * f * dt;
-            a.vy += uy * f * dt;
-          }
-          if (!b.pinned) {
-            b.vx -= ux * f * dt;
-            b.vy -= uy * f * dt;
-          }
-        }
-
-        for (const body of bodies) {
-          if (!body.pinned) {
-            body.vx *= PHYSICS.damping;
-            body.vy *= PHYSICS.damping;
-            body.x += body.vx * dt;
-            body.y += body.vy * dt;
-          }
           body.graphics.position.set(cx + body.x, cy + body.y);
           if (body.halo) body.halo.position.set(cx + body.x, cy + body.y);
         }
