@@ -7,6 +7,7 @@ vi.mock('pixi.js', () => {
     canvas = document.createElement('canvas');
     screen = { width: 800, height: 600 };
     stage = { addChild: vi.fn() };
+    ticker = { add: vi.fn(), deltaMS: 16 };
     init = vi.fn().mockResolvedValue(undefined);
     destroy = vi.fn();
   }
@@ -14,6 +15,7 @@ vi.mock('pixi.js', () => {
     eventMode: string = 'none';
     cursor: string = 'auto';
     hitArea: unknown = null;
+    position = { set: vi.fn() };
     circle() {
       return this;
     }
@@ -27,6 +29,9 @@ vi.mock('pixi.js', () => {
       return this;
     }
     stroke() {
+      return this;
+    }
+    clear() {
       return this;
     }
     on() {
