@@ -174,6 +174,7 @@ export function GraphView() {
       let panStart = { x: 0, y: 0 };
       let panStartCam = { x: 0, y: 0 };
       let hoveredAddress: string | null = null;
+      let focusedAddress: string | null = null;
       const neighborsByAddr = new Map<string, Set<string>>();
 
       function shouldBePinned(body: Body): boolean {
@@ -185,17 +186,23 @@ export function GraphView() {
 
       // Three orthogonal alpha layers compose multiplicatively here:
       //   activity (alive 1 / gone-dark 0.3 / pre-birth 0)
-      //   × spotlight (1 if hovered or a neighbor; else 0.15)
+      //   × spotlight (1 if hovered/focused or a neighbor; else 0.15)
       //   = final node alpha
-      // Drag has its own visual cue (alpha 0.85 set inline) and bypasses
-      // this path entirely.
+      // Spotlight target is `focusedAddress ?? hoveredAddress` — focus is
+      // a sticky hover. Drag has its own cue (alpha 0.85 inline) and
+      // bypasses this path entirely.
+      function spotlightTarget(): string | null {
+        return focusedAddress ?? hoveredAddress;
+      }
+
       function nodeAlpha(body: Body): number {
         const born = body.wallet.firstSeenBlock <= currentBlock;
         const active = born && body.wallet.lastActiveBlock >= currentBlock;
         const activityA = !born ? 0 : active ? 1 : 0.3;
-        if (!hoveredAddress) return activityA;
-        if (body.wallet.address === hoveredAddress) return activityA;
-        if (neighborsByAddr.get(hoveredAddress)?.has(body.wallet.address)) {
+        const target = spotlightTarget();
+        if (!target) return activityA;
+        if (body.wallet.address === target) return activityA;
+        if (neighborsByAddr.get(target)?.has(body.wallet.address)) {
           return activityA;
         }
         return activityA * SPOTLIGHT_DIM;
@@ -252,19 +259,34 @@ export function GraphView() {
 
         dot.on('pointerover', () => {
           if (draggedBody || panning) return;
+          // While focused, hover does nothing — focus is locked and the
+          // user has already committed to a wallet via click.
+          if (focusedAddress) return;
           setSelectedWallet(wallet.address);
           hoveredAddress = wallet.address;
           applyAlpha();
         });
         dot.on('pointerout', () => {
           if (draggedBody || panning) return;
+          if (focusedAddress) return;
           setSelectedWallet(null);
           hoveredAddress = null;
           applyAlpha();
         });
         dot.on('pointertap', () => {
-          setSelectedWallet(wallet.address);
-          setActiveDockPanel('wallet-inspector');
+          // Click toggles local-graph focus on this wallet.
+          // Click same wallet again → unlock. Click different wallet →
+          // switch focus. ESC also unlocks (handler below).
+          if (focusedAddress === wallet.address) {
+            focusedAddress = null;
+            setSelectedWallet(null);
+          } else {
+            focusedAddress = wallet.address;
+            hoveredAddress = null; // focus supersedes hover
+            setSelectedWallet(wallet.address);
+            setActiveDockPanel('wallet-inspector');
+          }
+          applyAlpha();
         });
         dot.on(
           'pointerdown',
@@ -364,6 +386,20 @@ export function GraphView() {
       app.stage.on('pointerupoutside', () => {
         endDrag();
         endPan();
+      });
+
+      // ESC clears focus mode. document-level so it works regardless of
+      // canvas focus state. No-op when nothing is focused.
+      const onKeyDown = (event: KeyboardEvent): void => {
+        if (event.key !== 'Escape') return;
+        if (!focusedAddress) return;
+        focusedAddress = null;
+        setSelectedWallet(null);
+        applyAlpha();
+      };
+      document.addEventListener('keydown', onKeyDown);
+      cleanupFns.push(() => {
+        document.removeEventListener('keydown', onKeyDown);
       });
 
       // Wheel zoom on the canvas DOM element. preventDefault stops the
@@ -508,17 +544,17 @@ export function GraphView() {
           const blocksAfter = Math.max(0, currentBlock - link.bondLastActive);
           const fade = Math.max(0, 1 - blocksAfter / EDGE_FADE_BLOCKS);
           let alpha = fade * EDGE_BASE_ALPHA;
-          // Edge spotlight: hot iff both endpoints are hovered or neighbors
-          // of hovered. Otherwise dim by the same factor as non-neighbor
-          // nodes — visually "the connection isn't relevant right now."
-          if (hoveredAddress) {
+          // Edge spotlight: hot iff both endpoints are hovered/focused or
+          // neighbors thereof. Otherwise dim by the same factor as non-
+          // neighbor nodes — visually "the connection isn't relevant
+          // right now."
+          const target = spotlightTarget();
+          if (target) {
             const aAddr = a.wallet.address;
             const bAddr = b.wallet.address;
-            const neighbors = neighborsByAddr.get(hoveredAddress);
-            const aHot =
-              aAddr === hoveredAddress || (neighbors?.has(aAddr) ?? false);
-            const bHot =
-              bAddr === hoveredAddress || (neighbors?.has(bAddr) ?? false);
+            const neighbors = neighborsByAddr.get(target);
+            const aHot = aAddr === target || (neighbors?.has(aAddr) ?? false);
+            const bHot = bAddr === target || (neighbors?.has(bAddr) ?? false);
             if (!(aHot && bHot)) alpha *= SPOTLIGHT_DIM;
           }
           if (alpha <= 0) continue;
