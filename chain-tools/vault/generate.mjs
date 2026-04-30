@@ -46,7 +46,7 @@ import { fileURLToPath } from 'node:url';
 import {
   SATS_PER_BTC,
   HALVING_BLOCKS,
-  TIP_BLOCK,
+  TIP_BLOCK as MOCK_TIP_BLOCK,
   epochAt,
   subsidyBtcAt,
   cumulativeSupplyBtcAt,
@@ -56,6 +56,37 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const VAULT_ROOT = path.join(REPO_ROOT, 'vault');
+const REAL_SUBSTRATE_PATH = path.join(REPO_ROOT, 'chain-tools', 'out', 'real-substrate.json');
+
+// When real-substrate.json exists, prefer it over the mock fixture.
+// Walker (chain-tools/ingest/walk_chain.mjs) emits the real substrate
+// from public-API ingest; this generator reads it as the authority.
+// Activity sidecars are walker-owned in real mode (skipped here);
+// in mock mode we emit synthesised sidecars as before.
+const USE_REAL_SUBSTRATE = fs.existsSync(REAL_SUBSTRATE_PATH);
+
+function loadRealSubstrate() {
+  const raw = JSON.parse(fs.readFileSync(REAL_SUBSTRATE_PATH, 'utf8'));
+  // Normalise: bigint-as-string → bigint for sat fields.
+  const wallets = raw.wallets.map((w) => ({
+    address: w.address,
+    role: w.role,
+    firstSeenBlock: w.firstSeenBlock,
+    firstSeenTime: w.firstSeenTime,
+    lastActiveBlock: w.lastActiveBlock,
+    lastActiveTime: w.lastActiveTime,
+    totalReceivedSats: BigInt(w.totalReceivedSats),
+    txCount: w.txCount,
+    isMiner: w.isMiner,
+  }));
+  const bonds = raw.bonds.map((b) => ({
+    fromAddress: b.fromAddress,
+    toAddress: b.toAddress,
+    sats: BigInt(b.sats),
+    formationBlock: b.formationBlock,
+  }));
+  return { tipBlock: raw.tipBlock, wallets, bonds };
+}
 
 // ---------- fixture re-synthesis (must match free-tier-50.ts) -----------------
 
@@ -72,8 +103,12 @@ function build(prefix, role, count, base) {
     return {
       address: mockAddress(prefix, i + 1),
       role,
-      firstSeenBlock: Math.floor(base.firstSeen + (TIP_BLOCK - base.firstSeen) * t * 0.05),
-      lastActiveBlock: Math.floor(base.lastActive - (TIP_BLOCK - base.lastActive) * t * 0.05),
+      // MOCK_TIP_BLOCK is the constant from chain.mjs (876000); used
+      // for the mock-fixture's synthesised first-seen/last-active
+      // spread. Runtime TIP_BLOCK below is real-or-mock depending on
+      // substrate mode and isn't ready at module-init time.
+      firstSeenBlock: Math.floor(base.firstSeen + (MOCK_TIP_BLOCK - base.firstSeen) * t * 0.05),
+      lastActiveBlock: Math.floor(base.lastActive - (MOCK_TIP_BLOCK - base.lastActive) * t * 0.05),
       totalReceivedSats: base.btc * SATS_PER_BTC,
       txCount,
       isMiner: role === 'miner' || role === 'satoshi',
@@ -81,7 +116,7 @@ function build(prefix, role, count, base) {
   });
 }
 
-const FREE_TIER_50 = [
+const MOCK_FREE_TIER_50 = [
   {
     address: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
     role: 'satoshi',
@@ -104,6 +139,25 @@ const FREE_TIER_50 = [
     btc: 2n, firstSeen: 400_000, lastActive: 870_000, txMin: 5, txMax: 100,
   }),
 ];
+
+// Real or mock — single switch at the top of the generator. All
+// downstream emission code reads from FREE_TIER_50 + FREE_TIER_50_BONDS
+// without caring which source they came from.
+let FREE_TIER_50;
+let FREE_TIER_50_BONDS;
+let TIP_BLOCK;
+
+if (USE_REAL_SUBSTRATE) {
+  const real = loadRealSubstrate();
+  FREE_TIER_50 = real.wallets;
+  FREE_TIER_50_BONDS = real.bonds;
+  TIP_BLOCK = real.tipBlock;
+  console.log(`[real-substrate] tipBlock=${TIP_BLOCK}, ${FREE_TIER_50.length} wallets, ${FREE_TIER_50_BONDS.length} bonds`);
+} else {
+  FREE_TIER_50 = MOCK_FREE_TIER_50;
+  TIP_BLOCK = MOCK_TIP_BLOCK;
+  console.log(`[mock-substrate] using inline FREE_TIER_50 (50 wallets)`);
+}
 
 // ---------- bonds re-synthesis (must match free-tier-50-bonds.ts) ------------
 
@@ -161,7 +215,11 @@ function generateBonds(wallets) {
   return bonds;
 }
 
-const FREE_TIER_50_BONDS = generateBonds(FREE_TIER_50);
+// Generate mock bonds only when in mock mode. Real substrate carries
+// its own real bond list from the chain walker.
+if (!USE_REAL_SUBSTRATE) {
+  FREE_TIER_50_BONDS = generateBonds(FREE_TIER_50);
+}
 
 // ---------- helpers -----------------------------------------------------------
 
@@ -285,8 +343,8 @@ function walletMarkdown(w) {
     '',
     '## On-chain summary',
     '',
-    `- **First seen**: block ${w.firstSeenBlock.toLocaleString()}`,
-    `- **Last active**: block ${w.lastActiveBlock.toLocaleString()}`,
+    `- **First seen**: block ${w.firstSeenBlock.toLocaleString()}${w.firstSeenTime ? ` (${new Date(w.firstSeenTime * 1000).toISOString().slice(0, 10)})` : ''}`,
+    `- **Last active**: block ${w.lastActiveBlock.toLocaleString()}${w.lastActiveTime ? ` (${new Date(w.lastActiveTime * 1000).toISOString().slice(0, 10)})` : ''}`,
     `- **Lifetime received**: ${btcDecimal(w.totalReceivedSats)} BTC (${w.totalReceivedSats} sats)`,
     `- **Transaction count**: ${w.txCount.toLocaleString()}`,
     `- **Coinbase recipient**: ${w.isMiner ? 'yes' : 'no'}`,
@@ -523,21 +581,33 @@ function empireMarkdown(seed) {
   return lines.join('\n');
 }
 
-// Empire seeds: Satoshi (always) + every miner (their downstream payout
-// networks). Adding more seeds is a one-line append to this list.
-const EMPIRE_SEEDS = FREE_TIER_50.filter(
-  (w) => w.role === 'satoshi' || w.role === 'miner',
-);
-
+// Empire seeds: Satoshi (always) + every miner with a non-trivial
+// downstream network. A miner who only received coinbase and never
+// sent has 0 descendants — emitting an empire file for them is just
+// noise. Filter by descendants > 0 to keep the empire collection
+// meaningful at any chain depth.
 function empireSlug(wallet) {
   if (wallet.role === 'satoshi') return 'satoshi';
   return wallet.address;
 }
 
 let empireFilesWritten = 0;
-for (const seed of EMPIRE_SEEDS) {
-  writeFile(`empires/${empireSlug(seed)}.md`, empireMarkdown(seed));
-  empireFilesWritten++;
+if (FREE_TIER_50_BONDS.length >= 1) {
+  const empireCandidates = FREE_TIER_50.filter(
+    (w) => w.role === 'satoshi' || w.role === 'miner',
+  );
+  for (const seed of empireCandidates) {
+    const distances = bfsFrom(seed.address);
+    const descendants = distances.size - 1; // exclude seed
+    // Always emit Satoshi's empire (even if empty — it's the
+    // canonical lineage anchor). Skip miner empires with 0
+    // descendants — they're isolated coinbase-only wallets, not yet
+    // connected to the network.
+    if (seed.role === 'satoshi' || descendants > 0) {
+      writeFile(`empires/${empireSlug(seed)}.md`, empireMarkdown(seed));
+      empireFilesWritten++;
+    }
+  }
 }
 
 // ---------- emit: cluster markdown (shared-counterparty heuristic) -----------
@@ -665,12 +735,17 @@ function clusterMarkdown(cluster, idx) {
   return lines.join('\n');
 }
 
-const clusters = findClusters();
+// Clustering is degenerate when the bond graph is sparse — every
+// wallet is its own singleton, no shared counterparties to merge by.
+// Skip until we have enough bonds to make the heuristic meaningful.
 let clusterFilesWritten = 0;
-for (let i = 0; i < clusters.length; i++) {
-  const filename = `cluster-${String(i + 1).padStart(3, '0')}.md`;
-  writeFile(`clusters/${filename}`, clusterMarkdown(clusters[i], i));
-  clusterFilesWritten++;
+if (FREE_TIER_50_BONDS.length >= 10) {
+  const clusters = findClusters();
+  for (let i = 0; i < clusters.length; i++) {
+    const filename = `cluster-${String(i + 1).padStart(3, '0')}.md`;
+    writeFile(`clusters/${filename}`, clusterMarkdown(clusters[i], i));
+    clusterFilesWritten++;
+  }
 }
 
 // ---------- emit: halving block markdown files -------------------------------
@@ -727,7 +802,11 @@ function halvingMarkdown(height) {
 
 writeFile('blocks/genesis.md', halvingMarkdown(0));
 let halvingFilesWritten = 1;
+// In real-substrate mode, only emit halving notes for halvings the
+// chain has actually crossed. With tipBlock=500 we have only genesis;
+// halvings/0210000.md would point at an unreached future.
 for (const h of HALVING_BLOCKS.slice(1)) {
+  if (h > TIP_BLOCK) continue;
   writeFile(`blocks/halvings/${String(h).padStart(7, '0')}.md`, halvingMarkdown(h));
   halvingFilesWritten++;
 }
@@ -825,6 +904,8 @@ function notableMarkdown(notable) {
 
 let notableFilesWritten = 0;
 for (const n of NOTABLE_BLOCKS) {
+  // Gate by tipBlock — don't reference future history.
+  if (n.height > TIP_BLOCK) continue;
   writeFile(
     `blocks/notable/${String(n.height).padStart(7, '0')}-${n.slug}.md`,
     notableMarkdown(n),
@@ -904,7 +985,8 @@ function epochMarkdown(epoch) {
 }
 
 let epochFilesWritten = 0;
-for (let e = 0; e <= 4; e++) {
+const maxEpoch = epochAt(TIP_BLOCK);
+for (let e = 0; e <= maxEpoch; e++) {
   writeFile(`epochs/epoch-${String(e).padStart(4, '0')}.md`, epochMarkdown(e));
   epochFilesWritten++;
 }
@@ -939,23 +1021,28 @@ for (const h of HALVING_BLOCKS) {
 }
 
 let sidecarsWritten = 0;
-for (const [block, events] of activityByBlock) {
-  const filename = `block-${String(block).padStart(7, '0')}.json`;
-  writeFile(
-    `activity/${filename}`,
-    JSON.stringify(
-      {
-        block,
-        epoch: epochAt(block),
-        subsidyBtc: subsidyBtcAt(block),
-        cumulativeSupplyBtc: cumulativeSupplyBtcAt(block),
-        events,
-      },
-      null,
-      2,
-    ) + '\n',
-  );
-  sidecarsWritten++;
+// In real-substrate mode, activity sidecars are owned by the walker
+// (chain-tools/ingest/walk_chain.mjs). Skip emission here to avoid
+// overwriting walker output with synthesised events.
+if (!USE_REAL_SUBSTRATE) {
+  for (const [block, events] of activityByBlock) {
+    const filename = `block-${String(block).padStart(7, '0')}.json`;
+    writeFile(
+      `activity/${filename}`,
+      JSON.stringify(
+        {
+          block,
+          epoch: epochAt(block),
+          subsidyBtc: subsidyBtcAt(block),
+          cumulativeSupplyBtc: cumulativeSupplyBtcAt(block),
+          events,
+        },
+        null,
+        2,
+      ) + '\n',
+    );
+    sidecarsWritten++;
+  }
 }
 
 // ---------- emit: Prolog facts -----------------------------------------------
@@ -1129,10 +1216,23 @@ function summaryMarkdown() {
     '',
     '## Time axis',
     '',
-    `- **Genesis**: block ${oldestWallet.firstSeenBlock} → [[wallets/${ROLE_FOLDER[oldestWallet.role]}/${oldestWallet.address}|${aliasFor(oldestWallet)}]]`,
-    `- **Newest birth in fixture**: block ${newestWallet.firstSeenBlock.toLocaleString()} → [[wallets/${ROLE_FOLDER[newestWallet.role]}/${newestWallet.address}|${aliasFor(newestWallet)}]]`,
+    `- **Genesis**: block ${oldestWallet.firstSeenBlock} → [[${oldestWallet.address}|${aliasFor(oldestWallet)}]]`,
+    `- **Newest birth in fixture**: block ${newestWallet.firstSeenBlock.toLocaleString()} → [[${newestWallet.address}|${aliasFor(newestWallet)}]]`,
     `- **Tip**: block ${TIP_BLOCK.toLocaleString()} (~${tipSupplyBtc.toLocaleString()} BTC issued)`,
-    `- **Halvings crossed**: 4 ([[blocks/genesis|genesis]] → [[blocks/halvings/0210000|h1]] → [[blocks/halvings/0420000|h2]] → [[blocks/halvings/0630000|h3]] → [[blocks/halvings/0840000|h4]])`,
+    // Halvings crossed: only emit links for halvings actually present
+    // in the chain at TIP_BLOCK. At tip<210k we're still in epoch 0,
+    // so just genesis. As tip grows, more halving links appear.
+    `- **Halvings crossed**: ${(() => {
+      const links = ['[[blocks/genesis|genesis]]'];
+      for (let i = 0; i < HALVING_BLOCKS.length - 1; i++) {
+        const h = HALVING_BLOCKS[i + 1];
+        if (h <= TIP_BLOCK) {
+          const padded = String(h).padStart(7, '0');
+          links.push(`[[blocks/halvings/${padded}|h${i + 1}]]`);
+        }
+      }
+      return `${links.length - 1} (${links.join(' → ')})`;
+    })()}`,
     '',
     '## Per-block sidecars',
     '',
