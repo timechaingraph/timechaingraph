@@ -1,10 +1,8 @@
 import type { Metadata } from 'next';
 import { GraphView } from '@/components/views/GraphView';
+import { GraphSidebar } from '@/components/views/GraphSidebar';
+import { GraphPlayBar } from '@/components/views/GraphPlayBar';
 import { WalletInspector } from '@/components/WalletInspector';
-import { BlockStats } from '@/components/BlockStats';
-import { Scrubber } from '@/components/Scrubber';
-import { Playback } from '@/components/Playback';
-import { BlockNarrative } from '@/components/BlockNarrative';
 
 export const metadata: Metadata = {
   title: 'Graph view',
@@ -13,25 +11,26 @@ export const metadata: Metadata = {
 };
 
 /**
- * /graph — kiosk-mode page. Per user directive 2026-04-30, the graph
- * fills the viewport and the HUDs float over it without blocking the
- * canvas. Same pattern as sister's /grid: bigger lattice, tighter
- * brain-engine, non-scrollable.
+ * /graph — kiosk-mode page. Per user directive 2026-04-30, full-
+ * viewport canvas with compact non-blocking HUDs.
  *
  * Layout:
- *   - <GraphView /> fills the kiosk area absolutely; force simulation
- *     gets the entire viewport instead of a 600px-tall panel.
- *   - <BlockNarrative /> floats top-center as the auto-updating
- *     storyteller card (already absolute-positioned internally).
- *   - Top-right: <BlockStats />
- *   - Right column (mid-screen): <WalletInspector />
- *   - Bottom row: <Scrubber /> + <Playback /> as a combined control bar.
+ *   - <GraphView /> fills the kiosk area absolutely.
+ *   - Left sidebar: <GraphSidebar /> — narrow card stacking block
+ *     narrative + stats into a single ~260px-wide column. Replaces
+ *     the floating top-center BlockNarrative + top-right BlockStats
+ *     so the canvas keeps both halves of its width.
+ *   - Right column: <WalletInspector /> only when a wallet is
+ *     selected (lg+).
+ *   - Bottom row: <GraphPlayBar /> — single thin pill containing
+ *     play/pause + speed pills + scrubber + block readout. Replaces
+ *     the stacked Scrubber + Playback panels (which doubled the
+ *     bottom-bar height).
  *
  * All HUD wrappers use `pointer-events-none` so canvas hover/click
  * passes through where panels don't physically cover; inner content
- * uses `pointer-events-auto` so the panels themselves stay
- * interactable. Translucent brass-panel + backdrop-blur keep the
- * canvas readable behind every overlay.
+ * is `pointer-events-auto`. Translucent brass-panel + backdrop-blur
+ * keeps the lattice readable behind every overlay.
  */
 export default function GraphHome() {
   return (
@@ -41,35 +40,26 @@ export default function GraphHome() {
         <GraphView />
       </div>
 
-      {/* Top-center storyteller card — block-by-block narrative. */}
-      <BlockNarrative />
-
-      {/* Top-right HUD: block stats. */}
-      <div className="pointer-events-none absolute top-3 right-3 z-10 w-[280px] max-w-[calc(100vw-1.5rem)]">
+      {/* Left sidebar: combined narrative + stats. */}
+      <div className="pointer-events-none absolute top-3 left-3 z-10 w-[260px] max-w-[calc(100vw-1.5rem)]">
         <div className="pointer-events-auto">
-          <BlockStats />
+          <GraphSidebar />
         </div>
       </div>
 
-      {/* Right-column secondary HUD: wallet inspector.
-          Sits below the BlockStats so they stack on tall screens but
-          never overlap on shorter ones (overflow-y-auto on the column
-          lets the visitor scroll the right-side panels without
-          disturbing the canvas). Hidden on small viewports — on
-          mobile the inspector is reachable via tap-to-open in a
-          future commit. */}
-      <div className="pointer-events-none absolute top-[calc(3rem+260px)] right-3 bottom-32 z-10 hidden w-[300px] max-w-[calc(100vw-1.5rem)] flex-col gap-3 overflow-y-auto pr-1 lg:flex">
+      {/* Right column: wallet inspector — appears when a wallet is
+          selected. Hidden on small viewports; on mobile the inspector
+          is reachable via tap-to-open in a future commit. */}
+      <div className="pointer-events-none absolute top-3 right-3 bottom-20 z-10 hidden w-[300px] max-w-[calc(100vw-1.5rem)] flex-col gap-3 overflow-y-auto pr-1 lg:flex">
         <div className="pointer-events-auto">
           <WalletInspector />
         </div>
       </div>
 
-      {/* Bottom row: scrubber + playback. Centered + max-width so it
-          doesn't span gigantic ultrawide monitors awkwardly. */}
+      {/* Bottom row: thin combined playbar. */}
       <div className="pointer-events-none absolute right-0 bottom-3 left-0 z-10 flex justify-center px-3">
-        <div className="pointer-events-auto flex w-full max-w-3xl flex-col gap-2">
-          <Scrubber />
-          <Playback autoStart />
+        <div className="pointer-events-auto w-full max-w-3xl">
+          <GraphPlayBar />
         </div>
       </div>
     </div>

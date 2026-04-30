@@ -1,0 +1,147 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useTimegridStore } from '@/store/timegridStore';
+import { SPEED_OPTIONS } from '@/components/Playback';
+
+/**
+ * GraphPlayBar — graph-only compact playback control. A single-row
+ * brass-panel containing Play/Pause toggle, speed pills, scrubber
+ * slider, and block readout. Replaces the stacked <Scrubber>
+ * + <Playback> brass-panels at the bottom of the kiosk page so
+ * the canvas keeps as much vertical space as possible.
+ *
+ * Behavior is identical to the shared components: same store keys
+ * (`currentBlock`, `latestBlock`, `playbackPlaying`,
+ * `playbackSpeedIdx`), same `SPEED_OPTIONS` import, same auto-start
+ * semantics. The shared `<Playback>` is still used by sister's
+ * /grid kiosk; this slim variant is graph-only.
+ */
+export function GraphPlayBar() {
+  const currentBlock = useTimegridStore((s) => s.currentBlock);
+  const latestBlock = useTimegridStore((s) => s.latestBlock);
+  const setCurrentBlock = useTimegridStore((s) => s.setCurrentBlock);
+  const playing = useTimegridStore((s) => s.playbackPlaying);
+  const setPlaying = useTimegridStore((s) => s.setPlaybackPlaying);
+  const speedIdx = useTimegridStore((s) => s.playbackSpeedIdx);
+  const setSpeedIdx = useTimegridStore((s) => s.setPlaybackSpeedIdx);
+
+  const ready = latestBlock > 0;
+  const atTip = ready && currentBlock >= latestBlock;
+  const speed = SPEED_OPTIONS[speedIdx] ?? SPEED_OPTIONS[0];
+
+  // Tick loop: same logic as Playback. Re-creates whenever play
+  // state, speed, or readiness changes. Cleanup clears the prior
+  // interval so changing speed mid-play never doubles up timers.
+  useEffect(() => {
+    if (!playing || !ready) return;
+    const id = setInterval(() => {
+      const cur = useTimegridStore.getState().currentBlock;
+      const tip = useTimegridStore.getState().latestBlock;
+      const next = Math.min(cur + speed.blocksPerTick, tip);
+      setCurrentBlock(next);
+      if (next >= tip) {
+        useTimegridStore.getState().setPlaybackPlaying(false);
+      }
+    }, speed.tickIntervalMs);
+    return () => clearInterval(id);
+  }, [playing, speed.blocksPerTick, speed.tickIntervalMs, ready, setCurrentBlock]);
+
+  function togglePlay(): void {
+    if (atTip) {
+      setCurrentBlock(0);
+      setPlaying(true);
+      return;
+    }
+    setPlaying(!playing);
+  }
+
+  const buttonGlyph = !ready ? '○' : playing ? '⏸' : atTip ? '↺' : '▶';
+
+  return (
+    <div
+      className="brass-panel flex items-center gap-3 rounded-full px-3 py-1.5 text-mono"
+      style={{
+        backgroundColor: 'rgba(8, 8, 12, 0.78)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+      }}
+      aria-disabled={!ready}
+    >
+      {/* Play / Pause / Rewind */}
+      <button
+        type="button"
+        onClick={togglePlay}
+        disabled={!ready}
+        aria-label={playing ? 'Pause playback' : 'Start playback'}
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[color:var(--color-card-border)] text-xs text-[color:var(--color-text-primary)] transition-colors hover:border-[color:var(--color-amber)] hover:text-[color:var(--color-amber)] disabled:opacity-40"
+      >
+        {buttonGlyph}
+      </button>
+
+      {/* Speed pills — tighter than full Playback panel */}
+      <div
+        className="flex items-center gap-0.5"
+        role="group"
+        aria-label="Playback speed"
+      >
+        {SPEED_OPTIONS.map((opt, i) => {
+          const active = i === speedIdx;
+          return (
+            <button
+              key={opt.label}
+              type="button"
+              onClick={() => setSpeedIdx(i)}
+              disabled={!ready}
+              aria-pressed={active}
+              className={[
+                'rounded-full px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] transition-colors',
+                active
+                  ? 'bg-[color:var(--color-amber)]/15 text-[color:var(--color-amber)]'
+                  : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)]',
+                'disabled:opacity-40',
+              ].join(' ')}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Scrubber — flexes to fill remaining space */}
+      <input
+        type="range"
+        min={0}
+        max={Math.max(latestBlock, 1)}
+        value={currentBlock}
+        step={1}
+        disabled={!ready}
+        onChange={(e) => {
+          // Manual scrub pauses auto-play; the user has grabbed the
+          // wheel and Narrate-mode shouldn't fight them.
+          setPlaying(false);
+          setCurrentBlock(Number(e.target.value));
+        }}
+        className="min-w-0 flex-1 accent-[color:var(--color-amber)] disabled:opacity-30"
+        aria-label={`Block scrubber. Current block: ${currentBlock.toLocaleString()} of ${latestBlock.toLocaleString()}`}
+      />
+
+      {/* Block readout */}
+      <span className="shrink-0 text-[10px] tabular-nums text-[color:var(--color-text-muted)]">
+        {ready ? (
+          <>
+            <span className="text-[color:var(--color-text-primary)]">
+              {currentBlock.toLocaleString()}
+            </span>
+            <span className="text-[color:var(--color-text-faint)]">
+              {' / '}
+              {latestBlock.toLocaleString()}
+            </span>
+          </>
+        ) : (
+          '—'
+        )}
+      </span>
+    </div>
+  );
+}
