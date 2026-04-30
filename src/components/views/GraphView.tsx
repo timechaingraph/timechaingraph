@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Application, Container, Graphics } from 'pixi.js';
 import { FIXTURE_SUBSTRATE } from '@/data/substrate';
+import { DEMO_BLOCK_COUNT } from '@/data/__fixtures__/coin-roster';
 import { ROLE_COLOR, ROLE_RADIUS } from '@/lib/role-visuals';
 import { useTimegridStore } from '@/store/timegridStore';
 import { BRAND_TAGLINE } from '@/lib/site-config';
@@ -78,10 +79,13 @@ const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 5;
 const ZOOM_STEP = 0.0015;
 
-const FIXTURE_LATEST_BLOCK = WALLETS.reduce(
-  (max, w) => Math.max(max, w.lastActiveBlock),
-  0,
-);
+// Bound the graph's playback timeline to the same demo range that
+// drives the per-block snapshot files served at /blocks/*. With
+// DEMO_BLOCK_COUNT=1000 the scrubber covers blocks 0..999 — the
+// genesis era — so every block the user lands on has a snapshot
+// the BlockNarrative HUD can fetch. v0.2+ chain-real ingest grows
+// the range to current chain height.
+const FIXTURE_LATEST_BLOCK = DEMO_BLOCK_COUNT - 1;
 
 function djb2(s: string): number {
   let h = 5381;

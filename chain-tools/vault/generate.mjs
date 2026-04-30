@@ -233,6 +233,18 @@ function writeFile(rel, body) {
   fs.writeFileSync(full, body);
 }
 
+const PUBLIC_ROOT = path.join(REPO_ROOT, 'public');
+
+// writePublic mirrors a file under public/blocks/, served by Next.js
+// at /blocks/* for the browser canvas to fetch via blockSnapshots.ts
+// during playback. Used only by the per-block-state emitter; nothing
+// else in the brain vault needs to be reachable as a static URL.
+function writePublic(rel, body) {
+  const full = path.join(PUBLIC_ROOT, 'blocks', rel);
+  ensureDir(path.dirname(full));
+  fs.writeFileSync(full, body);
+}
+
 function aliasFor(w) {
   if (w.role === 'satoshi') return 'Satoshi';
   return `${w.address.slice(0, 8)}…${w.address.slice(-4)}`;
@@ -1323,6 +1335,123 @@ try {
   // already absent — fine.
 }
 
+// ---------- emit: per-block state snapshots (block-state/v1) ----------------
+//
+// Every block in the demo timeline (0..SNAPSHOT_THROUGH_BLOCK) gets its
+// own JSON sidecar. The schema matches sister's `block-state/v1`
+// contract verbatim — same fields, same shard layout, same INDEX shape
+// — so the shared `src/data/blockSnapshots.ts` client serves both views
+// without divergence.
+//
+// Mirroring: the canonical copy lives under `vault/blocks/...` (the
+// Obsidian vault destination — same place the brain markdown lives),
+// and a public copy is dropped under `public/blocks/...` so Next.js
+// serves them at /blocks/* for the in-browser BlockNarrative HUD.
+//
+// Filename layout: blocks/shard-NNN/BBBBBBB.json
+//   - 7-digit zero-padded block number (covers up to 10M blocks).
+//   - 3-digit zero-padded shard index (covers up to 1M blocks at
+//     BLOCK_SHARD_SIZE=1000).
+//
+// Why bound by DEMO_BLOCK_COUNT-1 (=999)? The wallet fixture spans
+// firstSeen 0..400k+ but the Animate/Narrate playback is meaningful
+// only across the genesis era for now — that's where Satoshi+miner
+// wallets actually appear. Aligning the snapshot range with the
+// scrubber range means BlockNarrative always has a snapshot to show.
+// v0.2+ real-chain ingest grows the range to current chain tip.
+
+const BLOCK_SHARD_SIZE = 1_000;
+const SNAPSHOT_THROUGH_BLOCK = Math.min(TIP_BLOCK, 999);
+
+// Pick the miner-of-record for a given block height. First 750 blocks
+// belong to Satoshi (Patoshi-era convention); afterwards rotate
+// through the fixture's `role: 'miner'` cohort by `block %
+// minerCount`. The graph view's BlockNarrative reads `snapshot.minter`
+// to color-code "Mined by Satoshi/miner-N…" in the HUD card.
+const SATOSHI_ERA_BLOCKS = 750;
+const SATOSHI_WALLET = FREE_TIER_50.find((w) => w.role === 'satoshi');
+const MINER_WALLETS = FREE_TIER_50.filter((w) => w.role === 'miner');
+
+function pickMinerForBlock(block) {
+  if (!SATOSHI_WALLET) {
+    throw new Error('generate.mjs: no satoshi wallet in fixture');
+  }
+  if (block < SATOSHI_ERA_BLOCKS) return SATOSHI_WALLET.address;
+  if (MINER_WALLETS.length === 0) return SATOSHI_WALLET.address;
+  return MINER_WALLETS[(block - SATOSHI_ERA_BLOCKS) % MINER_WALLETS.length].address;
+}
+
+function emitBlockSnapshots() {
+  let cumulativeCoinCount = 0;
+  let cumulativeSupplyBtc = 0;
+  const shardSummaries = new Map();
+  let written = 0;
+
+  for (let block = 0; block <= SNAPSHOT_THROUGH_BLOCK; block += 1) {
+    const subsidy = subsidyBtcAt(block);
+    if (subsidy === 0) break;
+    const minter = pickMinerForBlock(block);
+    const halving = block > 0 && block % 210_000 === 0;
+    const epoch = Math.floor(block / 210_000);
+    const newCoinFromIndex = cumulativeCoinCount;
+    const newCoinCount = subsidy;
+    cumulativeCoinCount += subsidy;
+    cumulativeSupplyBtc += subsidy;
+
+    const snapshot = {
+      schema: 'block-state/v1',
+      block,
+      minter,
+      subsidy,
+      halving,
+      epoch,
+      newCoinFromIndex,
+      newCoinCount,
+      cumulativeCoinCount,
+      cumulativeSupplyBtc,
+    };
+
+    const shardId = Math.floor(block / BLOCK_SHARD_SIZE);
+    const shardName = `shard-${String(shardId).padStart(3, '0')}`;
+    const blockPadded = String(block).padStart(7, '0');
+    // Compact JSON — at 200 bytes/file × 1000 files × 2 mirrors = 400 KB.
+    const body = JSON.stringify(snapshot) + '\n';
+    writeFile(`blocks/${shardName}/${blockPadded}.json`, body);
+    writePublic(`${shardName}/${blockPadded}.json`, body);
+
+    const summary = shardSummaries.get(shardId) ?? {
+      id: shardId,
+      fromBlock: block,
+      throughBlock: block,
+      fileCount: 0,
+    };
+    summary.throughBlock = block;
+    summary.fileCount += 1;
+    shardSummaries.set(shardId, summary);
+    written += 1;
+  }
+
+  const shards = Array.from(shardSummaries.values()).sort((a, b) => a.id - b.id);
+  const index = {
+    schema: 'block-state-index/v1',
+    generated: new Date().toISOString(),
+    scope: {
+      fromBlock: 0,
+      throughBlock: SNAPSHOT_THROUGH_BLOCK,
+      totalBlocks: written,
+    },
+    shardSize: BLOCK_SHARD_SIZE,
+    shards,
+  };
+  const indexBody = JSON.stringify(index, null, 2) + '\n';
+  writeFile('blocks/INDEX.json', indexBody);
+  writePublic('INDEX.json', indexBody);
+
+  return { written, shards };
+}
+
+const blockEmit = emitBlockSnapshots();
+
 // ---------- summary ----------------------------------------------------------
 
 const summary = {
@@ -1334,6 +1463,8 @@ const summary = {
   notableBlockFiles: notableFilesWritten,
   epochFiles: epochFilesWritten,
   activitySidecars: sidecarsWritten,
+  blockSnapshots: blockEmit.written,
+  blockSnapshotShards: blockEmit.shards.length,
   prologFactsWritten: 2,
   totalWallets: FREE_TIER_50.length,
   totalBonds: FREE_TIER_50_BONDS.length,

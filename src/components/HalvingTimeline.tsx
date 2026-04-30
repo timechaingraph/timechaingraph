@@ -29,6 +29,7 @@ export function HalvingTimeline() {
   const currentBlock = useTimegridStore((s) => s.currentBlock);
   const latestBlock = useTimegridStore((s) => s.latestBlock);
   const setCurrentBlock = useTimegridStore((s) => s.setCurrentBlock);
+  const setPlaybackPlaying = useTimegridStore((s) => s.setPlaybackPlaying);
 
   return (
     <div className="brass-panel rounded-lg p-6 md:p-8">
@@ -52,7 +53,10 @@ export function HalvingTimeline() {
             isLast={i === HALVINGS.length - 1}
             isActive={isActiveHalving(currentBlock, h.height, HALVINGS, i)}
             disabled={latestBlock > 0 && h.height > latestBlock}
-            onSelect={() => setCurrentBlock(h.height)}
+            onSelect={() => {
+              setPlaybackPlaying(false);
+              setCurrentBlock(h.height);
+            }}
           />
         ))}
       </div>

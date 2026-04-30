@@ -7,6 +7,7 @@ import {
   SISTER_DOMAIN,
   SISTER_ACCENT,
   SISTER_URL,
+  SHOW_SISTER_CALLOUTS,
 } from '@/lib/site-config';
 
 /**
@@ -62,16 +63,22 @@ export function SiteFooter() {
           </p>
           <p className="mt-3 max-w-xs leading-relaxed text-[color:var(--color-text-secondary)]">
             You&apos;re on{' '}
-            <span style={{ color: ACCENT_VAR[VIEW_ACCENT] }}>{VIEW_DOMAIN}</span>.
-            Sister project at{' '}
-            <a
-              href={SISTER_URL}
-              className="hover:underline"
-              style={{ color: ACCENT_VAR[SISTER_ACCENT] }}
-            >
-              {SISTER_DOMAIN}
-            </a>
-            . Same chain, two views.
+            <span style={{ color: ACCENT_VAR[VIEW_ACCENT] }}>{VIEW_DOMAIN}</span>
+            {SHOW_SISTER_CALLOUTS ? (
+              <>
+                . Sister project at{' '}
+                <a
+                  href={SISTER_URL}
+                  className="hover:underline"
+                  style={{ color: ACCENT_VAR[SISTER_ACCENT] }}
+                >
+                  {SISTER_DOMAIN}
+                </a>
+                . Same chain, two views.
+              </>
+            ) : (
+              ". Bitcoin's digital real estate, block by block."
+            )}
           </p>
         </div>
 
@@ -95,21 +102,25 @@ export function SiteFooter() {
           </div>
         ))}
 
-        <div>
-          <h3 className="text-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-brass-bright)]">
-            Sister
-          </h3>
-          <ul className="mt-3 space-y-2">
-            <li>
-              <a
-                href={SISTER_URL}
-                className="transition-colors hover:text-[color:var(--color-text-primary)]"
-              >
-                View as {SISTER_BRAND} ⟶
-              </a>
-            </li>
-          </ul>
-        </div>
+        {SHOW_SISTER_CALLOUTS ? (
+          <div>
+            <h3 className="text-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-brass-bright)]">
+              Sister
+            </h3>
+            <ul className="mt-3 space-y-2">
+              <li>
+                <a
+                  href={SISTER_URL}
+                  className="transition-colors hover:text-[color:var(--color-text-primary)]"
+                >
+                  View as {SISTER_BRAND} ⟶
+                </a>
+              </li>
+            </ul>
+          </div>
+        ) : (
+          <div />
+        )}
       </div>
 
       <div className="mt-10 flex flex-col gap-3 border-t border-[color:var(--color-card-border)] pt-6 md:flex-row md:items-center md:justify-between">

@@ -80,9 +80,18 @@ describe('setActiveDockPanel', () => {
     expect(useTimegridStore.getState().activeDockPanel).toBe('block-stats');
   });
 
-  it('toggles closed when called with the same id', () => {
+  it('stays open when called with the same id (pure setter, not a toggle)', () => {
+    // Toggle-on-same-id was a bug magnet for committed-selection flows
+    // (tap coin → 'wallet-inspector', tap another → null instead of
+    // staying open). Callers wanting a toggle now do it explicitly.
     useTimegridStore.getState().setActiveDockPanel('block-stats');
     useTimegridStore.getState().setActiveDockPanel('block-stats');
+    expect(useTimegridStore.getState().activeDockPanel).toBe('block-stats');
+  });
+
+  it('closes when called with null', () => {
+    useTimegridStore.getState().setActiveDockPanel('block-stats');
+    useTimegridStore.getState().setActiveDockPanel(null);
     expect(useTimegridStore.getState().activeDockPanel).toBeNull();
   });
 

@@ -42,13 +42,28 @@ if (minerAddresses.length === 0) {
 }
 
 /**
- * Pick the miner for a given block deterministically. Block 0 is
- * always Satoshi (the genesis coinbase recipient by convention);
- * later blocks rotate through the fixture's miners by block height
- * mod miner-count.
+ * Number of genesis-era blocks attributed to Satoshi. In real Bitcoin
+ * lore Satoshi mined a large fraction of blocks before stepping back
+ * around April 2010 (~750 blocks worth ~37,500 BTC, the so-called
+ * Patoshi cluster). The fixture mirrors that: Satoshi gets the first
+ * SATOSHI_ERA_BLOCKS, mock miners share what comes after.
+ *
+ * Effect on the visual: Satoshi's coins fill the origin region
+ * (cumulative count = SATOSHI_ERA_BLOCKS × 50). With the default 750
+ * that's 37,500 coins centered at (0,0), forming the brass-gold
+ * heartland of the lattice. The user's "covering origin is satoshi
+ * coins" + "satoshi as 1st at all times" directive is satisfied by
+ * data, not by a sort-time hack.
+ */
+const SATOSHI_ERA_BLOCKS = 750;
+
+/**
+ * Pick the miner for a given block deterministically. The first
+ * SATOSHI_ERA_BLOCKS belong to Satoshi (origin heartland); blocks
+ * past that rotate through the fixture's mock miner cohort.
  */
 function pickMinerForBlock(blockHeight: number): string {
-  if (blockHeight === 0) return SATOSHI_ADDRESS;
+  if (blockHeight < SATOSHI_ERA_BLOCKS) return SATOSHI_ADDRESS;
   return minerAddresses[blockHeight % minerAddresses.length];
 }
 

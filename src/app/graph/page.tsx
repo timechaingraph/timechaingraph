@@ -5,6 +5,7 @@ import { BlockStats } from '@/components/BlockStats';
 import { Scrubber } from '@/components/Scrubber';
 import { Playback } from '@/components/Playback';
 import { HalvingTimeline } from '@/components/HalvingTimeline';
+import { BlockNarrative } from '@/components/BlockNarrative';
 
 export const metadata: Metadata = {
   title: 'Graph view',
@@ -33,11 +34,12 @@ export default function GraphHome() {
 
       <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="flex flex-col gap-4">
-          <div className="brass-panel rounded-lg overflow-hidden">
+          <div className="brass-panel relative rounded-lg overflow-hidden">
             <GraphView />
+            <BlockNarrative />
           </div>
           <Scrubber />
-          <Playback />
+          <Playback autoStart />
           <HalvingTimeline />
         </div>
         <div className="lg:sticky lg:top-6 lg:self-start lg:flex lg:flex-col lg:gap-4">

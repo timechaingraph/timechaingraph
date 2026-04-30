@@ -39,15 +39,30 @@ describe('mintCoinsFromGenesis', () => {
     expect(mintCoinsFromGenesis(99)).toHaveLength(50 * 100);
   });
 
-  it('rotates miners deterministically after the genesis block', () => {
+  it('attributes the genesis era to Satoshi (Patoshi heartland)', () => {
+    // Per the user's "covering origin is satoshi coins" directive
+    // 2026-04-30, the fixture mirrors real Bitcoin lore: Satoshi
+    // mines the first 750 blocks (matches the canonical Patoshi
+    // cluster). Sample a handful inside that era to verify they're
+    // all Satoshi-minted.
     const roster = mintCoinsFromGenesis(5);
-    // Coins minted in block 1 should share the same minter; that
-    // minter is NOT Satoshi (Satoshi is reserved for block 0).
-    const block1Minters = roster
-      .filter((c) => c.mintedAtBlock === 1)
+    for (let block = 0; block <= 5; block += 1) {
+      const minters = roster
+        .filter((c) => c.mintedAtBlock === block)
+        .map((c) => c.minterAddress);
+      expect(new Set(minters).size).toBe(1);
+      expect(minters[0]).toBe('1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa');
+    }
+  });
+
+  it('rotates mock miners deterministically once past the Satoshi era', () => {
+    // Past block 749 the rotating mock-miner cohort takes over.
+    const roster = mintCoinsFromGenesis(800);
+    const block750Minters = roster
+      .filter((c) => c.mintedAtBlock === 750)
       .map((c) => c.minterAddress);
-    expect(new Set(block1Minters).size).toBe(1);
-    expect(block1Minters[0]).not.toBe(
+    expect(new Set(block750Minters).size).toBe(1);
+    expect(block750Minters[0]).not.toBe(
       '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
     );
   });

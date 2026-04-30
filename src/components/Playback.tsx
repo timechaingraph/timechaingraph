@@ -1,60 +1,112 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useTimegridStore } from '@/store/timegridStore';
 
 /**
  * Playback — auto-advance the scrubber so the lattice plays itself.
  *
- * Hit play and `currentBlock` advances at the selected rate; the
- * web canvas's existing scrubber subscription wakes neurons, fires
- * synapses, fades out gone-dark wallets in lockstep. Watch the
- * Bitcoin brain develop from genesis to tip in seconds.
+ * Speeds run from "Narrate" (1 block per 10 seconds — the cinematic,
+ * left-idle-and-watch pace) to "Max" (50,000 blocks per tick — full
+ * fast-forward to the chain tip in a few seconds). Each speed
+ * declares its own setInterval delay; Narrate uses a slow
+ * 10s-per-block timer while the faster speeds fire at ~16 fps.
  *
- * Shared component — both Grid and Graph mount it alongside the
- * Scrubber. The brain plays the same way regardless of geometry.
+ * Play state + speed index live in the store (`playbackPlaying`,
+ * `playbackSpeedIdx`), so any interaction that should pause the
+ * playback (Scrubber drag, canvas pan, halving-timeline jump) can
+ * just call `setPlaybackPlaying(false)` without coupling to this
+ * component.
+ *
+ * The `autoStart` prop, set on /grid mount, kicks playback off at
+ * Narrate speed from block 0 the first time the lattice has data —
+ * the visitor is dropped at genesis and watches the map grow unless
+ * they reach for the scrubber.
  */
 
-const SPEED_OPTIONS = [
-  { label: 'Slow', blocksPerTick: 50 },
-  { label: 'Normal', blocksPerTick: 500 },
-  { label: 'Fast', blocksPerTick: 5000 },
-  { label: 'Max', blocksPerTick: 50_000 },
+export interface PlaybackSpeed {
+  label: string;
+  blocksPerTick: number;
+  tickIntervalMs: number;
+}
+
+export const SPEED_OPTIONS: readonly PlaybackSpeed[] = [
+  // Narrate — the storytelling pace. Read each block as a stanza.
+  // 10 seconds per block lets the user follow the territory expanding
+  // around Satoshi without feeling rushed. This is the default.
+  { label: 'Narrate', blocksPerTick: 1, tickIntervalMs: 10_000 },
+  // Slow / Normal / Fast / Max — manual fast-forward for users who
+  // already know the shape and want to jump ahead.
+  { label: 'Slow', blocksPerTick: 50, tickIntervalMs: 60 },
+  { label: 'Normal', blocksPerTick: 500, tickIntervalMs: 60 },
+  { label: 'Fast', blocksPerTick: 5_000, tickIntervalMs: 60 },
+  { label: 'Max', blocksPerTick: 50_000, tickIntervalMs: 60 },
 ] as const;
 
-/** ~16fps tick rate; smooth without burning CPU. */
-const TICK_INTERVAL_MS = 60;
+interface PlaybackProps {
+  /**
+   * If true, automatically begins narrate-speed playback from block 0
+   * once the lattice has data. Mounted on /grid so first-time visitors
+   * land at genesis and watch the map grow unprompted.
+   */
+  autoStart?: boolean;
+}
 
-export function Playback() {
+export function Playback({ autoStart = false }: PlaybackProps) {
   const currentBlock = useTimegridStore((s) => s.currentBlock);
   const latestBlock = useTimegridStore((s) => s.latestBlock);
   const setCurrentBlock = useTimegridStore((s) => s.setCurrentBlock);
-  const [playing, setPlaying] = useState(false);
-  const [speedIdx, setSpeedIdx] = useState(1);
+  const playing = useTimegridStore((s) => s.playbackPlaying);
+  const setPlaying = useTimegridStore((s) => s.setPlaybackPlaying);
+  const speedIdx = useTimegridStore((s) => s.playbackSpeedIdx);
+  const setSpeedIdx = useTimegridStore((s) => s.setPlaybackSpeedIdx);
+
   const ready = latestBlock > 0;
   const atTip = ready && currentBlock >= latestBlock;
+  const speed = SPEED_OPTIONS[speedIdx] ?? SPEED_OPTIONS[0];
 
+  // Auto-start: when the lattice first has data and the scrubber has
+  // not been touched, rewind to genesis and begin narrate-speed
+  // playback. Runs once per mount via the autoStartFired guard.
+  useEffect(() => {
+    if (!autoStart || !ready) return;
+    const cur = useTimegridStore.getState().currentBlock;
+    const tip = useTimegridStore.getState().latestBlock;
+    // Only auto-start if the scrubber is at the tip (the canvas seed
+    // value) — that signals "user hasn't grabbed it yet". If the user
+    // has scrubbed mid-range, leave them be.
+    if (cur === tip && !useTimegridStore.getState().playbackPlaying) {
+      useTimegridStore.getState().setCurrentBlock(0);
+      useTimegridStore.getState().setPlaybackSpeedIdx(0);
+      useTimegridStore.getState().setPlaybackPlaying(true);
+    }
+  }, [autoStart, ready]);
+
+  // Tick loop. Re-creates whenever play state, speed, or readiness
+  // changes — the cleanup clears the old interval before the new one
+  // starts, so changing speed mid-play never doubles up timers.
   useEffect(() => {
     if (!playing || !ready) return;
     const id = setInterval(() => {
       const cur = useTimegridStore.getState().currentBlock;
       const tip = useTimegridStore.getState().latestBlock;
-      const blocksPerTick = SPEED_OPTIONS[speedIdx].blocksPerTick;
-      const next = Math.min(cur + blocksPerTick, tip);
+      const next = Math.min(cur + speed.blocksPerTick, tip);
       setCurrentBlock(next);
-      if (next >= tip) setPlaying(false);
-    }, TICK_INTERVAL_MS);
+      if (next >= tip) {
+        useTimegridStore.getState().setPlaybackPlaying(false);
+      }
+    }, speed.tickIntervalMs);
     return () => clearInterval(id);
-  }, [playing, speedIdx, ready, setCurrentBlock]);
+  }, [playing, speed.blocksPerTick, speed.tickIntervalMs, ready, setCurrentBlock]);
 
   function togglePlay(): void {
     if (atTip) {
-      // Rewind to genesis and play
+      // Rewind to genesis and play.
       setCurrentBlock(0);
       setPlaying(true);
       return;
     }
-    setPlaying((p) => !p);
+    setPlaying(!playing);
   }
 
   const buttonLabel = !ready
@@ -76,7 +128,11 @@ export function Playback() {
       >
         {buttonLabel}
       </button>
-      <div className="flex items-center gap-1" role="group" aria-label="Playback speed">
+      <div
+        className="flex items-center gap-1"
+        role="group"
+        aria-label="Playback speed"
+      >
         {SPEED_OPTIONS.map((opt, i) => {
           const active = i === speedIdx;
           return (

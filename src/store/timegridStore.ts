@@ -24,6 +24,15 @@ interface TimegridState {
   // Camera
   camera: { position: GridPosition; zoom: number };
   setCamera(camera: { position: GridPosition; zoom: number }): void;
+
+  // Playback — auto-advancement of currentBlock. Lifted to the store
+  // so canvas + scrubber + halving-timeline interactions can pause
+  // the auto-advance without coupling to the Playback component.
+  playbackPlaying: boolean;
+  setPlaybackPlaying(playing: boolean): void;
+  /** Index into the SPEED_OPTIONS array in Playback.tsx. */
+  playbackSpeedIdx: number;
+  setPlaybackSpeedIdx(idx: number): void;
 }
 
 const INITIAL_BLOCK = 0;
@@ -47,12 +56,32 @@ export const useTimegridStore = create<TimegridState>((set, get) => ({
   },
 
   activeDockPanel: null,
+  // Pure setter — no toggle-on-same-id behavior. Callers that want a
+  // toggle (e.g., a UI button that opens + closes a panel on repeated
+  // press) should read activeDockPanel and decide to pass null vs id
+  // explicitly. Toggling here was a bug magnet for committed-selection
+  // flows: tap coin A → 'wallet-inspector', tap coin B with the same
+  // call → null (panel disappears) instead of staying open with the
+  // new wallet.
   setActiveDockPanel(id) {
-    set((s) => ({ activeDockPanel: s.activeDockPanel === id ? null : id }));
+    set({ activeDockPanel: id });
   },
 
   camera: { position: { x: 0, y: 0 }, zoom: 1 },
   setCamera(camera) {
     set({ camera });
+  },
+
+  // Index 0 in Playback's SPEED_OPTIONS is the "Narrate" mode (1 block
+  // per 10s) — the default narrative pace. Page-mount Auto-start logic
+  // begins playback at this speed so the lattice plays itself unless
+  // the user grabs the scrubber.
+  playbackPlaying: false,
+  setPlaybackPlaying(playing) {
+    set({ playbackPlaying: playing });
+  },
+  playbackSpeedIdx: 0,
+  setPlaybackSpeedIdx(idx) {
+    set({ playbackSpeedIdx: Math.max(0, idx) });
   },
 }));

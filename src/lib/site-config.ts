@@ -30,6 +30,15 @@ export const SISTER_URL = `https://${SISTER_DOMAIN}`;
 
 export const BRAND_TAGLINE = 'Bitcoin Visualised';
 
+/**
+ * Show sister-project callouts (sister link in footer, "two views" copy).
+ * Set to true on Graph since the brain-vault narrative is mutual: graph
+ * surfaces wallets-as-neurons, grid surfaces coins-as-real-estate, and
+ * each is enriched by the other. Sister chose `false` for Grid's reset
+ * to a self-contained "Bitcoin's digital real estate" narrative.
+ */
+export const SHOW_SISTER_CALLOUTS = true;
+
 export const SITE_URL = `https://${VIEW_DOMAIN}`;
 export const SITE_TITLE = `Timechain ${VIEW_BRAND}`;
 export const SITE_TITLE_FULL = `${BRAND_TAGLINE} — Timechain ${VIEW_BRAND}`;

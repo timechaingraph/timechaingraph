@@ -19,6 +19,7 @@ export function Scrubber() {
   const currentBlock = useTimegridStore((s) => s.currentBlock);
   const latestBlock = useTimegridStore((s) => s.latestBlock);
   const setCurrentBlock = useTimegridStore((s) => s.setCurrentBlock);
+  const setPlaybackPlaying = useTimegridStore((s) => s.setPlaybackPlaying);
 
   const ready = latestBlock > 0;
   const epoch = epochFromHeight(currentBlock);
@@ -53,7 +54,12 @@ export function Scrubber() {
         value={currentBlock}
         step={1}
         disabled={!ready}
-        onChange={(e) => setCurrentBlock(Number(e.target.value))}
+        onChange={(e) => {
+          // Manual scrub pauses auto-playback; user has grabbed the
+          // wheel and the narrate-mode timeline shouldn't fight them.
+          setPlaybackPlaying(false);
+          setCurrentBlock(Number(e.target.value));
+        }}
         className="w-full accent-[color:var(--color-amber)] disabled:opacity-30"
         aria-label={`Block scrubber. Current block: ${currentBlock.toLocaleString()} of ${latestBlock.toLocaleString()}`}
       />

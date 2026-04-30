@@ -10,6 +10,7 @@ import {
   SISTER_BRAND,
   SISTER_URL,
 } from '@/lib/site-config';
+import { Logo } from '@/components/Logo';
 
 /**
  * NavBar — top-of-page navigation. Identical in both Grid and Graph repos;
@@ -48,7 +49,9 @@ export function NavBar() {
       <Link
         href="/"
         className="flex items-center gap-3 text-mono text-sm transition-opacity hover:opacity-80"
+        aria-label={`Timechain ${VIEW_BRAND} — home`}
       >
+        <Logo size={32} accent="brass" />
         <span className="brass-shimmer text-base font-semibold tracking-wider">
           TIMECHAIN&nbsp;·&nbsp;{VIEW_BRAND}
         </span>
