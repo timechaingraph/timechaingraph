@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
-import { NavBar } from '@/components/NavBar';
-import { SiteFooter } from '@/components/SiteFooter';
 import {
   SITE_URL,
   SITE_TITLE,
@@ -9,6 +7,19 @@ import {
   SITE_DESCRIPTION,
 } from '@/lib/site-config';
 import './globals.css';
+
+/**
+ * Root layout — minimal shell. Contains only the html + body tags
+ * and global metadata. The actual chrome (NavBar, SiteFooter, max-
+ * width container, padding) lives in `(site)/layout.tsx`, which
+ * applies to every regular page. The kiosk-style routes (currently
+ * `/graph`) get their own full-viewport layout via `graph/layout.tsx`
+ * and skip the centered container entirely.
+ *
+ * Splitting the chrome out of root lets `/graph` truly own the
+ * viewport without fighting the centered max-w-6xl container, and
+ * keeps document-style pages (`/about`, `/pricing`, etc.) unchanged.
+ */
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -57,13 +68,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        <main className="relative mx-auto flex min-h-dvh max-w-6xl flex-col px-6 pb-12 pt-8 md:px-10">
-          <NavBar />
-          {children}
-          <SiteFooter />
-        </main>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

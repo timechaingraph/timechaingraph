@@ -196,10 +196,23 @@ export function GraphView() {
     }
 
     void (async () => {
+      // Engine tuning per user directive 2026-04-30 ("better engine"):
+      // - resolution = devicePixelRatio so retina/HiDPI screens render
+      //   crisp circle edges + sharp synapse strokes (default is 1).
+      // - autoDensity true so the canvas's CSS size stays at logical
+      //   pixels while the backing store scales to physical pixels.
+      // - antialias true (kept) for smooth organic-shape circles.
+      // - hello false to silence Pixi's banner in production logs.
       await app.init({
         resizeTo: container,
         background: 0x08080c,
         antialias: true,
+        resolution:
+          typeof window !== 'undefined' && window.devicePixelRatio
+            ? window.devicePixelRatio
+            : 1,
+        autoDensity: true,
+        hello: false,
       });
       if (cancelled) {
         app.destroy(true, { children: true });
@@ -813,7 +826,7 @@ export function GraphView() {
   }
 
   return (
-    <div className="relative aspect-square w-full overflow-hidden">
+    <div className="relative h-full w-full overflow-hidden">
       <div
         ref={containerRef}
         className="absolute inset-0 cursor-grab active:cursor-grabbing"
