@@ -39,6 +39,17 @@ const EDGE_BASE_ALPHA = 0.4;
  */
 const BOND_FORMATION_BLOCKS = 10;
 
+/**
+ * Synapse-pulse parameters. When the user targets a wallet (hover
+ * or focus), a wave of pulses travels outward along every incident
+ * synapse — the brain "fires" along its connections from the
+ * targeted neuron. Per-frame progress increment; completion in
+ * ~25 frames (~400ms at 60fps).
+ */
+const PULSE_SPEED = 0.04;
+const PULSE_RADIUS = 1.8;
+const PULSE_COLOR = 0xffd700; // brass-gold
+
 /** Hover-spotlight multiplier for non-neighbors (Obsidian-graph signature). */
 const SPOTLIGHT_DIM = 0.15;
 
@@ -205,6 +216,30 @@ export function GraphView() {
       const edges = new Graphics();
       viewport.addChild(edges);
 
+      // Pulse layer renders on top of edges but below dots — the
+      // synapse-fire animation reads as "between the wires," not "on
+      // top of the neurons."
+      const pulseLayer = new Graphics();
+      viewport.addChild(pulseLayer);
+
+      // Active pulses traveling along synapses. Each entry is one
+      // pulse from `fromIdx` toward `toIdx`; progress 0..1; removed
+      // on completion.
+      type Pulse = { fromIdx: number; toIdx: number; progress: number };
+      const pulses: Pulse[] = [];
+
+      function spawnPulsesFromSeed(seedAddress: string): void {
+        const seedIdx = idxByAddr.get(seedAddress);
+        if (seedIdx === undefined) return;
+        for (const link of links) {
+          let toIdx: number | null = null;
+          if (link.a === seedIdx) toIdx = link.b;
+          else if (link.b === seedIdx) toIdx = link.a;
+          if (toIdx === null) continue;
+          pulses.push({ fromIdx: seedIdx, toIdx, progress: 0 });
+        }
+      }
+
       let draggedBody: Body | null = null;
       let dragOffsetX = 0;
       let dragOffsetY = 0;
@@ -336,6 +371,7 @@ export function GraphView() {
           setSelectedWallet(wallet.address);
           hoveredAddress = wallet.address;
           recomputeSpotlight();
+          spawnPulsesFromSeed(wallet.address);
           applyAlpha();
         });
         dot.on('pointerout', () => {
@@ -360,6 +396,7 @@ export function GraphView() {
             setSelectedWallet(wallet.address);
             setActiveDockPanel('wallet-inspector');
             setFocusActive(true);
+            spawnPulsesFromSeed(wallet.address);
           }
           recomputeSpotlight();
           applyAlpha();
@@ -631,6 +668,34 @@ export function GraphView() {
         for (const body of bodies) {
           body.graphics.position.set(cx + body.x, cy + body.y);
           if (body.halo) body.halo.position.set(cx + body.x, cy + body.y);
+        }
+
+        // Synapse-fire pulses — render before edges so edges underlay,
+        // dots overlay, pulses sit between. Iterate backwards so we
+        // can splice completed pulses without skipping.
+        pulseLayer.clear();
+        for (let i = pulses.length - 1; i >= 0; i--) {
+          const p = pulses[i];
+          p.progress += PULSE_SPEED;
+          if (p.progress >= 1) {
+            pulses.splice(i, 1);
+            continue;
+          }
+          const fromBody = bodies[p.fromIdx];
+          const toBody = bodies[p.toIdx];
+          // Skip pulses where either endpoint is invisible (pre-birth)
+          if (fromBody.graphics.alpha === 0 || toBody.graphics.alpha === 0) {
+            continue;
+          }
+          const t = p.progress;
+          const px = cx + fromBody.x + (toBody.x - fromBody.x) * t;
+          const py = cy + fromBody.y + (toBody.y - fromBody.y) * t;
+          // Pulse alpha eases out near the end of travel so completion
+          // is gentle rather than abrupt.
+          const pulseAlpha = Math.max(0.2, 1 - p.progress * 0.5);
+          pulseLayer
+            .circle(px, py, PULSE_RADIUS)
+            .fill({ color: PULSE_COLOR, alpha: pulseAlpha });
         }
 
         edges.clear();
