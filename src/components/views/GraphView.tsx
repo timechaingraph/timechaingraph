@@ -2,13 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Application, Container, Graphics } from 'pixi.js';
-import { FREE_TIER_50 } from '@/data/__fixtures__/free-tier-50';
-import { FREE_TIER_50_BONDS } from '@/data/__fixtures__/free-tier-50-bonds';
+import { FIXTURE_SUBSTRATE } from '@/data/substrate';
 import { ROLE_COLOR, ROLE_RADIUS } from '@/lib/role-visuals';
 import { useTimegridStore } from '@/store/timegridStore';
 import { BRAND_TAGLINE } from '@/lib/site-config';
 import { step as physicsStep, type PhysicsLink } from '@/lib/forceLayout';
 import type { WalletData, WalletRole } from '@/types/wallet';
+
+// GraphView reads its chain digest through the ChainSubstrate
+// contract rather than direct fixture imports. v0.1 substrate is
+// fixture-backed; v0.2+ swaps in an R2/parquet implementation
+// without touching this file.
+const WALLETS = FIXTURE_SUBSTRATE.wallets;
+const BONDS = FIXTURE_SUBSTRATE.bonds;
 
 const RING_RADIUS: Record<WalletRole, number> = {
   satoshi: 0,
@@ -72,7 +78,7 @@ const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 5;
 const ZOOM_STEP = 0.0015;
 
-const FIXTURE_LATEST_BLOCK = FREE_TIER_50.reduce(
+const FIXTURE_LATEST_BLOCK = WALLETS.reduce(
   (max, w) => Math.max(max, w.lastActiveBlock),
   0,
 );
@@ -335,7 +341,7 @@ export function GraphView() {
         };
       }
 
-      const bodies: Body[] = FREE_TIER_50.map((wallet) => {
+      const bodies: Body[] = WALLETS.map((wallet) => {
         const seed = seedPosition(wallet);
         const radius = ROLE_RADIUS[wallet.role];
 
@@ -578,7 +584,7 @@ export function GraphView() {
 
       const idxByAddr = new Map(bodies.map((b, i) => [b.wallet.address, i]));
       const links: Link[] = [];
-      for (const bond of FREE_TIER_50_BONDS) {
+      for (const bond of BONDS) {
         const a = idxByAddr.get(bond.fromAddress);
         const b = idxByAddr.get(bond.toAddress);
         if (a === undefined || b === undefined) continue;

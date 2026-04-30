@@ -1,9 +1,7 @@
 'use client';
 
 import { useTimegridStore } from '@/store/timegridStore';
-import { FREE_TIER_50 } from '@/data/__fixtures__/free-tier-50';
-import { FREE_TIER_50_BONDS } from '@/data/__fixtures__/free-tier-50-bonds';
-import { COIN_ROSTER_DEMO } from '@/data/__fixtures__/coin-roster';
+import { FIXTURE_SUBSTRATE } from '@/data/substrate';
 import { ROLE_LABEL, ROLE_CSS } from '@/lib/role-visuals';
 import type { WalletData } from '@/types/wallet';
 
@@ -13,9 +11,9 @@ import type { WalletData } from '@/types/wallet';
  * alongside their canvas; selection is driven by the shared
  * `useTimegridStore.selectedWallet` slice.
  *
- * Looks up the address in `FREE_TIER_50` for now; once the
- * BitcoinChainAdapter ships, this component will pull from the adapter
- * cache instead.
+ * Reads via the ChainSubstrate contract (FIXTURE_SUBSTRATE in v0.1;
+ * R2/parquet substrate in v0.2+). All accessors are O(1) — the
+ * implementation precomputes address indices at construction.
  */
 
 const SATS_PER_BTC = 100_000_000n;
@@ -34,30 +32,26 @@ function shortAddress(addr: string): string {
 
 function findNeighbors(address: string): WalletData[] {
   const neighborAddrs = new Set<string>();
-  for (const bond of FREE_TIER_50_BONDS) {
+  for (const bond of FIXTURE_SUBSTRATE.bondsForAddress(address)) {
     if (bond.fromAddress === address) neighborAddrs.add(bond.toAddress);
     else if (bond.toAddress === address) neighborAddrs.add(bond.fromAddress);
   }
   const result: WalletData[] = [];
   for (const addr of neighborAddrs) {
-    const w = FREE_TIER_50.find((w) => w.address === addr);
+    const w = FIXTURE_SUBSTRATE.walletByAddress(addr);
     if (w) result.push(w);
   }
   return result;
 }
 
 /**
- * Coin count from the demo roster — Phase F coin-real-estate fixture.
+ * Coin count from the substrate — Phase F coin-real-estate fixture.
  * v0 model: ownerAddress === minterAddress (no transfers tracked).
  * Once the multi-input pipeline lands the count reflects current
  * ownership rather than mint history.
  */
 function countCoins(address: string): number {
-  let count = 0;
-  for (const c of COIN_ROSTER_DEMO) {
-    if (c.ownerAddress === address) count++;
-  }
-  return count;
+  return FIXTURE_SUBSTRATE.coinsOwnedBy(address).length;
 }
 
 const MAX_NEIGHBORS_SHOWN = 5;
@@ -65,7 +59,7 @@ const MAX_NEIGHBORS_SHOWN = 5;
 export function WalletInspector() {
   const selectedAddress = useTimegridStore((s) => s.selectedWallet);
   const wallet = selectedAddress
-    ? FREE_TIER_50.find((w) => w.address === selectedAddress)
+    ? FIXTURE_SUBSTRATE.walletByAddress(selectedAddress)
     : null;
   const neighbors = wallet ? findNeighbors(wallet.address) : [];
   const coinsOwned = wallet ? countCoins(wallet.address) : 0;
