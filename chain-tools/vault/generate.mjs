@@ -540,6 +540,139 @@ for (const seed of EMPIRE_SEEDS) {
   empireFilesWritten++;
 }
 
+// ---------- emit: cluster markdown (shared-counterparty heuristic) -----------
+//
+// A cluster is a set of wallets that transact with overlapping
+// counterparties. Two wallets join a cluster if they share at least
+// SHARED_COUNTERPARTY_THRESHOLD bonded peers; clusters merge
+// transitively via union-find.
+//
+// At fixture scale this gives 3-6 clusters of various sizes. The
+// shape is intentionally heuristic (real common-input clustering
+// from multi-input transactions ships in v0.2 once spends_input/2
+// facts are available — see prolog/rules/clustering.pl).
+//
+// Each cluster note lists its members with role distribution +
+// cross-references to the empires that overlap with it.
+
+const SHARED_COUNTERPARTY_THRESHOLD = 2;
+
+function findClusters() {
+  const parent = new Map();
+  for (const w of FREE_TIER_50) parent.set(w.address, w.address);
+
+  function find(a) {
+    let root = a;
+    while (parent.get(root) !== root) root = parent.get(root);
+    // Path compression
+    let current = a;
+    while (parent.get(current) !== root) {
+      const next = parent.get(current);
+      parent.set(current, root);
+      current = next;
+    }
+    return root;
+  }
+
+  function union(a, b) {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  }
+
+  for (let i = 0; i < FREE_TIER_50.length; i++) {
+    const w1 = FREE_TIER_50[i];
+    const n1 = neighborsByAddr.get(w1.address);
+    if (!n1) continue;
+    for (let j = i + 1; j < FREE_TIER_50.length; j++) {
+      const w2 = FREE_TIER_50[j];
+      const n2 = neighborsByAddr.get(w2.address);
+      if (!n2) continue;
+      let shared = 0;
+      for (const a of n1) if (n2.has(a)) shared++;
+      if (shared >= SHARED_COUNTERPARTY_THRESHOLD) {
+        union(w1.address, w2.address);
+      }
+    }
+  }
+
+  const groups = new Map();
+  for (const w of FREE_TIER_50) {
+    const root = find(w.address);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root).push(w.address);
+  }
+  return [...groups.entries()]
+    .map(([root, members]) => ({ root, members: [...members].sort() }))
+    .filter((c) => c.members.length >= 2)
+    .sort((a, b) => b.members.length - a.members.length);
+}
+
+function clusterMarkdown(cluster, idx) {
+  // Role distribution for the cluster header
+  const roleCounts = {};
+  for (const addr of cluster.members) {
+    const w = byAddr.get(addr);
+    if (!w) continue;
+    roleCounts[w.role] = (roleCounts[w.role] || 0) + 1;
+  }
+  const roleProfile = Object.entries(roleCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([role, count]) => `${role}:${count}`)
+    .join(', ');
+  const seedWallet = byAddr.get(cluster.root);
+  const seedAlias = seedWallet ? aliasFor(seedWallet) : cluster.root;
+  const fm = [
+    '---',
+    `kind: cluster`,
+    `id: cluster-${String(idx).padStart(3, '0')}`,
+    `size: ${cluster.members.length}`,
+    `seedAddress: ${cluster.root}`,
+    `roleProfile: [${roleProfile}]`,
+    `tags: [cluster]`,
+    '---',
+    '',
+  ].join('\n');
+  const lines = [
+    fm,
+    `# Cluster ${idx + 1} — ${cluster.members.length} wallets`,
+    '',
+    `Connected via shared-counterparty heuristic (>= ${SHARED_COUNTERPARTY_THRESHOLD} shared bonded peers). The cluster's defining property: wallets in this group transact with the same partners more than not. Real common-input clustering from multi-input transactions ships in v0.2 — this is the structural placeholder.`,
+    '',
+    `**Role distribution**: ${roleProfile}`,
+    '',
+    `**Seed wallet**: [[${cluster.root}|${seedAlias}]]${seedWallet ? ` (${seedWallet.role})` : ''}`,
+    '',
+    '## Members',
+    '',
+    ...cluster.members.map((addr) => {
+      const w = byAddr.get(addr);
+      const alias = w ? aliasFor(w) : addr;
+      return `- [[${addr}|${alias}]] · ${w ? w.role : 'unknown'}`;
+    }),
+    '',
+    '## Prolog query',
+    '',
+    'Equivalent SWI-Prolog query (heuristic — no current rule for shared-counterparty clusters; see `prolog/rules/clustering.pl` for the future common-input version):',
+    '',
+    '```prolog',
+    `% Cluster members are reachable from any seed via shared peers;`,
+    `% no exact equivalent until clustering.pl gains a shared_peers/3`,
+    `% rule. For now, listing here matches the markdown.`,
+    '```',
+    '',
+  ];
+  return lines.join('\n');
+}
+
+const clusters = findClusters();
+let clusterFilesWritten = 0;
+for (let i = 0; i < clusters.length; i++) {
+  const filename = `cluster-${String(i + 1).padStart(3, '0')}.md`;
+  writeFile(`clusters/${filename}`, clusterMarkdown(clusters[i], i));
+  clusterFilesWritten++;
+}
+
 // ---------- emit: halving block markdown files -------------------------------
 
 // The actual Bitcoin genesis-block coinbase scriptSig contains a hidden
@@ -1078,6 +1211,7 @@ const summary = {
   walletFiles: walletFilesWritten,
   bondFiles: bondFilesWritten,
   empireFiles: empireFilesWritten,
+  clusterFiles: clusterFilesWritten,
   halvingFiles: halvingFilesWritten,
   notableBlockFiles: notableFilesWritten,
   epochFiles: epochFilesWritten,
