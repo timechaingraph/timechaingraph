@@ -176,10 +176,18 @@ export function GraphView() {
       setCamera,
     } = useTimegridStore.getState();
 
-    if (useTimegridStore.getState().latestBlock === 0) {
-      setLatestBlock(FIXTURE_LATEST_BLOCK);
-      setCurrentBlock(FIXTURE_LATEST_BLOCK);
-    }
+    // Per user directive 2026-04-30: "the view always starts from
+    // genesis block." Every mount of /graph rewinds the scrubber to 0
+    // and kicks off Narrate-speed playback, regardless of where the
+    // visitor left it on a previous mount. Hard reload + SPA
+    // re-navigation both behave the same way: animation begins at
+    // block 0, advances one block per 10 seconds, pause/scrub/resume
+    // remain freely available during the session.
+    setLatestBlock(FIXTURE_LATEST_BLOCK);
+    setCurrentBlock(0);
+    const { setPlaybackSpeedIdx, setPlaybackPlaying } = useTimegridStore.getState();
+    setPlaybackSpeedIdx(0); // Narrate (1 block / 10s)
+    setPlaybackPlaying(true);
 
     function applyCamera(): void {
       const cam = useTimegridStore.getState().camera;
