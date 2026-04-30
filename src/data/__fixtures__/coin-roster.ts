@@ -22,8 +22,14 @@ const SATOSHI_ADDRESS = '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa';
 /**
  * Number of blocks worth of coinbase outputs minted into the demo
  * roster. With 50-BTC subsidy this gives 50 × DEMO_BLOCK_COUNT coins.
+ *
+ * v0.1 staging at 1,000 blocks (50,000 coins) — phase 1 of the
+ * "genesis through first-epoch" expansion the user briefed
+ * 2026-04-30. Full first epoch (210,000 blocks → 10.5M coins) is
+ * the v0.2+ target; the 50k staging keeps the renderer's PIXI
+ * Graphics batch within naive-rendering perf budget.
  */
-export const DEMO_BLOCK_COUNT = 100;
+export const DEMO_BLOCK_COUNT = 1_000;
 
 const minerAddresses = FREE_TIER_50.filter((w) => w.role === 'miner').map(
   (w) => w.address,

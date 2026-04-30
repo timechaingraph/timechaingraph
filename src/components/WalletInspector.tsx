@@ -11,9 +11,10 @@ import type { WalletData } from '@/types/wallet';
  * alongside their canvas; selection is driven by the shared
  * `useTimegridStore.selectedWallet` slice.
  *
- * Reads via the ChainSubstrate contract (FIXTURE_SUBSTRATE in v0.1;
- * R2/parquet substrate in v0.2+). All accessors are O(1) — the
- * implementation precomputes address indices at construction.
+ * Reads through the `ChainSubstrate` contract (`FIXTURE_SUBSTRATE` in
+ * v0.1, R2/parquet-backed in v0.2+). Substrate accessors are O(1) via
+ * precomputed address indices, so this panel renders in constant time
+ * regardless of total coin/bond count.
  */
 
 const SATS_PER_BTC = 100_000_000n;
@@ -31,8 +32,9 @@ function shortAddress(addr: string): string {
 }
 
 function findNeighbors(address: string): WalletData[] {
+  const bonds = FIXTURE_SUBSTRATE.bondsForAddress(address);
   const neighborAddrs = new Set<string>();
-  for (const bond of FIXTURE_SUBSTRATE.bondsForAddress(address)) {
+  for (const bond of bonds) {
     if (bond.fromAddress === address) neighborAddrs.add(bond.toAddress);
     else if (bond.toAddress === address) neighborAddrs.add(bond.fromAddress);
   }
@@ -44,25 +46,20 @@ function findNeighbors(address: string): WalletData[] {
   return result;
 }
 
-/**
- * Coin count from the substrate — Phase F coin-real-estate fixture.
- * v0 model: ownerAddress === minterAddress (no transfers tracked).
- * Once the multi-input pipeline lands the count reflects current
- * ownership rather than mint history.
- */
-function countCoins(address: string): number {
-  return FIXTURE_SUBSTRATE.coinsOwnedBy(address).length;
-}
-
 const MAX_NEIGHBORS_SHOWN = 5;
 
 export function WalletInspector() {
   const selectedAddress = useTimegridStore((s) => s.selectedWallet);
   const wallet = selectedAddress
     ? FIXTURE_SUBSTRATE.walletByAddress(selectedAddress)
-    : null;
+    : undefined;
   const neighbors = wallet ? findNeighbors(wallet.address) : [];
-  const coinsOwned = wallet ? countCoins(wallet.address) : 0;
+  // v0.1 invariant: ownerAddress === minterAddress (no transfers).
+  // v0.2+ this becomes "coins held at tipBlock" once the multi-input
+  // pipeline updates ownership per spend.
+  const coinsOwned = wallet
+    ? FIXTURE_SUBSTRATE.coinsOwnedBy(wallet.address).length
+    : 0;
 
   if (!wallet) {
     return (

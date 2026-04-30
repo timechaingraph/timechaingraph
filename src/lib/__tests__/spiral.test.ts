@@ -59,12 +59,12 @@ describe('subsidyAtBlock', () => {
     expect(subsidyAtBlock(209_999)).toBe(50);
   });
 
-  it('halves at every 210,000-block boundary', () => {
+  it('halves at every 210,000-block boundary (exact fractional BTC)', () => {
     expect(subsidyAtBlock(210_000)).toBe(25);
-    expect(subsidyAtBlock(420_000)).toBe(12);
-    expect(subsidyAtBlock(630_000)).toBe(6);
-    expect(subsidyAtBlock(840_000)).toBe(3);
-    expect(subsidyAtBlock(1_050_000)).toBe(1);
+    expect(subsidyAtBlock(420_000)).toBe(12.5);
+    expect(subsidyAtBlock(630_000)).toBe(6.25);
+    expect(subsidyAtBlock(840_000)).toBe(3.125);
+    expect(subsidyAtBlock(1_050_000)).toBe(1.5625);
   });
 
   it('returns 0 once the issuance schedule is exhausted', () => {
@@ -98,5 +98,21 @@ describe('cumulativeSubsidy', () => {
   it('matches a hand-computed value through the second halving', () => {
     // Through 419,999: 210k × 50 + 210k × 25 = 10,500,000 + 5,250,000 = 15,750,000.
     expect(cumulativeSubsidy(419_999)).toBe(15_750_000);
+  });
+
+  it('matches a hand-computed value through the third halving (uses fractional 12.5 BTC)', () => {
+    // Through 629,999: 15.75M (epoch 0+1) + 210k × 12.5 = 18,375,000.
+    expect(cumulativeSubsidy(629_999)).toBe(18_375_000);
+  });
+
+  it('matches a hand-computed value through the fourth halving', () => {
+    // Through 839,999: 18.375M + 210k × 6.25 = 19,687,500.
+    expect(cumulativeSubsidy(839_999)).toBe(19_687_500);
+  });
+
+  it('asymptotes at just-under-21M BTC across all 33 epochs', () => {
+    const farFuture = cumulativeSubsidy(33 * 210_000);
+    expect(farFuture).toBeLessThanOrEqual(21_000_000);
+    expect(farFuture).toBeGreaterThan(21_000_000 - 1);
   });
 });

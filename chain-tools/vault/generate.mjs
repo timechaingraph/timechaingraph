@@ -813,7 +813,11 @@ function notableMarkdown(notable) {
     '',
     '## Cross-references',
     '',
-    `- [[blocks/halvings/${String(epoch * 210_000).padStart(7, '0')}|Epoch ${epoch} start]]`,
+    // Epoch 0's "start" is genesis — there's no halvings/0000000.md
+    // file. Validator (chain-tools/vault/validate.mjs) caught this.
+    epoch === 0
+      ? `- [[blocks/genesis|Genesis]]`
+      : `- [[blocks/halvings/${String(epoch * 210_000).padStart(7, '0')}|Epoch ${epoch} start]]`,
     `- [[epochs/epoch-${String(epoch).padStart(4, '0')}|Epoch ${epoch} summary]]`,
     '',
   ].join('\n');
@@ -890,8 +894,8 @@ function epochMarkdown(epoch) {
     '## Boundary blocks',
     '',
     epoch === 0
-      ? `- Start: [[../genesis|Block 0]] (genesis)`
-      : `- Start: [[../halvings/${String(startBlock).padStart(7, '0')}|Block ${startBlock.toLocaleString()}]] (${epoch === 1 ? '1st' : epoch === 2 ? '2nd' : epoch === 3 ? '3rd' : '4th'} halving)`,
+      ? `- Start: [[blocks/genesis|Block 0]] (genesis)`
+      : `- Start: [[blocks/halvings/${String(startBlock).padStart(7, '0')}|Block ${startBlock.toLocaleString()}]] (${epoch === 1 ? '1st' : epoch === 2 ? '2nd' : epoch === 3 ? '3rd' : '4th'} halving)`,
     epoch < 4
       ? `- End: block ${endBlock.toLocaleString()} (next halving at block ${(epoch + 1) * 210_000})`
       : `- End: block ${endBlock.toLocaleString()} (next halving at block ${(epoch + 1) * 210_000} — beyond v0.1 fixture range)`,
@@ -1165,8 +1169,11 @@ function walletsIndexMarkdown() {
     if (list.length === 0) return '_(none)_';
     return list
       .map(
+        // Basename wikilink — Obsidian + sister's validator both
+        // resolve `[[<address>]]` to the wallet file regardless of
+        // depth. Avoids hard-coding the wallets/<role>/ path.
         (w) =>
-          `- [[${ROLE_FOLDER[w.role]}/${w.address}|${aliasFor(w)}]] · first seen block ${w.firstSeenBlock.toLocaleString()} · ${w.txCount.toLocaleString()} txs`,
+          `- [[${w.address}|${aliasFor(w)}]] · first seen block ${w.firstSeenBlock.toLocaleString()} · ${w.txCount.toLocaleString()} txs`,
       )
       .join('\n');
   };
@@ -1203,7 +1210,18 @@ function walletsIndexMarkdown() {
   ].join('\n');
 }
 
-writeFile('wallets/INDEX.md', walletsIndexMarkdown());
+// Emit at vault root rather than `wallets/INDEX.md` because the
+// validator (chain-tools/vault/validate.mjs) classifies anything
+// under wallets/ as a wallet markdown and demands the wallet schema.
+// Top-level placement keeps it as free-form + still surfaces it
+// via Obsidian's file tree.
+writeFile('WALLETS.md', walletsIndexMarkdown());
+// Clean up the old location if a previous gen left it lying around.
+try {
+  fs.unlinkSync(path.join(VAULT_ROOT, 'wallets', 'INDEX.md'));
+} catch (e) {
+  // already absent — fine.
+}
 
 // ---------- summary ----------------------------------------------------------
 

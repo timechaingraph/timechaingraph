@@ -2,6 +2,7 @@
 
 import { useTimegridStore } from '@/store/timegridStore';
 import { epochFromHeight, isHalvingBlock } from '@/types/block';
+import { subsidyAtBlock, cumulativeSubsidy } from '@/lib/spiral';
 
 /**
  * BlockStats — block-level metadata for whatever block the scrubber
@@ -30,6 +31,16 @@ function formatDate(d: Date): string {
   return d.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
+// Compact BTC formatter for the issuance running-total. Uses comma
+// thousands at >=1k, two decimals at fractional values, no fractional
+// digits otherwise — keeps the panel scannable while preserving
+// fractional precision around halving boundaries.
+function formatBtc(n: number): string {
+  if (n >= 1_000) return Math.round(n).toLocaleString();
+  if (Number.isInteger(n)) return n.toLocaleString();
+  return n.toFixed(2);
+}
+
 export function BlockStats() {
   const currentBlock = useTimegridStore((s) => s.currentBlock);
   const latestBlock = useTimegridStore((s) => s.latestBlock);
@@ -39,6 +50,13 @@ export function BlockStats() {
   const halvings = Math.floor(currentBlock / 210_000);
   const isHalving = isHalvingBlock(currentBlock);
   const estimatedDate = estimateBlockDate(currentBlock);
+  const subsidy = subsidyAtBlock(currentBlock);
+  const issued = cumulativeSubsidy(currentBlock);
+  // Blocks remaining until the next subsidy halving. On a halving
+  // block (currentBlock % 210k === 0 && > 0), this resets to 210k.
+  // We display the live countdown so users get a visceral sense of
+  // how close the chain is to its next halving as they scrub.
+  const blocksToNextHalving = 210_000 - (currentBlock % 210_000);
 
   return (
     <div className="brass-panel rounded-lg p-5">
@@ -65,6 +83,12 @@ export function BlockStats() {
             epoch {epoch} · {halvings} {halvings === 1 ? 'halving' : 'halvings'} crossed
           </p>
           <dl className="mt-4 grid grid-cols-2 gap-3 text-mono text-xs">
+            <Field label="Block subsidy" value={`${subsidy} BTC`} />
+            <Field label="Issued so far" value={`${formatBtc(issued)} BTC`} />
+            <Field
+              label="Next halving"
+              value={`in ${blocksToNextHalving.toLocaleString()} blocks`}
+            />
             <Field label="Estimated date" value={formatDate(estimatedDate)} />
             <Field label="Latest tip" value={`block ${latestBlock.toLocaleString()}`} />
           </dl>

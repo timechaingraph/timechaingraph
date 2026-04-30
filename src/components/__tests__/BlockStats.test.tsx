@@ -68,4 +68,45 @@ describe('<BlockStats>', () => {
     // the right neighbourhood.
     expect(getByText(/201[23]-/)).toBeTruthy();
   });
+
+  it('shows the block subsidy in BTC', () => {
+    // Use block 1 (not 0) so the subsidy "50 BTC" is distinguishable
+    // from the cumulative-issued "100 BTC" at the same scrubber pos.
+    useTimegridStore.getState().setLatestBlock(876_000);
+    useTimegridStore.getState().setCurrentBlock(1);
+    const { getByText } = render(<BlockStats />);
+    expect(getByText(/^50 BTC$/)).toBeTruthy();
+    expect(getByText(/^100 BTC$/)).toBeTruthy();
+  });
+
+  it('shows the fractional subsidy past the second halving (12.5 BTC)', () => {
+    useTimegridStore.getState().setLatestBlock(876_000);
+    useTimegridStore.getState().setCurrentBlock(420_000);
+    const { getByText } = render(<BlockStats />);
+    expect(getByText(/^12\.5 BTC$/)).toBeTruthy();
+  });
+
+  it('shows the cumulative-issued running total', () => {
+    useTimegridStore.getState().setLatestBlock(876_000);
+    useTimegridStore.getState().setCurrentBlock(209_999);
+    const { getByText } = render(<BlockStats />);
+    // Through epoch 0: 210k blocks × 50 BTC = 10,500,000 BTC
+    expect(getByText(/^10,500,000 BTC$/)).toBeTruthy();
+  });
+
+  it('shows the live countdown to the next halving', () => {
+    // Block 209,999 is one block away from the first halving at 210,000.
+    useTimegridStore.getState().setLatestBlock(876_000);
+    useTimegridStore.getState().setCurrentBlock(209_999);
+    const { getByText } = render(<BlockStats />);
+    expect(getByText(/^in 1 blocks$/)).toBeTruthy();
+  });
+
+  it('resets the halving countdown to 210,000 ON a halving block', () => {
+    useTimegridStore.getState().setLatestBlock(876_000);
+    useTimegridStore.getState().setCurrentBlock(210_000);
+    const { getByText } = render(<BlockStats />);
+    // Just crossed a halving — next one is 210k blocks away.
+    expect(getByText(/^in 210,000 blocks$/)).toBeTruthy();
+  });
 });

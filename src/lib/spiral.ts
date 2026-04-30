@@ -58,22 +58,29 @@ export function spiralCoord(n: number): [number, number] {
 
 /**
  * Compute the Bitcoin coinbase subsidy at a given block height,
- * in whole BTC. Halves every 210,000 blocks; reaches 0 around block
+ * in BTC. Halves every 210,000 blocks; reaches 0 around block
  * 6.93M (33 halvings, after which no further coins are issued).
+ *
+ * Returns the *exact fractional* subsidy (50, 25, 12.5, 6.25, 3.125, …),
+ * matching `chain-tools/lib/chain.mjs::subsidyBtcAt`. Earlier versions
+ * used `50 >>> halvings` which floor-truncated to integers; that
+ * disagreed with the real Bitcoin schedule past the second halving.
+ * For sat-precise integer arithmetic, use the bigint version in
+ * `chain.mjs::subsidySatsAt`.
  */
 export function subsidyAtBlock(blockHeight: number): number {
   if (blockHeight < 0) return 0;
   const halvings = Math.floor(blockHeight / 210_000);
   if (halvings >= 33) return 0;
-  // Initial subsidy 50 BTC, halved `halvings` times. Bitwise shift is
-  // safe here because halvings ≤ 32 by the guard above.
-  return 50 >>> halvings;
+  return 50 / Math.pow(2, halvings);
 }
 
 /**
  * Total cumulative coins minted from genesis through `blockHeight`
  * inclusive. Useful for picking a coin's spiral index given its
- * `(block, withinBlockIndex)` coordinates.
+ * `(block, withinBlockIndex)` coordinates, or for surfacing the
+ * "BTC issued so far" reading in block-stats panels. Asymptotes to
+ * 21,000,000 BTC.
  */
 export function cumulativeSubsidy(blockHeight: number): number {
   if (blockHeight < 0) return 0;
@@ -81,7 +88,7 @@ export function cumulativeSubsidy(blockHeight: number): number {
   let cursor = 0;
   let halving = 0;
   while (cursor <= blockHeight) {
-    const subsidy = halving < 33 ? 50 >>> halving : 0;
+    const subsidy = halving < 33 ? 50 / Math.pow(2, halving) : 0;
     if (subsidy === 0) break;
     const epochEnd = (halving + 1) * 210_000 - 1;
     const blocksInEpoch = Math.min(blockHeight, epochEnd) - cursor + 1;
