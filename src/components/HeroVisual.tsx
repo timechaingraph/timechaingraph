@@ -1,5 +1,5 @@
 /**
- * HeroVisual — Obsidian-style force-directed wallet graph, brass-framed.
+ * HeroVisual — force-directed wallet network, brass-framed.
  *
  * Organic node placement (density-biased toward origin), visible transaction
  * bonds between nearby pairs, brass annulus with halving notches and rivet

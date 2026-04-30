@@ -1,63 +1,88 @@
 import type { Metadata } from 'next';
-import { UnderDevelopment } from '@/components/UnderDevelopment';
 
 export const metadata: Metadata = {
-  title: 'Donate',
+  title: 'Fund the node',
   description:
-    'Support Timechain development. Lightning, GitHub Sponsors, OpenSats — donations only, no paid tiers.',
+    'Support Timechain Graph. Lightning, GitHub Sponsors, OpenSats. Donations only — no paywall, no token, no funding round.',
 };
+
+const LIGHTNING_ADDRESS = 'donate@timechaingraph.com';
+const GITHUB_SPONSORS_URL = 'https://github.com/sponsors';
 
 export default function DonatePage() {
   return (
     <div className="py-12 md:py-16">
       <p className="text-mono text-xs uppercase tracking-[0.32em] text-[color:var(--color-amber)]">
-        Support · optional
+        Fund the node · optional
       </p>
       <h1 className="text-display mt-3 text-4xl font-semibold leading-[1.05] md:text-6xl">
         If it&apos;s useful,
         <br />
-        <span className="brass-shimmer">keep it going.</span>
+        <span className="brass-shimmer">keep it lit.</span>
       </h1>
       <p className="mt-6 max-w-2xl text-lg leading-relaxed text-[color:var(--color-text-secondary)] md:text-xl">
-        Timechain is free for everyone — Grid, Graph, API, all tiers, no
-        paywall. The project runs on donations. Lightning is preferred
-        because it keeps support KYC-free; cards are not currently
-        accepted to keep the privacy posture clean.
+        Free for everyone — every view, every block, every tier. The
+        operator runs a self-hosted Bitcoin node so your viewer stays
+        private. Lightning is preferred: instant, KYC-free, settles in
+        seconds.
       </p>
-
-      <div className="mt-10">
-        <UnderDevelopment
-          targetVersion="v0.2"
-          description="Donation rails go live with the first paid-feature-free release of the API. For now, watch this page for Lightning address + GitHub Sponsors links."
-        />
-      </div>
 
       <div className="mt-12 grid gap-6 md:grid-cols-2">
         <Channel
           title="Lightning"
           accent="var(--color-amber)"
-          body="Lightning address (LNURL). Instant settlement. No KYC. Recommended."
-          status="planned"
-        />
+          status="primary"
+          body="Lightning address (LNURL). Instant. No KYC."
+        >
+          <code
+            className="text-mono mt-4 block break-all rounded-md border border-[color:var(--color-card-border)] bg-[color:var(--color-background-light)] px-3 py-2 text-sm text-[color:var(--color-amber)]"
+          >
+            {LIGHTNING_ADDRESS}
+          </code>
+          <p className="mt-3 text-xs text-[color:var(--color-text-muted)]">
+            Paste into any Lightning wallet (Wallet of Satoshi, Phoenix,
+            Zeus, Strike).
+          </p>
+        </Channel>
+
         <Channel
           title="GitHub Sponsors"
           accent="var(--color-accent-cyan)"
-          body="Recurring or one-off, settled in fiat by GitHub. Configured via .github/FUNDING.yml."
           status="planned"
-        />
+          body="Recurring or one-off, settled in fiat by GitHub. Configured via .github/FUNDING.yml."
+        >
+          <a
+            href={GITHUB_SPONSORS_URL}
+            className="text-mono mt-4 inline-block rounded-md border border-[color:var(--color-card-border)] bg-[color:var(--color-background-light)] px-4 py-2 text-sm transition-colors hover:border-[color:var(--color-accent-cyan)]"
+            style={{ color: 'var(--color-accent-cyan)' }}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            Sponsor on GitHub ⟶
+          </a>
+        </Channel>
+
         <Channel
           title="OpenSats"
           accent="var(--color-gold)"
-          body="Grant application planned post-launch. OpenSats funds open-source Bitcoin work."
           status="post-launch"
+          body="Grant application planned post-launch. OpenSats funds open-source Bitcoin work — public, audited, no strings."
         />
+
         <Channel
-          title="BTCPay donate widget"
+          title="BTCPay"
           accent="var(--color-brass-bright)"
-          body='Self-hosted "donate any amount" via BTCPay Server. Privacy-first; no third-party processor.'
           status="optional"
+          body="Self-hosted donate widget via BTCPay Server. Privacy-first; no third-party processor. Coming v0.2."
         />
       </div>
+
+      <p className="mt-12 max-w-2xl text-sm leading-relaxed text-[color:var(--color-text-muted)]">
+        No coin. No token. No funding round. The project ships its
+        source open and welcomes audit. If it works for you and you can
+        spare a sat, the node thanks you. If you can&apos;t, it&apos;s
+        still free.
+      </p>
     </div>
   );
 }
@@ -67,11 +92,13 @@ function Channel({
   accent,
   body,
   status,
+  children,
 }: {
   title: string;
   accent: string;
   body: string;
   status: string;
+  children?: React.ReactNode;
 }) {
   return (
     <div className="brass-panel rounded-lg p-6">
@@ -89,6 +116,7 @@ function Channel({
       <p className="mt-3 text-sm leading-relaxed text-[color:var(--color-text-secondary)]">
         {body}
       </p>
+      {children}
     </div>
   );
 }

@@ -31,7 +31,12 @@ export interface BlockSnapshot {
   halving: boolean;
   /** Halving epoch index (0 = pre-first-halving). */
   epoch: number;
-  /** Spiral-index of the first new coin minted at this block. */
+  /**
+   * Spiral index of the first new coin minted at this block —
+   * equivalent to the cumulative coin count BEFORE the block. Each
+   * new coin's grid position is `spiralCoord(newCoinFromIndex + i)`
+   * for `i` in `[0, newCoinCount)`.
+   */
   newCoinFromIndex: number;
   /** Number of new coins minted at this block (== subsidy in epoch 0). */
   newCoinCount: number;

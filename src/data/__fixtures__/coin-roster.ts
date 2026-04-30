@@ -21,15 +21,18 @@ const SATOSHI_ADDRESS = '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa';
 
 /**
  * Number of blocks worth of coinbase outputs minted into the demo
- * roster. With 50-BTC subsidy this gives 50 × DEMO_BLOCK_COUNT coins.
+ * roster. With 50-BTC subsidy in epoch 0, this gives 50 ×
+ * DEMO_BLOCK_COUNT coins.
  *
- * v0.1 staging at 1,000 blocks (50,000 coins) — phase 1 of the
- * "genesis through first-epoch" expansion the user briefed
- * 2026-04-30. Full first epoch (210,000 blocks → 10.5M coins) is
- * the v0.2+ target; the 50k staging keeps the renderer's PIXI
- * Graphics batch within naive-rendering perf budget.
+ * v0.1 staging at 3,000 blocks → 150,000 coins → 750-block Satoshi
+ * heartland + 45 contiguous-50-block miner runs spread across the
+ * 5 mock miners (9 arcs each forming a ring-bandolier pattern).
+ * Reaching the actual first halving (block 210,000 → 10.5M coins)
+ * would blow PIXI's naive Graphics-per-cell budget; v0.2+ ships an
+ * LOD renderer that lazy-creates cells around the scrubber to
+ * unlock the full chain.
  */
-export const DEMO_BLOCK_COUNT = 1_000;
+export const DEMO_BLOCK_COUNT = 3_000;
 
 const minerAddresses = FREE_TIER_50.filter((w) => w.role === 'miner').map(
   (w) => w.address,
@@ -42,35 +45,67 @@ if (minerAddresses.length === 0) {
 }
 
 /**
- * Number of genesis-era blocks attributed to Satoshi. In real Bitcoin
- * lore Satoshi mined a large fraction of blocks before stepping back
- * around April 2010 (~750 blocks worth ~37,500 BTC, the so-called
- * Patoshi cluster). The fixture mirrors that: Satoshi gets the first
- * SATOSHI_ERA_BLOCKS, mock miners share what comes after.
- *
- * Effect on the visual: Satoshi's coins fill the origin region
- * (cumulative count = SATOSHI_ERA_BLOCKS × 50). With the default 750
- * that's 37,500 coins centered at (0,0), forming the brass-gold
- * heartland of the lattice. The user's "covering origin is satoshi
- * coins" + "satoshi as 1st at all times" directive is satisfied by
- * data, not by a sort-time hack.
+ * Number of genesis-era blocks attributed to Satoshi (Patoshi
+ * cluster mirror — Satoshi mined ~750 of the earliest blocks).
+ * Her coins fill the inner spiral around origin.
  */
 const SATOSHI_ERA_BLOCKS = 750;
 
 /**
+ * Number of blocks each non-Satoshi miner mines in a contiguous
+ * run. With DEMO_BLOCK_COUNT=1000 and 5 mock miners sharing the
+ * 250 post-Satoshi blocks, each miner gets a 50-block run = 2,500
+ * contiguous coins on the global spiral, forming a single tight
+ * arc on the next ring(s) past Satoshi's footprint. Per user
+ * directive 2026-04-30 ("the miners should cover the outside of
+ * the satoshi border at start, and only then move together as
+ * they grow"), runs are sized to fill outward layers cleanly.
+ */
+const MINER_RUN_LENGTH = 50;
+
+/**
  * Pick the miner for a given block deterministically. The first
  * SATOSHI_ERA_BLOCKS belong to Satoshi (origin heartland); blocks
- * past that rotate through the fixture's mock miner cohort.
+ * past that get assigned in CONTIGUOUS RUNS to each mock miner
+ * (Miner1 takes blocks 750-799, Miner2 takes 800-849, etc.) so
+ * each miner's coins form a single tight spiral arc rather than
+ * scattering across the outer rings.
  */
 function pickMinerForBlock(blockHeight: number): string {
   if (blockHeight < SATOSHI_ERA_BLOCKS) return SATOSHI_ADDRESS;
-  return minerAddresses[blockHeight % minerAddresses.length];
+  const minerOffset = blockHeight - SATOSHI_ERA_BLOCKS;
+  const minerIdx =
+    Math.floor(minerOffset / MINER_RUN_LENGTH) % minerAddresses.length;
+  return minerAddresses[minerIdx];
 }
 
 /**
- * Mint coins from genesis through `maxBlock` inclusive. Walks the
- * issuance schedule block-by-block, emitting one Coin per coinbase
- * output, placed on the 2D spiral by mint order.
+ * Mint coins from genesis through `maxBlock` inclusive.
+ *
+ * Per user directive 2026-04-30: a single global spiral starting at
+ * (0, 0), every block's coins land at the next contiguous spiral
+ * indices. No separate empire centers, no overlapping placements —
+ * each grid cell maps to exactly one coin (== exactly one owner).
+ *
+ * Visual effect:
+ *   - Block 0 (Satoshi): coins fill spiral indices 0..49 — a small
+ *     square right at origin.
+ *   - Blocks 1..749 (Satoshi): indices 50..37,499 — her coins fill
+ *     the inner ~97-radius spiral.
+ *   - Blocks 750..799 (Miner1, contiguous run): indices 37,500..39,999
+ *     — a tight 2,500-coin arc forming the next ring(s) outside
+ *     Satoshi's border.
+ *   - Subsequent miners stack outward in the same way.
+ *
+ * Each coin's `spiralIndex` is the GLOBAL mint counter — equivalent
+ * to its position on the single spiral. With this convention the
+ * Prolog `spiral_neighbor` rule works trivially (consecutive indices
+ * are spatial neighbors).
+ *
+ * v0.2+ direction (deferred): mobile real estate. When a coin
+ * transfers ownership, swap it with a nearby unowned coin in the
+ * new owner's neighborhood. The placement primitive here doesn't
+ * model that yet — owner === minter throughout v0.1.
  */
 export function mintCoinsFromGenesis(maxBlock: number): Coin[] {
   if (maxBlock < 0) return [];

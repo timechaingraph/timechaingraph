@@ -79,11 +79,14 @@ describe('<BlockStats>', () => {
     expect(getByText(/^100 BTC$/)).toBeTruthy();
   });
 
-  it('shows the fractional subsidy past the second halving (12.5 BTC)', () => {
+  it('floors the fractional subsidy past the second halving (12 BTC, not 12.5)', () => {
+    // Per user directive 2026-04-30, fractions are scrubbed to whole
+    // BTC for display since the grid quantizes 1 cell = 1 BTC.
+    // Block 420,000 has subsidy 12.5 BTC; the panel displays 12.
     useTimegridStore.getState().setLatestBlock(876_000);
     useTimegridStore.getState().setCurrentBlock(420_000);
     const { getByText } = render(<BlockStats />);
-    expect(getByText(/^12\.5 BTC$/)).toBeTruthy();
+    expect(getByText(/^12 BTC$/)).toBeTruthy();
   });
 
   it('shows the cumulative-issued running total', () => {

@@ -7,7 +7,7 @@ import { WalletInspector } from '@/components/WalletInspector';
 export const metadata: Metadata = {
   title: 'Graph view',
   description:
-    'Force-directed Obsidian-style graph of Bitcoin wallets. Position emerges from transaction frequency. Drag nodes to play with the layout. timechaingraph.com.',
+    "Bitcoin's living network. Every wallet a neuron. Every transaction a synapse. Watch the brain of the chain think, block by block.",
 };
 
 /**

@@ -82,47 +82,39 @@ export function BlockNarrative() {
 
   return (
     <div
-      className="brass-panel pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-lg px-4 py-2.5 text-mono text-xs"
+      className="brass-panel pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-3 rounded-full px-4 py-1.5 text-mono text-[11px]"
       style={{
         backgroundColor: 'rgba(8, 8, 12, 0.78)',
-        backdropFilter: 'blur(6px)',
-        WebkitBackdropFilter: 'blur(6px)',
-        minWidth: '260px',
-        maxWidth: '90%',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
       }}
       aria-live="polite"
       aria-atomic="true"
     >
-      <div className="flex items-baseline justify-between gap-3">
+      <span
+        className="tracking-[0.22em] uppercase"
+        style={{ color: 'var(--color-brass-bright)' }}
+      >
+        Blk {snapshot.block.toLocaleString()}
+      </span>
+      <span
+        aria-hidden
+        className="inline-block h-1 w-1 shrink-0 rounded-full"
+        style={{ background: minter.color, boxShadow: `0 0 6px ${minter.color}` }}
+      />
+      <span style={{ color: minter.color }}>{minter.label}</span>
+      <span className="text-[color:var(--color-text-muted)]">
+        +{Math.floor(snapshot.subsidy)} BTC ·{' '}
+        {Math.floor(snapshot.cumulativeSupplyBtc).toLocaleString()} total
+      </span>
+      {isHalving && (
         <span
-          className="text-mono text-[10px] uppercase tracking-[0.28em]"
-          style={{ color: 'var(--color-brass-bright)' }}
+          className="text-[9px] uppercase tracking-[0.22em]"
+          style={{ color: 'var(--color-amber)' }}
         >
-          Block {snapshot.block.toLocaleString()}
+          ⚡ halving
         </span>
-        {isHalving && (
-          <span
-            className="text-mono text-[9px] uppercase tracking-[0.22em]"
-            style={{ color: 'var(--color-amber)' }}
-          >
-            ⚡ halving
-          </span>
-        )}
-      </div>
-      <div className="mt-1.5 flex items-center gap-2">
-        <span
-          aria-hidden
-          className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
-          style={{ background: minter.color, boxShadow: `0 0 6px ${minter.color}` }}
-        />
-        <span style={{ color: minter.color }}>Mined by {minter.label}</span>
-      </div>
-      <div className="mt-1 text-[color:var(--color-text-secondary)]">
-        + {snapshot.subsidy} BTC opened
-        <span className="ml-2 text-[color:var(--color-text-muted)]">
-          · {snapshot.cumulativeSupplyBtc.toLocaleString()} BTC total
-        </span>
-      </div>
+      )}
     </div>
   );
 }

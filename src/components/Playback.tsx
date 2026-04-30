@@ -35,12 +35,15 @@ export const SPEED_OPTIONS: readonly PlaybackSpeed[] = [
   // 10 seconds per block lets the user follow the territory expanding
   // around Satoshi without feeling rushed. This is the default.
   { label: 'Narrate', blocksPerTick: 1, tickIntervalMs: 10_000 },
-  // Slow / Normal / Fast / Max — manual fast-forward for users who
-  // already know the shape and want to jump ahead.
-  { label: 'Slow', blocksPerTick: 50, tickIntervalMs: 60 },
-  { label: 'Normal', blocksPerTick: 500, tickIntervalMs: 60 },
-  { label: 'Fast', blocksPerTick: 5_000, tickIntervalMs: 60 },
-  { label: 'Max', blocksPerTick: 50_000, tickIntervalMs: 60 },
+  // Slow / Normal / Fast / Max — block-by-block at a steady human-
+  // readable cadence. All four advance ONE block per tick so the
+  // empire-border + block-narrative card update on every step;
+  // they only differ in the tick interval. Per user directive
+  // 2026-04-30: Slow=1bps, Normal=2bps, Fast=3bps, Max=10bps.
+  { label: 'Slow', blocksPerTick: 1, tickIntervalMs: 1000 },
+  { label: 'Normal', blocksPerTick: 1, tickIntervalMs: 500 },
+  { label: 'Fast', blocksPerTick: 1, tickIntervalMs: 333 },
+  { label: 'Max', blocksPerTick: 1, tickIntervalMs: 100 },
 ] as const;
 
 interface PlaybackProps {
@@ -118,18 +121,18 @@ export function Playback({ autoStart = false }: PlaybackProps) {
         : '▶ Play';
 
   return (
-    <div className="brass-panel flex flex-wrap items-center gap-3 rounded-lg p-3">
+    <div className="flex items-center gap-1.5 px-2">
       <button
         type="button"
         onClick={togglePlay}
         disabled={!ready}
         aria-label={playing ? 'Pause playback' : 'Start playback'}
-        className="text-mono rounded-md border border-[color:var(--color-card-border)] bg-[color:var(--color-background-light)] px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[color:var(--color-text-primary)] transition-colors hover:border-[color:var(--color-amber)] hover:text-[color:var(--color-amber)] disabled:opacity-40"
+        className="text-mono shrink-0 rounded-md border border-[color:var(--color-card-border)] bg-[color:var(--color-background-light)] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[color:var(--color-text-primary)] transition-colors hover:border-[color:var(--color-amber)] hover:text-[color:var(--color-amber)] disabled:opacity-40"
       >
         {buttonLabel}
       </button>
       <div
-        className="flex items-center gap-1"
+        className="flex items-center gap-0.5"
         role="group"
         aria-label="Playback speed"
       >
@@ -143,9 +146,9 @@ export function Playback({ autoStart = false }: PlaybackProps) {
               disabled={!ready}
               aria-pressed={active}
               className={[
-                'text-mono rounded-md px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] transition-colors',
+                'text-mono rounded px-1.5 py-0.5 text-[9px] uppercase tracking-[0.14em] transition-colors',
                 active
-                  ? 'bg-[color:var(--color-amber)]/15 text-[color:var(--color-amber)]'
+                  ? 'bg-[color:var(--color-amber)]/20 text-[color:var(--color-amber)]'
                   : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)]',
                 'disabled:opacity-40',
               ].join(' ')}
@@ -155,11 +158,6 @@ export function Playback({ autoStart = false }: PlaybackProps) {
           );
         })}
       </div>
-      <span className="text-mono ml-auto text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-text-muted)]">
-        {ready
-          ? `block ${currentBlock.toLocaleString()} / ${latestBlock.toLocaleString()}`
-          : 'no data'}
-      </span>
     </div>
   );
 }

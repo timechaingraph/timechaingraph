@@ -1,9 +1,8 @@
 /**
  * Lattice rendering primitives.
  *
- * Generic types and contracts used by the canvas, store, and data adapter.
- * These were once shared via @exodus/lattice-core in the Exodus monorepo;
- * inlined here so this project has no cross-repo dependency.
+ * Generic types and contracts used by the canvas, store, and data
+ * adapter. Self-contained — no cross-repo dependencies.
  */
 
 /** A 2D coordinate in the visual (rendering) coordinate space. */

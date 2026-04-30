@@ -98,3 +98,14 @@ export function cumulativeSubsidy(blockHeight: number): number {
   }
   return total;
 }
+
+// Note (2026-04-30): a previous iteration exposed offset "empire
+// home origin" helpers so each wallet's coins clustered around a
+// distinct centre. That scheme overlapped Satoshi's territory with
+// outer empires when their home radii fell inside her ring footprint.
+// Reverted to the single global spiral for collision-free placement;
+// distinct empires emerge as contiguous spiral arcs (one wallet's
+// MINER_RUN_LENGTH consecutive blocks → one tight arc on the next
+// outer ring(s)). The offset-centre helpers are intentionally not
+// reintroduced — if a future placement scheme wants offset clusters,
+// it should provide collision avoidance up front.

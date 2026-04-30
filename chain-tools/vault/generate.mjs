@@ -1361,7 +1361,15 @@ try {
 // v0.2+ real-chain ingest grows the range to current chain tip.
 
 const BLOCK_SHARD_SIZE = 1_000;
-const SNAPSHOT_THROUGH_BLOCK = Math.min(TIP_BLOCK, 999);
+// Cover all of epoch 0 (genesis through first halving at block 210k)
+// plus a small overlap into epoch 1 so the halving event itself is
+// part of the demo. Per user directive 2026-05-01: "work on
+// implementing the next epoch now, block by block, let's see how it
+// works with more wallets joining throughout time. We should start
+// to see many wallets spawning already." With FREE_TIER_50's
+// firstSeenBlock distribution (whales from 50k, significant from
+// 150k), 211k blocks shows the lattice gradually filling in.
+const SNAPSHOT_THROUGH_BLOCK = Math.min(TIP_BLOCK, 210_999);
 
 // Pick the miner-of-record for a given block height. First 750 blocks
 // belong to Satoshi (Patoshi-era convention); afterwards rotate

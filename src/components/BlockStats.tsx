@@ -50,8 +50,13 @@ export function BlockStats() {
   const halvings = Math.floor(currentBlock / 210_000);
   const isHalving = isHalvingBlock(currentBlock);
   const estimatedDate = estimateBlockDate(currentBlock);
-  const subsidy = subsidyAtBlock(currentBlock);
-  const issued = cumulativeSubsidy(currentBlock);
+  // Per user directive 2026-04-30: "fractions will always be
+  // scrubbed to whole BTC" — every display value floors to the
+  // nearest whole BTC since the grid quantizes 1 cell = 1 BTC.
+  // Post-halving subsidies (12.5, 6.25, 3.125 BTC) round DOWN to
+  // 12, 6, 3 cells per block.
+  const subsidy = Math.floor(subsidyAtBlock(currentBlock));
+  const issued = Math.floor(cumulativeSubsidy(currentBlock));
   // Blocks remaining until the next subsidy halving. On a halving
   // block (currentBlock % 210k === 0 && > 0), this resets to 210k.
   // We display the live countdown so users get a visceral sense of

@@ -14,42 +14,47 @@ beforeEach(() => {
 });
 
 describe('<Scrubber>', () => {
-  it('renders an awaiting-data state when latestBlock is 0', () => {
-    const { getByText } = render(<Scrubber />);
-    expect(getByText(/awaiting data/i)).toBeTruthy();
+  it('renders an awaiting-data placeholder when latestBlock is 0', () => {
+    const { container } = render(<Scrubber />);
+    // Compact form: empty-state is shown as em-dashes flanking the slider.
+    expect(container.textContent).toMatch(/—/);
   });
 
-  it('shows block + epoch when latestBlock is seeded', () => {
+  it('shows the current/latest block readout when seeded', () => {
     useTimegridStore.getState().setLatestBlock(840_000);
     useTimegridStore.getState().setCurrentBlock(500_000);
     const { getByText } = render(<Scrubber />);
     expect(getByText(/500,000/)).toBeTruthy();
-    // block 500_000 → epoch 248 (500_000 / 2016)
-    expect(getByText(/epoch 248/)).toBeTruthy();
+    expect(getByText(/840,000/)).toBeTruthy();
   });
 
-  it('reports halvings crossed', () => {
-    useTimegridStore.getState().setLatestBlock(900_000);
-    useTimegridStore.getState().setCurrentBlock(500_000);
-    const { getByText } = render(<Scrubber />);
-    // 500_000 / 210_000 = 2.38 → 2 halvings crossed
-    expect(getByText(/2 halvings crossed/)).toBeTruthy();
-  });
-
-  it('singularises 1 halving', () => {
-    useTimegridStore.getState().setLatestBlock(900_000);
-    useTimegridStore.getState().setCurrentBlock(300_000);
-    const { getByText } = render(<Scrubber />);
-    // 300_000 / 210_000 = 1.43 → 1 halving crossed (singular)
-    expect(getByText(/1 halving crossed/)).toBeTruthy();
+  it('disables the range input when not ready', () => {
+    const { container } = render(<Scrubber />);
+    const slider = container.querySelector(
+      'input[type="range"]',
+    ) as HTMLInputElement;
+    expect(slider.disabled).toBe(true);
   });
 
   it('updates currentBlock when the range input changes', () => {
     useTimegridStore.getState().setLatestBlock(840_000);
     useTimegridStore.getState().setCurrentBlock(0);
     const { container } = render(<Scrubber />);
-    const slider = container.querySelector('input[type="range"]') as HTMLInputElement;
+    const slider = container.querySelector(
+      'input[type="range"]',
+    ) as HTMLInputElement;
     fireEvent.change(slider, { target: { value: '420000' } });
     expect(useTimegridStore.getState().currentBlock).toBe(420_000);
+  });
+
+  it('pauses auto-playback on manual scrub', () => {
+    useTimegridStore.getState().setLatestBlock(840_000);
+    useTimegridStore.getState().setPlaybackPlaying(true);
+    const { container } = render(<Scrubber />);
+    const slider = container.querySelector(
+      'input[type="range"]',
+    ) as HTMLInputElement;
+    fireEvent.change(slider, { target: { value: '100000' } });
+    expect(useTimegridStore.getState().playbackPlaying).toBe(false);
   });
 });

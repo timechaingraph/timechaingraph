@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Application, Container, Graphics } from 'pixi.js';
 import { FIXTURE_SUBSTRATE } from '@/data/substrate';
-import { DEMO_BLOCK_COUNT } from '@/data/__fixtures__/coin-roster';
 import { ROLE_COLOR, ROLE_RADIUS } from '@/lib/role-visuals';
 import { useTimegridStore } from '@/store/timegridStore';
 import { BRAND_TAGLINE } from '@/lib/site-config';
@@ -57,13 +56,13 @@ const PULSE_SPEED = 0.04;
 const PULSE_RADIUS = 1.8;
 const PULSE_COLOR = 0xffd700; // brass-gold
 
-/** Hover-spotlight multiplier for non-neighbors (Obsidian-graph signature). */
+/** Hover-spotlight multiplier for non-neighbors — focus on the active branch. */
 const SPOTLIGHT_DIM = 0.15;
 
 /**
  * Spotlight depths the user can cycle through. Hop 1 = direct
- * neighbors only (Obsidian-graph default). Hop 2/3 = expanding
- * lineage (matches the empire BFS in the vault generator). 'all'
+ * neighbors only (default). Hop 2/3 = expanding lineage (matches
+ * the empire BFS in the brain generator). 'all'
  * lifts the dim entirely so the full lattice reads as bright.
  */
 const SPOTLIGHT_DEPTHS = [1, 2, 3, Infinity] as const;
@@ -79,13 +78,15 @@ const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 5;
 const ZOOM_STEP = 0.0015;
 
-// Bound the graph's playback timeline to the same demo range that
-// drives the per-block snapshot files served at /blocks/*. With
-// DEMO_BLOCK_COUNT=1000 the scrubber covers blocks 0..999 — the
-// genesis era — so every block the user lands on has a snapshot
-// the BlockNarrative HUD can fetch. v0.2+ chain-real ingest grows
-// the range to current chain height.
-const FIXTURE_LATEST_BLOCK = DEMO_BLOCK_COUNT - 1;
+// Demo timeline upper bound. Covers all of epoch 0 (genesis through
+// first halving at block 210,000) plus the halving itself. Aligns
+// with chain-tools/vault/generate.mjs::SNAPSHOT_THROUGH_BLOCK so the
+// scrubber range == the snapshot range == the playback timeline. As
+// the user scrubs through, FREE_TIER_50's wallets spawn at their
+// firstSeenBlock — Satoshi at 0, miners by ~44k, whales from ~50k,
+// significant from ~150k. v0.2+ real-chain ingest grows the range
+// to current chain tip.
+const FIXTURE_LATEST_BLOCK = 210_999;
 
 function djb2(s: string): number {
   let h = 5381;
@@ -126,9 +127,9 @@ type Link = PhysicsLink & {
 };
 
 /**
- * GraphView — force-directed Obsidian-style renderer for timechaingraph.com.
+ * GraphView — force-directed renderer for timechaingraph.com.
  *
- * The full Obsidian-graph-engine experience:
+ * The full living-network experience:
  *   - Velocity-Verlet physics (gravity + Coulomb repulsion + Hooke springs)
  *   - Drag-to-pin per node (the "game feel")
  *   - Pan empty space, scroll to zoom
@@ -622,8 +623,12 @@ export function GraphView() {
         document.removeEventListener('graphview:reset', onReset);
       });
 
-      // Wheel zoom on the canvas DOM element. preventDefault stops the
-      // page from scrolling while the user explores the lattice.
+      // Wheel zoom on the canvas DOM element. Cursor-anchored: the
+      // world point under the mouse stays under the mouse after the
+      // zoom — the lattice grows or shrinks around wherever the user
+      // is looking, instead of always pivoting on world-origin.
+      // preventDefault stops the page from scrolling while the user
+      // explores the lattice.
       const onWheel = (event: WheelEvent): void => {
         event.preventDefault();
         const cam = useTimegridStore.getState().camera;
@@ -632,7 +637,20 @@ export function GraphView() {
           ZOOM_MIN,
           Math.min(ZOOM_MAX, cam.zoom * (1 + delta)),
         );
-        setCamera({ position: cam.position, zoom: nextZoom });
+        if (nextZoom === cam.zoom) return;
+
+        // Mouse position in stage coords (canvas-local, top-left = 0,0).
+        const rect = app.canvas.getBoundingClientRect();
+        const mx = event.clientX - rect.left;
+        const my = event.clientY - rect.top;
+        // World point currently under the mouse, before the zoom.
+        const wx = (mx - cam.position.x) / cam.zoom;
+        const wy = (my - cam.position.y) / cam.zoom;
+        // Camera position needed so that (wx, wy) lands at (mx, my)
+        // after applying nextZoom.
+        const nextX = mx - wx * nextZoom;
+        const nextY = my - wy * nextZoom;
+        setCamera({ position: { x: nextX, y: nextY }, zoom: nextZoom });
       };
       app.canvas.addEventListener('wheel', onWheel, { passive: false });
       cleanupFns.push(() => {
@@ -830,7 +848,7 @@ export function GraphView() {
       <div
         ref={containerRef}
         className="absolute inset-0 cursor-grab active:cursor-grabbing"
-        aria-label="Timechain Graph lattice — force-directed Obsidian-style placement of Bitcoin wallets, drag empty space to pan, scroll to zoom, drag any wallet to pull it through the layout, click a wallet to focus on its neighborhood, ESC to clear focus"
+        aria-label="Timechain Graph — force-directed Bitcoin wallet network. Drag empty space to pan, scroll to zoom, drag any wallet to pull it through the layout, click a wallet to focus on its neighborhood, ESC to clear focus"
       />
       <button
         type="button"
