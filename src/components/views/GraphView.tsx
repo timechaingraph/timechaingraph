@@ -234,6 +234,13 @@ export function GraphView() {
       type Pulse = { fromIdx: number; toIdx: number; progress: number };
       const pulses: Pulse[] = [];
 
+      // Tracks which block the pulse-spawner last saw, so playback
+      // forward through history fires a pulse on each bond AT its
+      // formation block. The lattice "learns" its connections as the
+      // scrubber moves forward.
+      let lastSpawnedBlock = useTimegridStore.getState().currentBlock;
+      const MAX_PULSES_PER_FRAME = 5;
+
       function spawnPulsesFromSeed(seedAddress: string): void {
         const seedIdx = idxByAddr.get(seedAddress);
         if (seedIdx === undefined) return;
@@ -244,6 +251,31 @@ export function GraphView() {
           if (toIdx === null) continue;
           pulses.push({ fromIdx: seedIdx, toIdx, progress: 0 });
         }
+      }
+
+      function spawnPulsesForNewBonds(): void {
+        if (currentBlock <= lastSpawnedBlock) {
+          // Backward scrubbing or no advance — re-baseline without
+          // spawning.
+          lastSpawnedBlock = currentBlock;
+          return;
+        }
+        let spawned = 0;
+        for (const link of links) {
+          if (spawned >= MAX_PULSES_PER_FRAME) break;
+          if (
+            link.formationBlock > lastSpawnedBlock &&
+            link.formationBlock <= currentBlock
+          ) {
+            const a = bodies[link.a];
+            const b = bodies[link.b];
+            // Skip if either endpoint isn't yet visible
+            if (a.graphics.alpha === 0 || b.graphics.alpha === 0) continue;
+            pulses.push({ fromIdx: link.a, toIdx: link.b, progress: 0 });
+            spawned++;
+          }
+        }
+        lastSpawnedBlock = currentBlock;
       }
 
       let draggedBody: Body | null = null;
@@ -675,6 +707,11 @@ export function GraphView() {
           body.graphics.position.set(cx + body.x, cy + body.y);
           if (body.halo) body.halo.position.set(cx + body.x, cy + body.y);
         }
+
+        // Spawn formation pulses for any bonds that crossed their
+        // formationBlock since the last frame — synapses "fire" as
+        // the brain learns them during playback.
+        spawnPulsesForNewBonds();
 
         // Synapse-fire pulses — render before edges so edges underlay,
         // dots overlay, pulses sit between. Iterate backwards so we
