@@ -2,7 +2,28 @@
   "name": "timechaingraph",
   "version": "0.0.1",
   "private": true,
-  "description": "Timechain Graph — force-directed Obsidian-style graph of Bitcoin wallets at timechaingraph.com. Sister project: timechaingrid.com.",
+  "description": "The brain of Bitcoin — privacy-first force-directed graph of every economically meaningful Bitcoin wallet at timechaingraph.com. Sister project: timechaingrid.com.",
+  "license": "MIT",
+  "author": "Timechaingraph team",
+  "homepage": "https://timechaingraph.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/timechaingraph/timechaingraph.git"
+  },
+  "bugs": {
+    "url": "https://github.com/timechaingraph/timechaingraph/issues"
+  },
+  "keywords": [
+    "bitcoin",
+    "blockchain",
+    "visualization",
+    "force-directed-graph",
+    "pixijs",
+    "nextjs",
+    "privacy-first",
+    "self-hosted",
+    "wallet-graph"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",

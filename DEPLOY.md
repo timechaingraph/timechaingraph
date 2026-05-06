@@ -12,7 +12,7 @@ once GitHub integration is configured).
 | Cloudflare account | Free tier is sufficient. |
 | Domain on Cloudflare | `timechaingraph.com` must already be registered through Cloudflare or have its nameservers delegated to Cloudflare. If still elsewhere, transfer or update nameservers first. |
 | Wrangler CLI | `npx wrangler --version` should work — `wrangler@^4` is in this project's devDependencies. `npx wrangler login` once to authenticate. |
-| GitHub repo | `https://github.com/timechaingraph/timechaingraph` (private). |
+| GitHub repo | `https://github.com/timechaingraph/timechaingraph` (private; MIT-licensed code). |
 
 Do NOT install `gcloud`, `vercel`, `netlify-cli`, or any other CLI — this
 project deploys to Cloudflare and only Cloudflare.
