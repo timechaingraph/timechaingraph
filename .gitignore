@@ -52,8 +52,26 @@ public/blocks/
 __pycache__/
 *.pyc
 
-# local assistant tooling session state — local-only, regenerated per session
-internal session files/scheduled_tasks.lock
+# local assistant tooling agent state — never commit to git (per user directive
+# 2026-05-03: "make sure we are not storing session and prompt data on
+# github ever"). The internal session files/ tree contains agent identity, memory,
+# inter-agent messaging (sibling-inbox/outbox), session state, and
+# learned context — all of which is local-only. The root the project spec
+# duplicates README.md content for local assistant tooling's session-start context;
+# OSS contributors read README.md instead. Anyone wanting to use
+# local assistant tooling with this project re-bootstraps their own internal session files/.
+/the project spec
+internal session files/
+
+# Operator-internal sister-coordination script (per Grid sister B-002,
+# adopted as Joint via B-003). References sister project's internal session files/.
+scripts/sync-sibling.sh
+
+# Timechain Corporation internal documents — operating agreements, board
+# decisions, financial detail, contracts. Public corp/ documents (charter,
+# policies, templates, public reports) ARE tracked; only corp/internal/
+# is local-only.
+corp/internal/
 
 # Auto-generated Obsidian vault output. Per user directive 2026-04-30:
 # "vault gitignored at all times". Both projections — vault/ (sister's
