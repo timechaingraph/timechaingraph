@@ -31,8 +31,8 @@ describe('chain.mjs constants', () => {
     expect(HALVING_BLOCKS).toEqual([0, 210_000, 420_000, 630_000, 840_000]);
   });
 
-  it('TIP_BLOCK is set to the v0.1 fixture record', () => {
-    expect(TIP_BLOCK).toBe(876_000);
+  it('TIP_BLOCK is snapped to a recent live chain tip', () => {
+    expect(TIP_BLOCK).toBe(947_630);
   });
 
   it('GENESIS_MS aligns with 2009-01-03 18:15 UTC', () => {
@@ -214,15 +214,15 @@ describe('dateApproxAt', () => {
     expect(dateApproxAt(144)).toBe('2009-01-04');
   });
 
-  it('extrapolates TIP_BLOCK to mid-2025 (linear-extrapolation drift)', () => {
-    // The fixture's tip-of-record is set to block 876,000, which on
-    // mainnet was actually mined around April 2026 — but pure linear
-    // extrapolation (10 min/block from 2009-01-03) lands ~6 months
-    // earlier because mainnet runs faster than schedule. The function's
-    // docstring explicitly accepts this drift; the test pins the
-    // *function's* output so a refactor that breaks the math fails
-    // loudly. If we ever switch to a difficulty-aware approximation,
-    // this assertion changes.
-    expect(dateApproxAt(TIP_BLOCK)).toBe('2025-08-31');
+  it('extrapolates TIP_BLOCK to a future date (linear-extrapolation drift)', () => {
+    // TIP_BLOCK = 947,630 was actually mined ~2026-05-02 on mainnet,
+    // but pure linear extrapolation (10 min/block from 2009-01-03)
+    // lands in 2027 because mainnet runs faster than schedule (the
+    // chain has a ~9.5 min average block time historically, against
+    // the 10 min target). The function's docstring explicitly accepts
+    // this drift; the test pins the *function's* output so a refactor
+    // that breaks the math fails loudly. If we ever switch to a
+    // difficulty-aware approximation, this assertion changes.
+    expect(dateApproxAt(TIP_BLOCK)).toBe('2027-01-10');
   });
 });

@@ -56,36 +56,56 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const VAULT_ROOT = path.join(REPO_ROOT, 'vault');
-const REAL_SUBSTRATE_PATH = path.join(REPO_ROOT, 'chain-tools', 'out', 'real-substrate.json');
+// Substrate v2: split files (see walker for rationale — v1 single-file
+// JSON exceeded V8's ~512MB string limit at ~130k blocks).
+const REAL_SUBSTRATE_META_PATH = path.join(REPO_ROOT, 'chain-tools', 'out', 'real-substrate-meta.json');
+const REAL_SUBSTRATE_WALLETS_PATH = path.join(REPO_ROOT, 'chain-tools', 'out', 'real-substrate-wallets.jsonl');
+const REAL_SUBSTRATE_BONDS_PATH = path.join(REPO_ROOT, 'chain-tools', 'out', 'real-substrate-bonds.jsonl');
 
-// When real-substrate.json exists, prefer it over the mock fixture.
+// When real-substrate-meta.json exists, prefer it over the mock fixture.
 // Walker (chain-tools/ingest/walk_chain.mjs) emits the real substrate
 // from public-API ingest; this generator reads it as the authority.
 // Activity sidecars are walker-owned in real mode (skipped here);
 // in mock mode we emit synthesised sidecars as before.
-const USE_REAL_SUBSTRATE = fs.existsSync(REAL_SUBSTRATE_PATH);
+const USE_REAL_SUBSTRATE = fs.existsSync(REAL_SUBSTRATE_META_PATH);
 
 function loadRealSubstrate() {
-  const raw = JSON.parse(fs.readFileSync(REAL_SUBSTRATE_PATH, 'utf8'));
-  // Normalise: bigint-as-string → bigint for sat fields.
-  const wallets = raw.wallets.map((w) => ({
-    address: w.address,
-    role: w.role,
-    firstSeenBlock: w.firstSeenBlock,
-    firstSeenTime: w.firstSeenTime,
-    lastActiveBlock: w.lastActiveBlock,
-    lastActiveTime: w.lastActiveTime,
-    totalReceivedSats: BigInt(w.totalReceivedSats),
-    txCount: w.txCount,
-    isMiner: w.isMiner,
-  }));
-  const bonds = raw.bonds.map((b) => ({
-    fromAddress: b.fromAddress,
-    toAddress: b.toAddress,
-    sats: BigInt(b.sats),
-    formationBlock: b.formationBlock,
-  }));
-  return { tipBlock: raw.tipBlock, wallets, bonds };
+  const meta = JSON.parse(fs.readFileSync(REAL_SUBSTRATE_META_PATH, 'utf8'));
+  // Sync sliced read of NDJSON: works while each file fits in a single
+  // V8 string (~512MB cap). When wallets or bonds exceed that, switch
+  // to a readline-streamed reader (and make this function async).
+  const wallets = fs
+    .readFileSync(REAL_SUBSTRATE_WALLETS_PATH, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const w = JSON.parse(line);
+      return {
+        address: w.address,
+        role: w.role,
+        firstSeenBlock: w.firstSeenBlock,
+        firstSeenTime: w.firstSeenTime,
+        lastActiveBlock: w.lastActiveBlock,
+        lastActiveTime: w.lastActiveTime,
+        totalReceivedSats: BigInt(w.totalReceivedSats),
+        txCount: w.txCount,
+        isMiner: w.isMiner,
+      };
+    });
+  const bonds = fs
+    .readFileSync(REAL_SUBSTRATE_BONDS_PATH, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const b = JSON.parse(line);
+      return {
+        fromAddress: b.fromAddress,
+        toAddress: b.toAddress,
+        sats: BigInt(b.sats),
+        formationBlock: b.formationBlock,
+      };
+    });
+  return { tipBlock: meta.tipBlock, wallets, bonds };
 }
 
 // ---------- fixture re-synthesis (must match free-tier-50.ts) -----------------
@@ -1361,15 +1381,14 @@ try {
 // v0.2+ real-chain ingest grows the range to current chain tip.
 
 const BLOCK_SHARD_SIZE = 1_000;
-// Cover all of epoch 0 (genesis through first halving at block 210k)
-// plus a small overlap into epoch 1 so the halving event itself is
-// part of the demo. Per user directive 2026-05-01: "work on
-// implementing the next epoch now, block by block, let's see how it
-// works with more wallets joining throughout time. We should start
-// to see many wallets spawning already." With FREE_TIER_50's
-// firstSeenBlock distribution (whales from 50k, significant from
-// 150k), 211k blocks shows the lattice gradually filling in.
-const SNAPSHOT_THROUGH_BLOCK = Math.min(TIP_BLOCK, 210_999);
+// Cover the full chain through TIP_BLOCK. Per user directive
+// 2026-05-03: "complete the whole blocks up to current day, it will
+// have to be done sometime." Per-block snapshots are computed from
+// chain.mjs invariants (subsidy, halving, cumulative supply) so they
+// don't require the real-chain walker to be complete; the walker
+// fills in real wallet/bond data separately into substrate-dump.json
+// over its multi-day run.
+const SNAPSHOT_THROUGH_BLOCK = TIP_BLOCK;
 
 // Pick the miner-of-record for a given block height. First 750 blocks
 // belong to Satoshi (Patoshi-era convention); afterwards rotate

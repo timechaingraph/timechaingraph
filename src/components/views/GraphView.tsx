@@ -79,14 +79,15 @@ const ZOOM_MAX = 5;
 const ZOOM_STEP = 0.0015;
 
 // Demo timeline upper bound. Covers all of epoch 0 (genesis through
-// first halving at block 210,000) plus the halving itself. Aligns
-// with chain-tools/vault/generate.mjs::SNAPSHOT_THROUGH_BLOCK so the
-// scrubber range == the snapshot range == the playback timeline. As
-// the user scrubs through, FREE_TIER_50's wallets spawn at their
-// firstSeenBlock — Satoshi at 0, miners by ~44k, whales from ~50k,
-// significant from ~150k. v0.2+ real-chain ingest grows the range
-// to current chain tip.
-const FIXTURE_LATEST_BLOCK = 210_999;
+// Aligns with chain-tools/vault/generate.mjs::SNAPSHOT_THROUGH_BLOCK
+// (= chain-tools/lib/chain.mjs::TIP_BLOCK) so the scrubber range ==
+// the snapshot range == the playback timeline. Snapped to a recent
+// live chain tip — bump on each ingest run. As the user scrubs
+// through, FREE_TIER_50's wallets spawn at their firstSeenBlock —
+// Satoshi at 0, miners by ~44k, whales from ~50k, significant from
+// ~150k, then the lattice plays forward through epochs 1-4 with
+// existing wallets active as edges fade in/out across blocks.
+const FIXTURE_LATEST_BLOCK = 947_630;
 
 function djb2(s: string): number {
   let h = 5381;

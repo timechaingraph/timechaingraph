@@ -37,10 +37,18 @@ export const TARGET_TOTAL_BTC = 21_000_000;
 export const HALVING_BLOCKS = Object.freeze([0, 210_000, 420_000, 630_000, 840_000]);
 
 /**
- * Tip-block-of-record for the v0.1 fixture (~April 2026). v0.2+ this
- * becomes dynamic from the operator's bitcoind via `getStatus()`.
+ * Tip-block-of-record. Snapped to a recent live chain tip so the
+ * fixture's wallet first-seen / last-active spread reaches the present
+ * day and the per-block snapshot generator emits the full chain
+ * timeline. Bump on each ingest run.
+ *
+ * Source: `curl -s https://mempool.space/api/blocks/tip/height` —
+ * captured 2026-05-03 = 947,630.
+ *
+ * v0.2+ this becomes dynamic from the operator's bitcoind via
+ * `getStatus()`.
  */
-export const TIP_BLOCK = 876_000;
+export const TIP_BLOCK = 947_630;
 
 /**
  * Genesis block timestamp in UTC milliseconds. Mined approximately
