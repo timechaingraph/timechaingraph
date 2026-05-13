@@ -219,7 +219,7 @@ export function HeroVisual() {
           period so they read as one synchronized mechanism. */}
       <g
         className="gear-spin"
-        style={{ transformOrigin: '62px 62px', animationDuration: '60s' }}
+        style={{ transformOrigin: '62px 62px', animationDuration: '20s' }}
       >
         <path
           d={gearPath(62, 62, 32, 25, 12)}
@@ -252,7 +252,7 @@ export function HeroVisual() {
       </g>
       <g
         className="gear-spin"
-        style={{ transformOrigin: `${SIZE - 62}px ${SIZE - 62}px`, animationDuration: '60s' }}
+        style={{ transformOrigin: `${SIZE - 62}px ${SIZE - 62}px`, animationDuration: '20s' }}
       >
         <path
           d={gearPath(SIZE - 62, SIZE - 62, 26, 20, 10)}
