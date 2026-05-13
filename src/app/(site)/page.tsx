@@ -81,7 +81,7 @@ function Mission() {
         . Reading it shouldn&apos;t require a chain-analytics firm.
         Timechain Graph makes the network observable to anyone with a
         browser — and{' '}
-        <span className="text-[color:var(--color-gold)]">observable to no one but them</span>
+        <span className="text-[color:var(--color-gold)]">observable to no one but you</span>
         .
       </p>
     </section>
