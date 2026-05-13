@@ -14,7 +14,7 @@ import { SPEED_OPTIONS } from '@/components/Playback';
  * Behavior is identical to the shared components: same store keys
  * (`currentBlock`, `latestBlock`, `playbackPlaying`,
  * `playbackSpeedIdx`), same `SPEED_OPTIONS` import, same auto-start
- * semantics. The shared `<Playback>` is still used by sister's
+ * semantics. The shared `<Playback>` is still used by companion's
  * /grid kiosk; this slim variant is graph-only.
  */
 export function GraphPlayBar() {

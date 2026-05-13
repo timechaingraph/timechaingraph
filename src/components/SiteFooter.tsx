@@ -3,11 +3,11 @@ import {
   VIEW_BRAND,
   VIEW_DOMAIN,
   VIEW_ACCENT,
-  SISTER_BRAND,
-  SISTER_DOMAIN,
-  SISTER_ACCENT,
-  SISTER_URL,
-  SHOW_SISTER_CALLOUTS,
+  OTHER_VIEW_BRAND,
+  OTHER_VIEW_DOMAIN,
+  OTHER_VIEW_ACCENT,
+  OTHER_VIEW_URL,
+  SHOW_OTHER_VIEW_CALLOUTS,
 } from '@/lib/site-config';
 
 /**
@@ -64,15 +64,15 @@ export function SiteFooter() {
           <p className="mt-3 max-w-xs leading-relaxed text-[color:var(--color-text-secondary)]">
             You&apos;re on{' '}
             <span style={{ color: ACCENT_VAR[VIEW_ACCENT] }}>{VIEW_DOMAIN}</span>
-            {SHOW_SISTER_CALLOUTS ? (
+            {SHOW_OTHER_VIEW_CALLOUTS ? (
               <>
-                . Sister project at{' '}
+                . {OTHER_VIEW_BRAND} View at{' '}
                 <a
-                  href={SISTER_URL}
+                  href={OTHER_VIEW_URL}
                   className="hover:underline"
-                  style={{ color: ACCENT_VAR[SISTER_ACCENT] }}
+                  style={{ color: ACCENT_VAR[OTHER_VIEW_ACCENT] }}
                 >
-                  {SISTER_DOMAIN}
+                  {OTHER_VIEW_DOMAIN}
                 </a>
                 . Same chain, two views.
               </>
@@ -102,18 +102,18 @@ export function SiteFooter() {
           </div>
         ))}
 
-        {SHOW_SISTER_CALLOUTS ? (
+        {SHOW_OTHER_VIEW_CALLOUTS ? (
           <div>
             <h3 className="text-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-brass-bright)]">
-              Sister
+              {OTHER_VIEW_BRAND} View
             </h3>
             <ul className="mt-3 space-y-2">
               <li>
                 <a
-                  href={SISTER_URL}
+                  href={OTHER_VIEW_URL}
                   className="transition-colors hover:text-[color:var(--color-text-primary)]"
                 >
-                  View as {SISTER_BRAND} ⟶
+                  Open ⟶
                 </a>
               </li>
             </ul>

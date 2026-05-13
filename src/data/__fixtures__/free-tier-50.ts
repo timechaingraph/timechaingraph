@@ -19,7 +19,7 @@ import type { WalletData, WalletRole } from '@/types/wallet';
  * actual genesis coinbase recipient (public knowledge, BIP citation).
  *
  * One source of truth, both views read it. If the shape changes, the
- * sister should pull via `bash scripts/sync-sibling.sh --pull`.
+ * the companion repo should pull via `bash scripts/sync-sibling.sh --pull`.
  */
 
 const SATS = 100_000_000n; // 1 BTC = 100M sats

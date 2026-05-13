@@ -13,7 +13,7 @@
  * scale once the BitcoinChainAdapter ships real free-tier data).
  *
  * Used by GraphView's render tick. Could be reused by any view that
- * wants force layout — sister's Grid is stationary by design and won't
+ * wants force layout — the Grid view is stationary by design and won't
  * call these, but the lib lives in shared infrastructure.
  */
 

@@ -47,7 +47,7 @@ export interface ChainSubstrate {
 
   /**
    * All coins (UTXOs / coinbase outputs) minted up through tipBlock.
-   * Sister's CoinRoster fixture is the authority here in v0.1; v0.2+
+   * Companion's CoinRoster fixture is the authority here in v0.1; v0.2+
    * the operator's chain-tools pipeline emits this from real bitcoind
    * data.
    */

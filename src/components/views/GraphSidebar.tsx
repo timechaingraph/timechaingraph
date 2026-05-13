@@ -15,7 +15,7 @@ import { epochFromHeight } from '@/types/block';
  * the shared <BlockNarrative> + <BlockStats> components surface into
  * a single narrow card stack, sized to leave the canvas as wide as
  * possible. Mounted by /graph's kiosk page; not in SHARED_PATHS
- * because sister's grid uses the wider floating-panel pattern.
+ * because the grid view uses the wider floating-panel pattern.
  *
  * The card auto-fetches the per-block snapshot for `currentBlock`
  * via the shared blockSnapshots client; the canvas's Animate /

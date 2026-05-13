@@ -7,8 +7,8 @@ import {
   VIEW_BRAND,
   VIEW_TAGLINE,
   VIEW_ACCENT,
-  SISTER_BRAND,
-  SISTER_URL,
+  OTHER_VIEW_BRAND,
+  OTHER_VIEW_URL,
 } from '@/lib/site-config';
 import { Logo } from '@/components/Logo';
 
@@ -100,12 +100,12 @@ export function NavBar() {
             </Link>
           ))}
           <a
-            href={SISTER_URL}
+            href={OTHER_VIEW_URL}
             onClick={() => setMobileOpen(false)}
             className="mt-1 rounded px-3 py-2 text-mono text-xs"
             style={{ color: 'var(--color-amber)' }}
           >
-            View as {SISTER_BRAND} ⟶
+            {OTHER_VIEW_BRAND} View ⟶
           </a>
         </div>
       )}
@@ -134,14 +134,14 @@ function NavLinkItem({ link, pathname }: { link: NavLink; pathname: string }) {
 function CrossDomainLink() {
   return (
     <a
-      href={SISTER_URL}
+      href={OTHER_VIEW_URL}
       className="rounded-full border px-3 py-1 text-mono text-xs uppercase tracking-wider transition-colors"
       style={{
         borderColor: 'var(--color-brass-border)',
         color: 'var(--color-amber)',
       }}
     >
-      View as {SISTER_BRAND} ⟶
+      {OTHER_VIEW_BRAND} View ⟶
     </a>
   );
 }

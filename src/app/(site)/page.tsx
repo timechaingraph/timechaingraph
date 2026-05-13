@@ -5,10 +5,6 @@ import {
   VIEW_HERO_BOTTOM,
   VIEW_HERO_DESCRIPTION,
   VIEW_DOMAIN,
-  SISTER_BRAND,
-  SISTER_DOMAIN,
-  SISTER_TAGLINE,
-  SISTER_URL,
   BRAND_TAGLINE,
 } from '@/lib/site-config';
 
@@ -16,8 +12,10 @@ import {
  * Landing page — minimalist narrative shell.
  *
  * Anchored on a single statement of vision (the hero) and a small
- * number of supporting facts (mission strip, three pillars). Sister
- * callout and the funding promise close the page.
+ * number of supporting facts (mission strip, three pillars). The
+ * funding promise closes the page. The cross-view link to the other
+ * project lives only in the NavBar topbar button — no duplicate
+ * card on this page.
  *
  * The bulk of the actual product lives at /graph (the canvas itself);
  * this page exists to set frame and intent, then send the visitor
@@ -29,7 +27,6 @@ export default function HomePage() {
       <Hero />
       <Mission />
       <Pillars />
-      <SisterCallout />
       <Promise />
     </>
   );
@@ -125,34 +122,6 @@ function Pillars() {
           </div>
         ))}
       </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────── */
-
-function SisterCallout() {
-  return (
-    <section className="border-t border-[color:var(--color-card-border)] py-14 md:py-20">
-      <a
-        href={SISTER_URL}
-        className="brass-panel group flex flex-col gap-3 rounded-xl p-7 transition-colors hover:border-[color:var(--color-amber)] md:flex-row md:items-baseline md:justify-between md:gap-6 md:p-9"
-      >
-        <div className="flex-1">
-          <p className="text-mono text-[10px] uppercase tracking-[0.28em] text-[color:var(--color-text-muted)]">
-            Sister site · {SISTER_DOMAIN}
-          </p>
-          <p className="text-display mt-3 text-2xl font-semibold text-[color:var(--color-accent-cyan)] md:text-3xl">
-            View as {SISTER_BRAND}
-          </p>
-          <p className="mt-2 text-[color:var(--color-text-secondary)]">
-            Same chain, the other geometry: {SISTER_TAGLINE}.
-          </p>
-        </div>
-        <span className="text-mono text-xs uppercase tracking-[0.2em] text-[color:var(--color-amber)] transition-opacity group-hover:opacity-80">
-          Open ⟶
-        </span>
-      </a>
     </section>
   );
 }

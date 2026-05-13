@@ -12,7 +12,7 @@
  * issuance rate halves; players (wallets) accumulate property as they
  * mine and trade.
  *
- * Sister's Graph view consumes the same `Coin` shape if she ever wants
+ * Companion's Graph view consumes the same `Coin` shape if she ever wants
  * coin-aware annotations (e.g. "this whale wallet owns 5,000 coins"),
  * but the primary geometry there is force-directed wallet-bonds.
  */
