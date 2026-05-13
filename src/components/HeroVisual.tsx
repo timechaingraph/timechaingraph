@@ -218,12 +218,12 @@ export function HeroVisual() {
           Both gears + the outer ring share the same 60-second rotation
           period so they read as one synchronized mechanism. */}
       <g
-        className="gear-spin"
+        className="gear-spin-rev"
         style={{ transformOrigin: '62px 62px', animationDuration: '20s' }}
       >
         <path
           d={gearPath(62, 62, 32, 25, 12)}
-          fill="rgba(194, 136, 64, 0.20)"
+          fill="none"
           stroke="url(#brass-grad)"
           strokeWidth={2.2}
           strokeLinejoin="round"
@@ -251,12 +251,12 @@ export function HeroVisual() {
         <circle cx={61} cy={61} r={1.6} fill="rgba(255, 235, 150, 0.7)" />
       </g>
       <g
-        className="gear-spin"
+        className="gear-spin-rev"
         style={{ transformOrigin: `${SIZE - 62}px ${SIZE - 62}px`, animationDuration: '20s' }}
       >
         <path
           d={gearPath(SIZE - 62, SIZE - 62, 26, 20, 10)}
-          fill="rgba(224, 166, 86, 0.15)"
+          fill="none"
           stroke="url(#brass-grad-vertical)"
           strokeWidth={2.0}
           strokeLinejoin="round"
