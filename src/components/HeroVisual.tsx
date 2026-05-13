@@ -1,9 +1,21 @@
 /**
- * HeroVisual — force-directed wallet network, brass-framed.
+ * HeroVisual — living network emblem for the Graph landing.
  *
- * Organic node placement (density-biased toward origin), visible transaction
- * bonds between nearby pairs, brass annulus with halving notches and rivet
- * pattern, slow gear motifs in opposing corners. Pure SVG + CSS, no JS deps.
+ * Composition (back to front):
+ *   1. Background bloom — soft amber/cyan radial glow
+ *   2. Outer brass ring — slowly rotating, dashed, halving notches at quadrants
+ *   3. Inner stationary brass ring — fine accent line + rivet pattern
+ *   4. Corner gear motifs — same as before, slow contra-rotation
+ *   5. Edge bonds — ~280 connections between nearby wallets, ~12% of which
+ *      slowly fade their opacity in/out to suggest the "edges fade across
+ *      blocks" project mechanic
+ *   6. Wallet nodes — ~380 dots, density-biased toward Satoshi; ~28% pulse
+ *      at staggered intervals (neurons firing)
+ *   7. Satoshi anchor — multilayer gold core with pulse-satoshi heartbeat
+ *
+ * Pure SVG + CSS keyframes from globals.css. Zero JS, zero runtime
+ * dependencies. Renders crisp at any zoom because all geometry is
+ * vector.
  */
 
 const SIZE = 440;
@@ -11,8 +23,8 @@ const CENTER = SIZE / 2;
 const OUTER_FRAME = 200;
 const INNER_FRAME = 192;
 
-// Halving notches at fixed positions on the brass annulus
-const HALVING_NOTCHES = [0, 72, 144, 216, 288];
+// Halving notches at compass quadrants + diagonals (richer than v1)
+const HALVING_NOTCHES_DEG = [0, 45, 90, 135, 180, 225, 270, 315];
 
 type Dot = {
   x: number;
@@ -21,37 +33,39 @@ type Dot = {
   pulse: boolean;
   whale: boolean;
   miner: boolean;
+  /** staggered pulse delay index — used by every-pulse animation */
+  delayIdx: number;
 };
 
-type Bond = { from: number; to: number; alpha: number };
+type Bond = { from: number; to: number; alpha: number; fadeIdx: number };
 
-// Density-biased polar distribution: clusters near origin, sparse at edges.
+/* Deterministic pseudo-random helpers — no Math.random so SSR matches CSR */
+function rand(seed: number, salt: number): number {
+  const v = Math.sin(seed * 12.9898 + salt * 78.233) * 43758.5453;
+  return v - Math.floor(v);
+}
+
 function seededDot(seed: number): Dot {
-  const a = Math.sin(seed * 12.9898) * 43758.5453;
-  const b = Math.sin(seed * 78.233 + 9.0) * 43758.5453;
-  const c = Math.sin(seed * 31.71 + 4.0) * 43758.5453;
-  const d = Math.sin(seed * 47.13 + 3.0) * 43758.5453;
-  const angle = (a - Math.floor(a)) * Math.PI * 2;
-  const t = b - Math.floor(b);
-  // Square-ish bias toward center: t^1.6 maps [0,1] uniformly but favors small values
+  const angle = rand(seed, 1) * Math.PI * 2;
+  const t = rand(seed, 2);
+  // Density bias: t^1.65 favors small radii (cluster near Satoshi)
   const r = Math.pow(t, 1.65) * 175 + 6;
   const x = CENTER + Math.cos(angle) * r;
   const y = CENTER + Math.sin(angle) * r;
-  const cFrac = c - Math.floor(c);
-  const dFrac = d - Math.floor(d);
-  const whale = cFrac > 0.94;
-  const miner = !whale && cFrac > 0.86;
+  const role = rand(seed, 3);
+  const whale = role > 0.94;
+  const miner = !whale && role > 0.86;
   const dotR = whale ? 3.4 : miner ? 2.4 : 1.5;
-  const pulse = dFrac < 0.07;
-  return { x, y, r: dotR, pulse, whale, miner };
+  // ~28% of dots pulse (was ~7%); more dots = more aliveness
+  const pulse = rand(seed, 4) < 0.28;
+  const delayIdx = Math.floor(rand(seed, 5) * 14);
+  return { x, y, r: dotR, pulse, whale, miner, delayIdx };
 }
 
-const N_DOTS = 280;
+const N_DOTS = 380;
 const DOTS: Dot[] = Array.from({ length: N_DOTS }, (_, i) => seededDot(i + 1));
 
-// Build bonds: for each dot, find a few nearby neighbors, connect with weighted
-// edges. Deterministic by index.
-function buildBonds(dots: Dot[], maxPerNode = 1, maxDist = 32): Bond[] {
+function buildBonds(dots: Dot[], maxPerNode = 1, maxDist = 30): Bond[] {
   const out: Bond[] = [];
   const seen = new Set<string>();
   for (let i = 0; i < dots.length; i++) {
@@ -62,14 +76,15 @@ function buildBonds(dots: Dot[], maxPerNode = 1, maxDist = 32): Bond[] {
       const dy = dots[i].y - dots[j].y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist > maxDist || dist < 4) continue;
-      // Deterministic skip pattern keeps the bond density visually balanced.
       const key = i < j ? `${i}-${j}` : `${j}-${i}`;
       if (seen.has(key)) continue;
-      const skip = Math.sin((i + j) * 9.31) * 43758.5453;
-      if ((skip - Math.floor(skip)) > 0.32) continue;
+      const skip = rand(i + j, 9);
+      if (skip > 0.32) continue;
       seen.add(key);
       const alpha = Math.max(0.08, 0.55 - dist / maxDist);
-      out.push({ from: i, to: j, alpha });
+      // every ~8th bond gets an opacity fade animation (staggered delay)
+      const fadeIdx = (i + j) % 9 === 0 ? (i % 12) : -1;
+      out.push({ from: i, to: j, alpha, fadeIdx });
       added++;
     }
   }
@@ -98,17 +113,22 @@ export function HeroVisual() {
       width="100%"
       height="100%"
       role="img"
-      aria-label="Timechain Grid lattice preview: a brass-framed graph of Bitcoin wallets, organically positioned around a glowing Satoshi anchor with visible transaction bonds and rotating gear motifs."
+      aria-label="Timechain Graph: a brass-framed living network of Bitcoin wallets — pulsing neurons connected by synaptic edges, halving notches on the rotating outer ring, Satoshi at the gold center."
       className="max-w-[460px]"
     >
       <defs>
         <radialGradient id="hero-bg-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="rgba(0, 212, 255, 0.08)" />
-          <stop offset="55%" stopColor="rgba(0, 212, 255, 0.025)" />
-          <stop offset="100%" stopColor="rgba(0, 212, 255, 0)" />
+          <stop offset="0%" stopColor="rgba(255, 215, 0, 0.10)" />
+          <stop offset="40%" stopColor="rgba(194, 136, 64, 0.05)" />
+          <stop offset="100%" stopColor="rgba(0, 0, 0, 0)" />
         </radialGradient>
         <radialGradient id="satoshi-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="rgba(255, 215, 0, 0.55)" />
+          <stop offset="0%" stopColor="rgba(255, 215, 0, 0.65)" />
+          <stop offset="60%" stopColor="rgba(255, 215, 0, 0.18)" />
+          <stop offset="100%" stopColor="rgba(255, 215, 0, 0)" />
+        </radialGradient>
+        <radialGradient id="satoshi-glow-outer" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="rgba(255, 215, 0, 0.18)" />
           <stop offset="100%" stopColor="rgba(255, 215, 0, 0)" />
         </radialGradient>
         <linearGradient id="brass-grad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -126,29 +146,57 @@ export function HeroVisual() {
       {/* Background bloom */}
       <circle cx={CENTER} cy={CENTER} r={195} fill="url(#hero-bg-glow)" />
 
-      {/* Brass annulus (outer + inner edge) */}
-      <circle cx={CENTER} cy={CENTER} r={OUTER_FRAME} fill="none" stroke="url(#brass-grad)" strokeWidth={1.5} opacity={0.85} />
-      <circle cx={CENTER} cy={CENTER} r={INNER_FRAME} fill="none" stroke="url(#brass-grad-vertical)" strokeWidth={0.8} opacity={0.7} />
+      {/* Outer slowly-rotating brass ring with dashed pattern + halving notches.
+          Rotates clockwise at 60s/rev — slow enough to feel like ambient
+          machinery rather than spinning. */}
+      <g
+        className="gear-spin"
+        style={{
+          transformOrigin: `${CENTER}px ${CENTER}px`,
+          animationDuration: '60s',
+        }}
+      >
+        <circle
+          cx={CENTER}
+          cy={CENTER}
+          r={OUTER_FRAME}
+          fill="none"
+          stroke="url(#brass-grad)"
+          strokeWidth={1.5}
+          strokeDasharray="3 6"
+          opacity={0.7}
+        />
+        {/* Halving notches — 8 evenly spaced */}
+        {HALVING_NOTCHES_DEG.map((deg, i) => {
+          const rad = (deg * Math.PI) / 180;
+          const r1 = INNER_FRAME + 2;
+          const r2 = OUTER_FRAME + 4;
+          return (
+            <line
+              key={i}
+              x1={CENTER + Math.cos(rad) * r1}
+              y1={CENTER + Math.sin(rad) * r1}
+              x2={CENTER + Math.cos(rad) * r2}
+              y2={CENTER + Math.sin(rad) * r2}
+              stroke="rgba(224, 166, 86, 0.85)"
+              strokeWidth={i % 2 === 0 ? 1.8 : 1.0}
+            />
+          );
+        })}
+      </g>
 
-      {/* Halving notches */}
-      {HALVING_NOTCHES.map((deg, i) => {
-        const rad = (deg * Math.PI) / 180;
-        const r1 = INNER_FRAME - 2;
-        const r2 = OUTER_FRAME + 2;
-        return (
-          <line
-            key={i}
-            x1={CENTER + Math.cos(rad) * r1}
-            y1={CENTER + Math.sin(rad) * r1}
-            x2={CENTER + Math.cos(rad) * r2}
-            y2={CENTER + Math.sin(rad) * r2}
-            stroke="rgba(224, 166, 86, 0.85)"
-            strokeWidth={1.6}
-          />
-        );
-      })}
+      {/* Inner stationary brass ring */}
+      <circle
+        cx={CENTER}
+        cy={CENTER}
+        r={INNER_FRAME}
+        fill="none"
+        stroke="url(#brass-grad-vertical)"
+        strokeWidth={0.8}
+        opacity={0.6}
+      />
 
-      {/* Rivet ring */}
+      {/* Rivet ring (between the two brass rings) */}
       {Array.from({ length: 36 }, (_, i) => {
         const rad = (i * 10 * Math.PI) / 180;
         const r = (OUTER_FRAME + INNER_FRAME) / 2;
@@ -158,24 +206,24 @@ export function HeroVisual() {
             cx={CENTER + Math.cos(rad) * r}
             cy={CENTER + Math.sin(rad) * r}
             r={1}
-            fill="rgba(255, 215, 0, 0.55)"
+            fill="rgba(255, 215, 0, 0.5)"
           />
         );
       })}
 
-      {/* Corner gears */}
+      {/* Corner gears — kept from v1, slightly tuned */}
       <g className="gear-spin" style={{ transformOrigin: '60px 60px' }}>
         <path d={gearPath(60, 60, 28, 22, 12)} fill="none" stroke="rgba(194, 136, 64, 0.4)" strokeWidth={1.2} />
         <circle cx={60} cy={60} r={10} fill="none" stroke="rgba(194, 136, 64, 0.35)" strokeWidth={1} />
         <circle cx={60} cy={60} r={3.5} fill="rgba(194, 136, 64, 0.3)" />
       </g>
       <g className="gear-spin-rev" style={{ transformOrigin: `${SIZE - 60}px ${SIZE - 60}px` }}>
-        <path d={gearPath(SIZE - 60, SIZE - 60, 22, 17, 10)} fill="none" stroke="rgba(0, 212, 255, 0.32)" strokeWidth={1} />
-        <circle cx={SIZE - 60} cy={SIZE - 60} r={8} fill="none" stroke="rgba(0, 212, 255, 0.26)" strokeWidth={1} />
-        <circle cx={SIZE - 60} cy={SIZE - 60} r={3} fill="rgba(0, 212, 255, 0.22)" />
+        <path d={gearPath(SIZE - 60, SIZE - 60, 22, 17, 10)} fill="none" stroke="rgba(224, 166, 86, 0.32)" strokeWidth={1} />
+        <circle cx={SIZE - 60} cy={SIZE - 60} r={8} fill="none" stroke="rgba(224, 166, 86, 0.26)" strokeWidth={1} />
+        <circle cx={SIZE - 60} cy={SIZE - 60} r={3} fill="rgba(224, 166, 86, 0.22)" />
       </g>
 
-      {/* Bond edges (rendered first, behind nodes) */}
+      {/* Bond edges — every ~9th gets a slow opacity fade (synapse activity) */}
       <g>
         {BONDS.map((b, i) => {
           const a = DOTS[b.from];
@@ -187,14 +235,22 @@ export function HeroVisual() {
               y1={a.y}
               x2={c.x}
               y2={c.y}
-              stroke={`rgba(0, 212, 255, ${b.alpha})`}
+              stroke={`rgba(224, 166, 86, ${b.alpha})`}
               strokeWidth={0.5}
+              style={
+                b.fadeIdx >= 0
+                  ? {
+                      animation: 'drift-fade 6s ease-in-out infinite alternate',
+                      animationDelay: `${b.fadeIdx * 0.42}s`,
+                    }
+                  : undefined
+              }
             />
           );
         })}
       </g>
 
-      {/* Wallet dots (organic placement, no fixed rings) */}
+      {/* Wallet dots — pulsing subset staggered across 14 delay buckets */}
       {DOTS.map((d, i) => (
         <circle
           key={i}
@@ -203,30 +259,31 @@ export function HeroVisual() {
           r={d.r}
           fill={
             d.whale
-              ? 'rgba(255, 215, 0, 0.85)'
+              ? 'rgba(255, 215, 0, 0.92)'
               : d.miner
-                ? 'rgba(245, 166, 35, 0.7)'
-                : 'rgba(0, 212, 255, 0.55)'
+                ? 'rgba(245, 166, 35, 0.78)'
+                : 'rgba(224, 166, 86, 0.55)'
           }
           style={
             d.pulse
               ? {
-                  animation: 'pulse-soft 2.6s ease-in-out infinite',
+                  animation: 'pulse-soft 3.2s ease-in-out infinite',
                   transformOrigin: `${d.x}px ${d.y}px`,
-                  animationDelay: `${(i % 7) * 0.28}s`,
+                  animationDelay: `${d.delayIdx * 0.24}s`,
                 }
               : undefined
           }
         />
       ))}
 
-      {/* Satoshi anchor (brass-bezeled gold core) */}
+      {/* Satoshi anchor — outer glow + brass bezel + breathing core */}
+      <circle cx={CENTER} cy={CENTER} r={48} fill="url(#satoshi-glow-outer)" />
       <circle cx={CENTER} cy={CENTER} r={32} fill="url(#satoshi-glow)" />
-      <circle cx={CENTER} cy={CENTER} r={9} fill="none" stroke="url(#brass-grad)" strokeWidth={1.4} opacity={0.9} />
+      <circle cx={CENTER} cy={CENTER} r={9} fill="none" stroke="url(#brass-grad)" strokeWidth={1.5} opacity={0.95} />
       <circle
         cx={CENTER}
         cy={CENTER}
-        r={4}
+        r={4.5}
         fill="rgb(255, 215, 0)"
         style={{ animation: 'pulse-satoshi 3.2s ease-in-out infinite' }}
       />
