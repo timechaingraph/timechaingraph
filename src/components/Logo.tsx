@@ -1,59 +1,39 @@
+import { VIEW } from '@/lib/site-config';
+
 /**
- * Logo — Bitcoin digital real estate emblem.
+ * Logo — view-aware brand mark. Mirrors the per-repo `icon.svg`:
  *
- * A 5×5 brass-bordered grid with the center cell glowing gold (Satoshi
- * origin). Surrounding cells fade outward in two rings, suggesting the
- * "expanding 2D real estate" growth model: blocks open new tiles in
- * concentric rings around the genesis center.
+ *   - Graph view (gold accent): circular brass annulus with halving
+ *     notches at the compass quadrants; five peripheral nodes
+ *     connected to a central gold ₿ node, plus inter-peripheral
+ *     edges — a force-directed network silhouette.
  *
- * Pure SVG, inline (no external file fetch), inherits color from
- * surrounding text via currentColor where possible. Renders at any
- * size via the `size` prop; the viewBox is square.
+ *   - Grid view (cyan accent): square brass frame with corner
+ *     rivets; 3×3 tile arrangement around a central gold ₿ tile,
+ *     with cyan-tinted satellite tiles — a spiral-real-estate
+ *     silhouette.
  *
- * Used in NavBar (sm), favicon-style usage (20px), and as a hero
- * accent on the landing page (lg). Keeps the brass-and-gold project
- * aesthetic, no external dependencies.
+ * Pure SVG, no external font (uses system serif for the ₿ glyph).
+ * Both variants share the brass linear gradient + dark `#08080C`
+ * background so they read as a single visual family.
  */
 
 interface LogoProps {
-  /** Square edge length in CSS pixels. */
+  /** Square edge length in CSS pixels. Defaults to 32. */
   size?: number;
-  /** Optional accent override — defaults to brand brass + gold. */
-  accent?: 'brass' | 'cyan' | 'gold';
-  /** Optional aria-label override. */
+  /** Optional aria label override. */
   label?: string;
 }
 
-const RING_FILLS = [
-  'rgba(248, 213, 104, 0.95)', // ring 0 — Satoshi gold
-  'rgba(193, 136, 64, 0.78)', // ring 1 — bright brass
-  'rgba(140, 95, 40, 0.55)', // ring 2 — darker brass
-];
+export function Logo({ size = 32, label }: LogoProps) {
+  return VIEW === 'graph' ? (
+    <GraphLogo size={size} label={label ?? 'Timechain Graph logo'} />
+  ) : (
+    <GridLogo size={size} label={label ?? 'Timechain Grid logo'} />
+  );
+}
 
-export function Logo({ size = 28, accent = 'brass', label = "Timechain Grid logo" }: LogoProps) {
-  const accentStroke =
-    accent === 'cyan'
-      ? 'var(--color-accent-cyan)'
-      : accent === 'gold'
-        ? 'var(--color-gold)'
-        : 'var(--color-brass-bright)';
-
-  // 5×5 grid in a 100x100 viewBox; cells are 16x16 with 2px gap, centered
-  // so the middle cell sits at (50,50). Outer frame at 0..100.
-  const cells: Array<{ x: number; y: number; ring: number }> = [];
-  for (let row = 0; row < 5; row++) {
-    for (let col = 0; col < 5; col++) {
-      const dx = col - 2;
-      const dy = row - 2;
-      const ring = Math.max(Math.abs(dx), Math.abs(dy)); // Chebyshev distance
-      cells.push({
-        x: 10 + col * 18,
-        y: 10 + row * 18,
-        ring,
-      });
-    }
-  }
-
+function GraphLogo({ size, label }: { size: number; label: string }) {
   return (
     <svg
       width={size}
@@ -63,54 +43,137 @@ export function Logo({ size = 28, accent = 'brass', label = "Timechain Grid logo
       aria-label={label}
       style={{ flexShrink: 0 }}
     >
-      {/* Outer brass frame */}
-      <rect
-        x="2"
-        y="2"
-        width="96"
-        height="96"
-        rx="8"
-        fill="none"
-        stroke={accentStroke}
-        strokeWidth="2.5"
-        opacity="0.9"
-      />
-
-      {/* Inner ring suggesting outward growth — radial gradient from gold center */}
       <defs>
-        <radialGradient id="logo-glow" cx="50%" cy="50%" r="55%">
-          <stop offset="0%" stopColor="rgba(255, 215, 102, 0.55)" />
-          <stop offset="60%" stopColor="rgba(193, 136, 64, 0.18)" />
+        <radialGradient id="logo-graph-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="rgba(255, 215, 0, 0.32)" />
+          <stop offset="60%" stopColor="rgba(255, 215, 0, 0.10)" />
           <stop offset="100%" stopColor="rgba(0, 0, 0, 0)" />
         </radialGradient>
+        <linearGradient id="logo-graph-brass" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#E0A656" />
+          <stop offset="50%" stopColor="#C28840" />
+          <stop offset="100%" stopColor="#8C5E29" />
+        </linearGradient>
       </defs>
-      <circle cx="50" cy="50" r="44" fill="url(#logo-glow)" />
 
-      {/* Cells — Satoshi center is brightest, outward rings fade */}
-      {cells.map((c, i) => (
-        <rect
-          key={i}
-          x={c.x}
-          y={c.y}
-          width="14"
-          height="14"
-          rx="2"
-          fill={RING_FILLS[c.ring]}
-          opacity={c.ring === 0 ? 1 : c.ring === 1 ? 0.85 : 0.6}
-        />
-      ))}
+      <circle cx="50" cy="50" r="49" fill="#08080C" />
+      <circle cx="50" cy="50" r="47" fill="none" stroke="url(#logo-graph-brass)" strokeWidth="2.8" />
 
-      {/* Halo ring around Satoshi center for emphasis */}
-      <rect
-        x="44"
-        y="44"
-        width="14"
-        height="14"
-        rx="2"
+      {/* Halving notches at compass quadrants */}
+      <rect x="49" y="1" width="2" height="5" fill="#E0A656" />
+      <rect x="49" y="94" width="2" height="5" fill="#E0A656" />
+      <rect x="1" y="49" width="5" height="2" fill="#E0A656" />
+      <rect x="94" y="49" width="5" height="2" fill="#E0A656" />
+
+      {/* Diagonal accent rivets */}
+      <circle cx="22.5" cy="22.5" r="1.4" fill="#8C5E29" />
+      <circle cx="77.5" cy="22.5" r="1.4" fill="#8C5E29" />
+      <circle cx="22.5" cy="77.5" r="1.4" fill="#8C5E29" />
+      <circle cx="77.5" cy="77.5" r="1.4" fill="#8C5E29" />
+
+      {/* Gold glow under nodes */}
+      <circle cx="50" cy="50" r="42" fill="url(#logo-graph-glow)" />
+
+      {/* Edges (under nodes for proper layering) */}
+      <g stroke="#C28840" strokeLinecap="round" fill="none">
+        <line x1="50" y1="50" x2="28" y2="30" strokeWidth="1.5" opacity="0.75" />
+        <line x1="50" y1="50" x2="72" y2="28" strokeWidth="1.5" opacity="0.75" />
+        <line x1="50" y1="50" x2="78" y2="58" strokeWidth="1.5" opacity="0.75" />
+        <line x1="50" y1="50" x2="55" y2="78" strokeWidth="1.5" opacity="0.75" />
+        <line x1="50" y1="50" x2="22" y2="62" strokeWidth="1.5" opacity="0.75" />
+        <line x1="28" y1="30" x2="72" y2="28" strokeWidth="0.8" opacity="0.45" />
+        <line x1="22" y1="62" x2="55" y2="78" strokeWidth="0.8" opacity="0.45" />
+        <line x1="78" y1="58" x2="55" y2="78" strokeWidth="0.8" opacity="0.45" />
+      </g>
+
+      {/* Peripheral nodes */}
+      <g fill="#E0A656" stroke="#FFD700" strokeWidth="0.8">
+        <circle cx="28" cy="30" r="4" />
+        <circle cx="72" cy="28" r="4" />
+        <circle cx="78" cy="58" r="4.2" />
+        <circle cx="55" cy="78" r="3.8" />
+        <circle cx="22" cy="62" r="4" />
+      </g>
+
+      {/* Center Satoshi node with Bitcoin glyph */}
+      <circle cx="50" cy="50" r="11" fill="#FFD700" />
+      <text
+        x="50"
+        y="56"
+        textAnchor="middle"
+        fontFamily="Georgia, 'Times New Roman', serif"
+        fontSize="14"
+        fontWeight="bold"
+        fill="#08080C"
+      >
+        ₿
+      </text>
+      <path
+        d="M 43 46 A 8 8 0 0 1 57 46"
         fill="none"
-        stroke="rgba(255, 235, 150, 0.95)"
-        strokeWidth="1.5"
+        stroke="rgba(255,255,255,0.35)"
+        strokeWidth="1.2"
+        strokeLinecap="round"
       />
+    </svg>
+  );
+}
+
+function GridLogo({ size, label }: { size: number; label: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
+      role="img"
+      aria-label={label}
+      style={{ flexShrink: 0 }}
+    >
+      <defs>
+        <radialGradient id="logo-grid-glow" cx="50%" cy="50%" r="55%">
+          <stop offset="0%" stopColor="rgba(0, 212, 255, 0.28)" />
+          <stop offset="55%" stopColor="rgba(0, 212, 255, 0.08)" />
+          <stop offset="100%" stopColor="rgba(0, 0, 0, 0)" />
+        </radialGradient>
+        <linearGradient id="logo-grid-brass" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#E0A656" />
+          <stop offset="50%" stopColor="#C28840" />
+          <stop offset="100%" stopColor="#8C5E29" />
+        </linearGradient>
+      </defs>
+
+      <rect x="2" y="2" width="96" height="96" rx="11" fill="#08080C" />
+      <rect x="3" y="3" width="94" height="94" rx="10" fill="none" stroke="url(#logo-grid-brass)" strokeWidth="2.5" />
+      <rect x="8" y="8" width="84" height="84" rx="7" fill="url(#logo-grid-glow)" />
+
+      {/* Corner rivets */}
+      <circle cx="10" cy="10" r="1.8" fill="#8C5E29" />
+      <circle cx="90" cy="10" r="1.8" fill="#8C5E29" />
+      <circle cx="10" cy="90" r="1.8" fill="#8C5E29" />
+      <circle cx="90" cy="90" r="1.8" fill="#8C5E29" />
+
+      {/* 3×3 tile arrangement */}
+      <rect x="20" y="20" width="18" height="18" rx="2" fill="#006080" opacity="0.85" />
+      <rect x="41" y="20" width="18" height="18" rx="2" fill="#00A8CC" />
+      <rect x="62" y="20" width="18" height="18" rx="2" fill="#006080" opacity="0.85" />
+      <rect x="20" y="41" width="18" height="18" rx="2" fill="#00A8CC" />
+      <rect x="41" y="41" width="18" height="18" rx="2" fill="#FFD700" />
+      <text
+        x="50"
+        y="56"
+        textAnchor="middle"
+        fontFamily="Georgia, 'Times New Roman', serif"
+        fontSize="16"
+        fontWeight="bold"
+        fill="#08080C"
+      >
+        ₿
+      </text>
+      <rect x="62" y="41" width="18" height="18" rx="2" fill="#00A8CC" />
+      <rect x="20" y="62" width="18" height="18" rx="2" fill="#006080" opacity="0.85" />
+      <rect x="41" y="62" width="18" height="18" rx="2" fill="#00A8CC" />
+      <rect x="62" y="62" width="18" height="18" rx="2" fill="#006080" opacity="0.85" />
+      <rect x="42" y="42" width="16" height="3" rx="1.5" fill="rgba(255,255,255,0.25)" />
     </svg>
   );
 }

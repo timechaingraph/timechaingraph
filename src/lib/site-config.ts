@@ -17,10 +17,10 @@ export const VIEW_DOMAIN = 'timechaingraph.com';
 export const VIEW_TAGLINE = 'the living network of Bitcoin';
 export const VIEW_ACCENT = 'gold' as const;
 
-export const VIEW_HERO_TOP = 'Bitcoin,';
-export const VIEW_HERO_BOTTOM = 'alive.';
+export const VIEW_HERO_TOP = 'The brain';
+export const VIEW_HERO_BOTTOM = 'of Bitcoin.';
 export const VIEW_HERO_DESCRIPTION =
-  'Every wallet a neuron. Every transaction a synapse. Watch the network think — Satoshi at the gold center, miners glowing red, whales gold, dust grey, all bound by the bonds they spent.';
+  'Bitcoin has been thinking in public for sixteen years. Until now, only specialists could read it. Timechain Graph is the lens — every wallet a neuron, every transaction a synapse, the whole network legible in a browser. Public ledger, public view. No one watches you watch.';
 
 export const SISTER_BRAND = 'GRID';
 export const SISTER_DOMAIN = 'timechaingrid.com';
