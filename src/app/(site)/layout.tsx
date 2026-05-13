@@ -16,7 +16,7 @@ import { SiteFooter } from '@/components/SiteFooter';
  */
 export default function SiteLayout({ children }: { children: ReactNode }) {
   return (
-    <main className="relative mx-auto flex min-h-dvh max-w-6xl flex-col px-6 pb-12 pt-8 md:px-10">
+    <main className="relative z-10 mx-auto flex min-h-dvh max-w-6xl flex-col px-6 pb-12 pt-4 md:px-10 md:pt-6">
       <NavBar />
       {children}
       <SiteFooter />

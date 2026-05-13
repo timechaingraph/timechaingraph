@@ -211,16 +211,69 @@ export function HeroVisual() {
         );
       })}
 
-      {/* Corner gears — kept from v1, slightly tuned */}
-      <g className="gear-spin" style={{ transformOrigin: '60px 60px' }}>
-        <path d={gearPath(60, 60, 28, 22, 12)} fill="none" stroke="rgba(194, 136, 64, 0.4)" strokeWidth={1.2} />
-        <circle cx={60} cy={60} r={10} fill="none" stroke="rgba(194, 136, 64, 0.35)" strokeWidth={1} />
-        <circle cx={60} cy={60} r={3.5} fill="rgba(194, 136, 64, 0.3)" />
+      {/* Corner gears — bolder, mechanical detail.
+          Each gear gets: an outer toothed body filled with brass, an
+          inner contrast ring, a hub circle, four cross-spokes, and a
+          center bolt with highlight. */}
+      <g className="gear-spin" style={{ transformOrigin: '62px 62px' }}>
+        <path
+          d={gearPath(62, 62, 32, 25, 12)}
+          fill="rgba(194, 136, 64, 0.20)"
+          stroke="url(#brass-grad)"
+          strokeWidth={2.2}
+          strokeLinejoin="round"
+        />
+        <circle cx={62} cy={62} r={17} fill="none" stroke="rgba(224, 166, 86, 0.55)" strokeWidth={1.4} />
+        <circle cx={62} cy={62} r={12} fill="none" stroke="rgba(194, 136, 64, 0.55)" strokeWidth={1} />
+        {/* Four cross-spokes */}
+        {[0, 90, 180, 270].map((deg) => {
+          const rad = (deg * Math.PI) / 180;
+          return (
+            <line
+              key={deg}
+              x1={62 + Math.cos(rad) * 5}
+              y1={62 + Math.sin(rad) * 5}
+              x2={62 + Math.cos(rad) * 16}
+              y2={62 + Math.sin(rad) * 16}
+              stroke="rgba(194, 136, 64, 0.55)"
+              strokeWidth={1.2}
+              strokeLinecap="round"
+            />
+          );
+        })}
+        {/* Hub bolt with highlight */}
+        <circle cx={62} cy={62} r={5} fill="rgba(140, 95, 40, 0.85)" />
+        <circle cx={61} cy={61} r={1.6} fill="rgba(255, 235, 150, 0.7)" />
       </g>
-      <g className="gear-spin-rev" style={{ transformOrigin: `${SIZE - 60}px ${SIZE - 60}px` }}>
-        <path d={gearPath(SIZE - 60, SIZE - 60, 22, 17, 10)} fill="none" stroke="rgba(224, 166, 86, 0.32)" strokeWidth={1} />
-        <circle cx={SIZE - 60} cy={SIZE - 60} r={8} fill="none" stroke="rgba(224, 166, 86, 0.26)" strokeWidth={1} />
-        <circle cx={SIZE - 60} cy={SIZE - 60} r={3} fill="rgba(224, 166, 86, 0.22)" />
+      <g className="gear-spin-rev" style={{ transformOrigin: `${SIZE - 62}px ${SIZE - 62}px` }}>
+        <path
+          d={gearPath(SIZE - 62, SIZE - 62, 26, 20, 10)}
+          fill="rgba(224, 166, 86, 0.15)"
+          stroke="url(#brass-grad-vertical)"
+          strokeWidth={2.0}
+          strokeLinejoin="round"
+        />
+        <circle cx={SIZE - 62} cy={SIZE - 62} r={14} fill="none" stroke="rgba(224, 166, 86, 0.55)" strokeWidth={1.3} />
+        <circle cx={SIZE - 62} cy={SIZE - 62} r={9} fill="none" stroke="rgba(194, 136, 64, 0.5)" strokeWidth={1} />
+        {[45, 135, 225, 315].map((deg) => {
+          const rad = (deg * Math.PI) / 180;
+          const cx = SIZE - 62;
+          const cy = SIZE - 62;
+          return (
+            <line
+              key={deg}
+              x1={cx + Math.cos(rad) * 4}
+              y1={cy + Math.sin(rad) * 4}
+              x2={cx + Math.cos(rad) * 13}
+              y2={cy + Math.sin(rad) * 13}
+              stroke="rgba(224, 166, 86, 0.55)"
+              strokeWidth={1.1}
+              strokeLinecap="round"
+            />
+          );
+        })}
+        <circle cx={SIZE - 62} cy={SIZE - 62} r={4} fill="rgba(140, 95, 40, 0.85)" />
+        <circle cx={SIZE - 63} cy={SIZE - 63} r={1.3} fill="rgba(255, 235, 150, 0.7)" />
       </g>
 
       {/* Bond edges — every ~9th gets a slow opacity fade (synapse activity) */}

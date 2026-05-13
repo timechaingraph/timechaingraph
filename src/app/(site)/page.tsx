@@ -36,7 +36,7 @@ export default function HomePage() {
 
 function Hero() {
   return (
-    <section className="grid items-center gap-12 py-16 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-24 lg:gap-20 lg:py-28">
+    <section className="grid items-center gap-12 py-8 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-14 lg:gap-20 lg:py-20">
       <div className="flex flex-col gap-8">
         <p className="text-mono text-[11px] uppercase tracking-[0.36em] text-[color:var(--color-accent-cyan)]">
           {BRAND_TAGLINE}
