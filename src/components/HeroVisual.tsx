@@ -219,27 +219,27 @@ export function HeroVisual() {
           period so they read as one synchronized mechanism. */}
       <g
         className="gear-spin-rev"
-        style={{ transformOrigin: '62px 62px', animationDuration: '20s' }}
+        style={{ transformOrigin: '54px 54px', animationDuration: '20s' }}
       >
         <path
-          d={gearPath(62, 62, 32, 25, 12)}
+          d={gearPath(54, 54, 32, 25, 12)}
           fill="none"
           stroke="url(#brass-grad)"
           strokeWidth={2.2}
           strokeLinejoin="round"
         />
-        <circle cx={62} cy={62} r={17} fill="none" stroke="rgba(224, 166, 86, 0.55)" strokeWidth={1.4} />
-        <circle cx={62} cy={62} r={12} fill="none" stroke="rgba(194, 136, 64, 0.55)" strokeWidth={1} />
+        <circle cx={54} cy={54} r={17} fill="none" stroke="rgba(224, 166, 86, 0.55)" strokeWidth={1.4} />
+        <circle cx={54} cy={54} r={12} fill="none" stroke="rgba(194, 136, 64, 0.55)" strokeWidth={1} />
         {/* Four cross-spokes */}
         {[0, 90, 180, 270].map((deg) => {
           const rad = (deg * Math.PI) / 180;
           return (
             <line
               key={deg}
-              x1={62 + Math.cos(rad) * 5}
-              y1={62 + Math.sin(rad) * 5}
-              x2={62 + Math.cos(rad) * 16}
-              y2={62 + Math.sin(rad) * 16}
+              x1={54 + Math.cos(rad) * 5}
+              y1={54 + Math.sin(rad) * 5}
+              x2={54 + Math.cos(rad) * 16}
+              y2={54 + Math.sin(rad) * 16}
               stroke="rgba(194, 136, 64, 0.55)"
               strokeWidth={1.2}
               strokeLinecap="round"
@@ -247,26 +247,26 @@ export function HeroVisual() {
           );
         })}
         {/* Hub bolt with highlight */}
-        <circle cx={62} cy={62} r={5} fill="rgba(140, 95, 40, 0.85)" />
-        <circle cx={61} cy={61} r={1.6} fill="rgba(255, 235, 150, 0.7)" />
+        <circle cx={54} cy={54} r={5} fill="rgba(140, 95, 40, 0.85)" />
+        <circle cx={53} cy={53} r={1.6} fill="rgba(255, 235, 150, 0.7)" />
       </g>
       <g
         className="gear-spin-rev"
-        style={{ transformOrigin: `${SIZE - 62}px ${SIZE - 62}px`, animationDuration: '20s' }}
+        style={{ transformOrigin: `${SIZE - 58}px ${SIZE - 58}px`, animationDuration: '20s' }}
       >
         <path
-          d={gearPath(SIZE - 62, SIZE - 62, 26, 20, 10)}
+          d={gearPath(SIZE - 58, SIZE - 58, 26, 20, 10)}
           fill="none"
           stroke="url(#brass-grad-vertical)"
           strokeWidth={2.0}
           strokeLinejoin="round"
         />
-        <circle cx={SIZE - 62} cy={SIZE - 62} r={14} fill="none" stroke="rgba(224, 166, 86, 0.55)" strokeWidth={1.3} />
-        <circle cx={SIZE - 62} cy={SIZE - 62} r={9} fill="none" stroke="rgba(194, 136, 64, 0.5)" strokeWidth={1} />
+        <circle cx={SIZE - 58} cy={SIZE - 58} r={14} fill="none" stroke="rgba(224, 166, 86, 0.55)" strokeWidth={1.3} />
+        <circle cx={SIZE - 58} cy={SIZE - 58} r={9} fill="none" stroke="rgba(194, 136, 64, 0.5)" strokeWidth={1} />
         {[45, 135, 225, 315].map((deg) => {
           const rad = (deg * Math.PI) / 180;
-          const cx = SIZE - 62;
-          const cy = SIZE - 62;
+          const cx = SIZE - 58;
+          const cy = SIZE - 58;
           return (
             <line
               key={deg}
@@ -280,8 +280,8 @@ export function HeroVisual() {
             />
           );
         })}
-        <circle cx={SIZE - 62} cy={SIZE - 62} r={4} fill="rgba(140, 95, 40, 0.85)" />
-        <circle cx={SIZE - 63} cy={SIZE - 63} r={1.3} fill="rgba(255, 235, 150, 0.7)" />
+        <circle cx={SIZE - 58} cy={SIZE - 58} r={4} fill="rgba(140, 95, 40, 0.85)" />
+        <circle cx={SIZE - 59} cy={SIZE - 59} r={1.3} fill="rgba(255, 235, 150, 0.7)" />
       </g>
 
       {/* Bond edges — every ~9th gets a slow opacity fade (synapse activity) */}
