@@ -44,7 +44,7 @@ because it walks the GitHub OAuth flow):**
 **Option B — via Wrangler CLI** (manual deploys; no GitHub integration):
 
 ```bash
-cd $REPO
+cd path/to/timechaingraph             # repo root
 npx wrangler login                    # one-time browser auth
 npx wrangler pages project create timechaingraph --production-branch main
 npm run deploy                        # build + push out/ to Pages
@@ -124,8 +124,8 @@ appeared and re-audit — the privacy boundary is non-negotiable.
 
 ## 6. Sister project deploy
 
-The sister project at `$SISTER_REPO/` deploys to
-`timechaingrid.com` via the same process — substitute names everywhere:
+The sister project (`timechaingrid`) deploys to `timechaingrid.com` via
+the same process — substitute names everywhere:
 
 | This repo | Sister repo |
 |-----------|-------------|

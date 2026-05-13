@@ -1,67 +1,85 @@
 import type { Metadata } from 'next';
-import { GraphView } from '@/components/views/GraphView';
-import { GraphSidebar } from '@/components/views/GraphSidebar';
-import { GraphPlayBar } from '@/components/views/GraphPlayBar';
-import { WalletInspector } from '@/components/WalletInspector';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Graph view',
+  title: 'Graph view — under development',
   description:
-    "Bitcoin's living network. Every wallet a neuron. Every transaction a synapse. Watch the brain of the chain think, block by block.",
+    "Bitcoin's living network. Every wallet a neuron. Every transaction a synapse. The graph view is under development; data ingestion is in progress.",
 };
 
 /**
- * /graph — kiosk-mode page. Per user directive 2026-04-30, full-
- * viewport canvas with compact non-blocking HUDs.
+ * /graph — v0.0.1 placeholder.
  *
- * Layout:
- *   - <GraphView /> fills the kiosk area absolutely.
- *   - Left sidebar: <GraphSidebar /> — narrow card stacking block
- *     narrative + stats into a single ~260px-wide column. Replaces
- *     the floating top-center BlockNarrative + top-right BlockStats
- *     so the canvas keeps both halves of its width.
- *   - Right column: <WalletInspector /> only when a wallet is
- *     selected (lg+).
- *   - Bottom row: <GraphPlayBar /> — single thin pill containing
- *     play/pause + speed pills + scrubber + block readout. Replaces
- *     the stacked Scrubber + Playback panels (which doubled the
- *     bottom-bar height).
+ * The full PixiJS force-directed renderer (GraphView component +
+ * sidebars + scrubber + wallet inspector) lives at
+ * `src/components/views/GraphView.tsx` and is wired up correctly.
+ * It is intentionally NOT rendered here while real-chain ingestion
+ * is in progress, because shipping the canvas without real block
+ * snapshots would show synthetic / misleading data.
  *
- * All HUD wrappers use `pointer-events-none` so canvas hover/click
- * passes through where panels don't physically cover; inner content
- * is `pointer-events-auto`. Translucent brass-panel + backdrop-blur
- * keeps the lattice readable behind every overlay.
+ * Once the operator's bitcoind + electrs stack is synced and the
+ * snapshot generator has emitted per-block JSON sidecars under
+ * `public/blocks/`, swap the placeholder below for the actual
+ * `<GraphView />`.
  */
 export default function GraphHome() {
   return (
-    <div className="relative h-full w-full">
-      {/* The lattice — fills the kiosk area, sits underneath all overlays. */}
-      <div className="absolute inset-0">
-        <GraphView />
-      </div>
-
-      {/* Left sidebar: combined narrative + stats. */}
-      <div className="pointer-events-none absolute top-3 left-3 z-10 w-[260px] max-w-[calc(100vw-1.5rem)]">
-        <div className="pointer-events-auto">
-          <GraphSidebar />
+    <div className="flex h-full w-full items-center justify-center px-6">
+      <section className="brass-panel max-w-2xl rounded-xl p-10 text-center md:p-14">
+        <p className="text-mono text-xs uppercase tracking-[0.32em] text-[color:var(--color-accent-cyan)]">
+          Under development
+        </p>
+        <h1 className="text-display mt-4 text-3xl font-semibold leading-[1.1] md:text-5xl">
+          The graph is{' '}
+          <span className="brass-shimmer">being built.</span>
+        </h1>
+        <div className="mt-7 space-y-5 text-left text-base leading-relaxed text-[color:var(--color-text-secondary)] md:text-lg">
+          <p>
+            The force-directed canvas is code-complete: PixiJS renderer,
+            Velocity-Verlet physics, drag-to-pin, cursor-anchored zoom,
+            playback scrubber, kiosk HUD. What it currently lacks is
+            data — the operator&apos;s full-node sync and snapshot
+            ingestion are in progress.
+          </p>
+          <p>
+            We will not ship the canvas with synthetic data masquerading
+            as real chain history. When the first real block snapshots
+            land, this placeholder is gone and the lattice goes live.
+          </p>
+          <p className="text-[color:var(--color-text-muted)]">
+            Follow progress on the{' '}
+            <Link
+              href="/status"
+              className="text-[color:var(--color-gold)] underline-offset-4 hover:underline"
+            >
+              status page
+            </Link>
+            , or read more about the project on{' '}
+            <Link
+              href="/about"
+              className="text-[color:var(--color-gold)] underline-offset-4 hover:underline"
+            >
+              about
+            </Link>
+            .
+          </p>
         </div>
-      </div>
-
-      {/* Right column: wallet inspector — appears when a wallet is
-          selected. Hidden on small viewports; on mobile the inspector
-          is reachable via tap-to-open in a future commit. */}
-      <div className="pointer-events-none absolute top-3 right-3 bottom-20 z-10 hidden w-[300px] max-w-[calc(100vw-1.5rem)] flex-col gap-3 overflow-y-auto pr-1 lg:flex">
-        <div className="pointer-events-auto">
-          <WalletInspector />
+        <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/"
+            className="brass-panel rounded-full px-6 py-3 text-mono text-sm uppercase tracking-[0.18em] transition-colors hover:border-[color:var(--color-amber)]"
+            style={{ color: 'var(--color-gold)' }}
+          >
+            ⟵ Back home
+          </Link>
+          <a
+            href="https://timechaingrid.com"
+            className="rounded-full border border-[color:var(--color-card-border)] px-6 py-3 text-mono text-sm uppercase tracking-[0.18em] text-[color:var(--color-accent-cyan)] transition-colors hover:border-[color:var(--color-accent-cyan)]"
+          >
+            Try the Grid ⟶
+          </a>
         </div>
-      </div>
-
-      {/* Bottom row: thin combined playbar. */}
-      <div className="pointer-events-none absolute right-0 bottom-3 left-0 z-10 flex justify-center px-3">
-        <div className="pointer-events-auto w-full max-w-3xl">
-          <GraphPlayBar />
-        </div>
-      </div>
+      </section>
     </div>
   );
 }

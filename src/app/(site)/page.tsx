@@ -72,11 +72,11 @@ function Pillars() {
   const items: Array<{ label: string; body: string }> = [
     {
       label: 'Network',
-      body: 'Every wallet a neuron. Every transaction a synapse. The brain of the chain, drawn live.',
+      body: 'Every wallet a neuron. Every transaction a synapse. The brain of the chain, drawn as it grows.',
     },
     {
       label: 'Time',
-      body: 'Block-by-block scrubber across 16 years of history. Watch the network think, halving by halving.',
+      body: 'A block-by-block scrubber over Bitcoin’s history. Watch the network think, halving by halving.',
     },
     {
       label: 'Private',

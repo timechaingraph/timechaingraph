@@ -78,15 +78,15 @@ const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 5;
 const ZOOM_STEP = 0.0015;
 
-// Demo timeline upper bound. Covers all of epoch 0 (genesis through
-// Aligns with chain-tools/vault/generate.mjs::SNAPSHOT_THROUGH_BLOCK
-// (= chain-tools/lib/chain.mjs::TIP_BLOCK) so the scrubber range ==
-// the snapshot range == the playback timeline. Snapped to a recent
-// live chain tip — bump on each ingest run. As the user scrubs
-// through, FREE_TIER_50's wallets spawn at their firstSeenBlock —
-// Satoshi at 0, miners by ~44k, whales from ~50k, significant from
-// ~150k, then the lattice plays forward through epochs 1-4 with
-// existing wallets active as edges fade in/out across blocks.
+// Demo timeline upper bound. Aligns with the chain-tools snapshot
+// generator's SNAPSHOT_THROUGH_BLOCK (= chain-tools TIP_BLOCK) so
+// the scrubber range == the snapshot range == the playback timeline.
+// Snapped to a recent live chain tip — bump on each ingest run.
+// As the user scrubs through, FREE_TIER_50's wallets spawn at their
+// firstSeenBlock — Satoshi at 0, miners by ~44k, whales from ~50k,
+// significant from ~150k, then the lattice plays forward through
+// epochs 1-4 with existing wallets active as edges fade in/out
+// across blocks.
 const FIXTURE_LATEST_BLOCK = 947_630;
 
 function djb2(s: string): number {
@@ -337,9 +337,9 @@ export function GraphView() {
       }
 
       // BFS through neighborsByAddr from a seed up to maxDepth. Returns
-      // a Map<address, hopDistance>. Same algorithm as the vault
-      // generator's empire emit; both surfaces compute identical
-      // distances by construction.
+      // a Map<address, hopDistance>. Same algorithm the snapshot
+      // generator uses for empire emit; both surfaces compute
+      // identical distances by construction.
       function bfsFrom(seed: string, maxDepth: number): Map<string, number> {
         const distances = new Map<string, number>();
         distances.set(seed, 0);
@@ -674,8 +674,8 @@ export function GraphView() {
         );
         // Formation block: deterministic djb2 pick within the
         // overlap window of the two endpoints' active ranges.
-        // Mirrors chain-tools/vault/generate.mjs::bondFormationBlock
-        // so the canvas + the vault sidecars agree on synapse
+        // Mirrors the snapshot generator's bondFormationBlock so
+        // the canvas + the per-block sidecars agree on synapse
         // birth times.
         const lo = Math.max(aWallet.firstSeenBlock, bWallet.firstSeenBlock);
         const hi = Math.min(aWallet.lastActiveBlock, bWallet.lastActiveBlock);

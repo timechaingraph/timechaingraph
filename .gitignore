@@ -42,7 +42,13 @@ public/data/
 # generate.mjs and served at /blocks/* for the canvas to fetch during
 # Animate playback. Regenerated locally; never committed (the canonical
 # copy lives under vault/blocks/ which is also gitignored).
-public/blocks/
+# No trailing slash so the rule also matches the symlink to external
+# storage (post-2026-05-09 cutover).
+public/blocks
+public/blocks.pre-cutover-backup
+# Relocated cutover backup (moved out of public/ to keep it out of the
+# static export bundle — would blow CF Pages 20k-file limit otherwise).
+/.public-blocks.pre-cutover-backup
 
 # chain-tools build artifacts (substrate dumps + parquet outputs from
 # the operator pipeline) — regenerated locally, never committed.

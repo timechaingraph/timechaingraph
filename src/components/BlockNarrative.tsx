@@ -21,9 +21,8 @@ import { FIXTURE_SUBSTRATE } from '@/data/substrate';
  *
  * The fetch is async; while the snapshot is being loaded the card
  * shows a thin loading state. If the fetch fails (no snapshots
- * available — e.g., user navigated to /grid without running
- * `vault:generate`), the card hides itself rather than complaining
- * loudly.
+ * available — e.g., the operator hasn't yet generated the per-block
+ * sidecars), the card hides itself rather than complaining loudly.
  *
  * This is the user-facing instantiation of the block-by-block
  * snapshot architecture: each per-block JSON literally drives the

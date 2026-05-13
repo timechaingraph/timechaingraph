@@ -4,15 +4,15 @@ import type { WalletBond, WalletData } from './wallet';
 /**
  * ChainSubstrate — the shared chain-data contract that any source
  * (fixture, parquet bundle from R2, real bitcoind RPC) must satisfy
- * for downstream consumers (vault generators, Prolog fact emitters,
- * the web canvas, the API server) to read.
+ * for downstream consumers (snapshot generators, Prolog fact
+ * emitters, the web canvas, the API server) to read.
  *
- * Both vault projections in this two-repo cooperative system consume
+ * Both projections in this two-repo cooperative system consume
  * a `ChainSubstrate`:
- *   - **Brain vault** (Timechain Graph) reads `wallets` + `bonds`,
- *     emits per-wallet + per-bond markdown notes.
- *   - **Coin-real-estate vault** (Timechain Grid) reads `coins`,
- *     emits per-coin + per-block + per-subgrid notes.
+ *   - **Graph projection** (Timechain Graph) reads `wallets` +
+ *     `bonds`, emits per-wallet + per-bond records.
+ *   - **Grid projection** (Timechain Grid) reads `coins`, emits
+ *     per-coin + per-block + per-subgrid records.
  *
  * The substrate is the raw digest at a snapshot. v0.1 implementation
  * is fixture-backed (`src/data/substrate.ts`); v0.2+ wraps the
@@ -22,7 +22,7 @@ import type { WalletBond, WalletData } from './wallet';
  *
  * Schema-stability commitment: any new field lands as an additive
  * extension. Existing fields don't get renamed or removed without a
- * major-version bump documented in `vault/CONCEPTS.md`.
+ * major-version bump documented in the schema README.
  */
 export interface ChainSubstrate {
   /**

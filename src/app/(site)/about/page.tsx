@@ -34,9 +34,12 @@ export default function AboutPage() {
           </Link>{' '}
           for emergent structure — clusters thicken where activity
           concentrates. The stationary{' '}
-          <Link href="/grid" className="text-[color:var(--color-accent-cyan)] underline-offset-4 hover:underline">
+          <a
+            href="https://timechaingrid.com"
+            className="text-[color:var(--color-accent-cyan)] underline-offset-4 hover:underline"
+          >
             Grid
-          </Link>{' '}
+          </a>{' '}
           for fixed reference — every coin a tile on a 2D lattice
           expanding outward from Satoshi. Same chain, two geometries.
         </p>
