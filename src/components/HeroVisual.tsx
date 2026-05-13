@@ -211,11 +211,16 @@ export function HeroVisual() {
         );
       })}
 
-      {/* Corner gears — bolder, mechanical detail.
+      {/* Corner gears — bolder mechanical detail.
           Each gear gets: an outer toothed body filled with brass, an
           inner contrast ring, a hub circle, four cross-spokes, and a
-          center bolt with highlight. */}
-      <g className="gear-spin" style={{ transformOrigin: '62px 62px' }}>
+          center bolt with highlight.
+          Both gears + the outer ring share the same 60-second rotation
+          period so they read as one synchronized mechanism. */}
+      <g
+        className="gear-spin"
+        style={{ transformOrigin: '62px 62px', animationDuration: '60s' }}
+      >
         <path
           d={gearPath(62, 62, 32, 25, 12)}
           fill="rgba(194, 136, 64, 0.20)"
@@ -245,7 +250,10 @@ export function HeroVisual() {
         <circle cx={62} cy={62} r={5} fill="rgba(140, 95, 40, 0.85)" />
         <circle cx={61} cy={61} r={1.6} fill="rgba(255, 235, 150, 0.7)" />
       </g>
-      <g className="gear-spin-rev" style={{ transformOrigin: `${SIZE - 62}px ${SIZE - 62}px` }}>
+      <g
+        className="gear-spin"
+        style={{ transformOrigin: `${SIZE - 62}px ${SIZE - 62}px`, animationDuration: '60s' }}
+      >
         <path
           d={gearPath(SIZE - 62, SIZE - 62, 26, 20, 10)}
           fill="rgba(224, 166, 86, 0.15)"
