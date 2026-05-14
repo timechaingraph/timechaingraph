@@ -29,7 +29,7 @@ export default function StatusPage() {
       <div className="mt-10 grid gap-4 md:grid-cols-2">
         <LiveStatus />
         <div className="brass-panel rounded-lg p-5">
-          <p className="text-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-text-muted)]">
+          <p className="text-mono text-[10px] uppercase tracking-[0.32em] text-[color:var(--color-brass-bright)]">
             Pipeline health
           </p>
           <ul className="mt-3 space-y-2 text-mono text-xs text-[color:var(--color-text-secondary)]">
@@ -45,9 +45,9 @@ export default function StatusPage() {
               </li>
             ))}
           </ul>
-          <p className="mt-4 text-mono text-[10px] text-[color:var(--color-text-faint)]">
-            bitcoind hosting decision pending — see Decisions to confirm
-            in the master plan.
+          <p className="mt-4 text-mono text-[10px] leading-relaxed text-[color:var(--color-text-faint)]">
+            Pipeline stack is in early build-out. Each component lights up
+            as it lands in production.
           </p>
         </div>
       </div>

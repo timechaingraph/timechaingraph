@@ -57,8 +57,16 @@ function Hero() {
           >
             Open the graph ⟶
           </Link>
-          <span className="text-mono text-[10px] uppercase tracking-[0.24em] text-[color:var(--color-text-muted)]">
-            no sign-up · no tracking
+          <span className="flex items-center gap-2 text-mono text-[10px] uppercase tracking-[0.24em] text-[color:var(--color-text-muted)]">
+            <span
+              aria-hidden
+              className="inline-block h-1.5 w-1.5 rounded-full"
+              style={{
+                background: 'var(--color-accent-cyan)',
+                boxShadow: '0 0 6px var(--color-accent-cyan)',
+              }}
+            />
+            open source · no sign-up · no tracking
           </span>
         </div>
       </div>
