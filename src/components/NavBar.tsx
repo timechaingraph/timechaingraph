@@ -48,13 +48,15 @@ export function NavBar() {
     <header className="relative z-10 flex items-center justify-between gap-4 pb-1">
       <Link
         href="/"
-        className="flex items-center gap-3 text-mono text-sm transition-opacity hover:opacity-80 md:gap-6"
+        className="flex items-center gap-4 text-mono text-sm transition-opacity hover:opacity-80 md:gap-8"
         aria-label={`Timechain ${VIEW_BRAND} — home`}
       >
-        <Logo size={32} />
-        <span className="brass-shimmer text-base font-semibold tracking-wider">
-          TIMECHAIN<span className="mx-1 opacity-60">·</span>{VIEW_BRAND}
-        </span>
+        <div className="flex items-center gap-2">
+          <Logo size={32} />
+          <span className="brass-shimmer text-base font-semibold tracking-wider">
+            TIMECHAIN<span className="mx-0.5">·</span>{VIEW_BRAND}
+          </span>
+        </div>
         <span
           className="hidden text-[10px] uppercase tracking-[0.24em] md:inline"
           style={{ color: accent, opacity: 0.7 }}
