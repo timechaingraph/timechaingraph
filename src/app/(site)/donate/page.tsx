@@ -55,9 +55,19 @@ export default function DonatePage() {
             no middleman. Just Bitcoin, peer to peer.
           </p>
           {DONATION_LIVE ? (
-            <code className="text-mono mt-4 block break-all rounded-md border border-[color:var(--color-card-border)] bg-[color:var(--color-background-light)] px-3 py-2 text-sm text-[color:var(--color-gold)]">
-              {DONATION_BTC_ADDRESS}
-            </code>
+            <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+              {/* eslint-disable-next-line @next/next/no-img-element -- static pre-generated QR SVG; no image optimization needed on a static export */}
+              <img
+                src="/donate-btc-qr.svg"
+                alt="QR code for the on-chain Bitcoin donation address"
+                width={128}
+                height={128}
+                className="shrink-0 rounded-md border border-[color:var(--color-card-border)] bg-white p-2"
+              />
+              <code className="text-mono block break-all rounded-md border border-[color:var(--color-card-border)] bg-[color:var(--color-background-light)] px-3 py-2 text-sm text-[color:var(--color-gold)]">
+                {DONATION_BTC_ADDRESS}
+              </code>
+            </div>
           ) : (
             <p className="mt-4 rounded-md border border-dashed border-[color:var(--color-card-border)] px-3 py-2 text-xs text-[color:var(--color-text-muted)]">
               The receive address goes live the moment our node is online —
