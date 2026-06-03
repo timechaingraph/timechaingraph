@@ -2,7 +2,7 @@
   "name": "timechaingraph",
   "version": "0.0.1",
   "private": true,
-  "description": "The brain of Bitcoin — privacy-first force-directed graph of every economically meaningful Bitcoin wallet at timechaingraph.com. Sister project: timechaingrid.com.",
+  "description": "The Graph of Bitcoin — privacy-first force-directed graph of every economically meaningful Bitcoin wallet at timechaingraph.com. Sister project: timechaingrid.com.",
   "license": "MIT",
   "author": "Timechaingraph team",
   "homepage": "https://timechaingraph.com",

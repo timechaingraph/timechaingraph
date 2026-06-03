@@ -1,7 +1,7 @@
 # Timechain Graph
 
-> **The brain of Bitcoin.** Every wallet a neuron. Every transaction a synapse.
-> Watch the network think — Satoshi at the gold center, miners glowing red,
+> **The Graph of Bitcoin.** Every wallet a node. Every transaction an edge.
+> Watch the network form — Satoshi at the gold center, miners glowing red,
 > whales gold, dust grey, all bound by the bonds they spent.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)

@@ -4,7 +4,7 @@ import Link from 'next/link';
 export const metadata: Metadata = {
   title: 'About',
   description:
-    'Why Timechain Graph exists. Bitcoin as a living network — every wallet a neuron, every transaction a synapse.',
+    'Why Timechain Graph exists. Bitcoin as a living network — every wallet a node, every transaction an edge.',
 };
 
 export default function AboutPage() {
@@ -14,7 +14,7 @@ export default function AboutPage() {
         Background
       </p>
       <h1 className="text-display mt-3 text-4xl font-semibold leading-[1.05] md:text-6xl">
-        The brain
+        The Graph
         <br />
         <span className="brass-shimmer">of Bitcoin.</span>
       </h1>
@@ -22,9 +22,9 @@ export default function AboutPage() {
       <div className="mt-10 space-y-6 text-base leading-relaxed text-[color:var(--color-text-secondary)] md:text-lg">
         <p>
           Bitcoin is the largest publicly observed economic network in
-          history. Every wallet is a neuron. Every transaction is a
-          synapse. Every block is a clock-tick that has not stopped since
-          3 January 2009. Timechain Graph draws that brain — live,
+          history. Every wallet is a node. Every transaction is an
+          edge. Every block is a clock-tick that has not stopped since
+          3 January 2009. Timechain Graph draws that network — live,
           private, in your browser.
         </p>
         <p>

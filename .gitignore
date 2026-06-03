@@ -52,7 +52,11 @@ public/blocks.pre-cutover-backup
 
 # chain-tools build artifacts (substrate dumps + parquet outputs from
 # the operator pipeline) — regenerated locally, never committed.
-/chain-tools/out/
+# No trailing slash, so the rule also matches the `out` SYMLINK to the SSD
+# (a trailing-slash rule matches only real dirs, not symlinks — that gap let a
+# 617MB substrate backup get committed once on 2026-06-03; rewritten out of history).
+/chain-tools/out
+/chain-tools/out.pre-cutover-backup
 
 # Python bytecode cache (anywhere in tree)
 __pycache__/

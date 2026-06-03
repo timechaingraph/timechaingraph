@@ -38,18 +38,30 @@ function Hero() {
   return (
     <section className="grid items-center gap-12 py-4 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-8 lg:gap-20 lg:py-10">
       <div className="flex flex-col gap-8">
-        <p className="text-mono text-[11px] uppercase tracking-[0.36em] text-[color:var(--color-accent-cyan)]">
+        <p
+          className="text-mono text-[11px] uppercase tracking-[0.36em] text-[color:var(--color-accent-cyan)]"
+          style={{ animation: 'drift-up 0.7s ease-out 0.05s both' }}
+        >
           {BRAND_TAGLINE}
         </p>
-        <h1 className="text-display text-5xl font-semibold leading-[1.02] tracking-tight md:text-7xl lg:text-[5.5rem]">
+        <h1
+          className="text-display hero-gradient text-5xl font-bold leading-[1.02] tracking-tight md:text-7xl lg:text-[5.5rem]"
+          style={{ animation: 'drift-up 0.7s ease-out 0.15s both' }}
+        >
           {VIEW_HERO_TOP}
           <br />
-          <span className="brass-shimmer">{VIEW_HERO_BOTTOM}</span>
+          {VIEW_HERO_BOTTOM}
         </h1>
-        <p className="max-w-xl text-base leading-relaxed text-[color:var(--color-text-secondary)] md:text-lg">
+        <p
+          className="max-w-xl text-base leading-relaxed text-[color:var(--color-text-secondary)] md:text-lg"
+          style={{ animation: 'drift-up 0.7s ease-out 0.25s both' }}
+        >
           {VIEW_HERO_DESCRIPTION}
         </p>
-        <div className="flex flex-wrap items-center gap-4 pt-2">
+        <div
+          className="flex flex-wrap items-center gap-4 pt-2"
+          style={{ animation: 'drift-up 0.7s ease-out 0.35s both' }}
+        >
           <Link
             href="/graph"
             className="brass-panel rounded-full px-7 py-3.5 text-mono text-xs uppercase tracking-[0.2em] transition-all hover:border-[color:var(--color-amber)] hover:shadow-[0_0_24px_rgba(255,215,0,0.18)]"
@@ -71,7 +83,10 @@ function Hero() {
         </div>
       </div>
 
-      <div className="relative flex aspect-square items-center justify-center">
+      <div
+        className="relative flex aspect-square items-center justify-center"
+        style={{ animation: 'drift-up 0.9s ease-out 0.4s both' }}
+      >
         <HeroVisual />
       </div>
     </section>
@@ -102,11 +117,11 @@ function Pillars() {
   const items: Array<{ label: string; body: string }> = [
     {
       label: 'Network',
-      body: 'Every wallet a neuron. Every transaction a synapse. Position emerges from the connections, not from a coordinate.',
+      body: 'Every wallet a node. Every transaction an edge. Position emerges from the connections, not from a coordinate.',
     },
     {
       label: 'Time',
-      body: 'Scrub block by block across Bitcoin’s history. Watch the network think, halving by halving.',
+      body: 'Scrub block by block across Bitcoin’s history. Watch the network form, halving by halving.',
     },
     {
       label: 'Private',

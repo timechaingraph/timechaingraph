@@ -17,10 +17,10 @@ export const VIEW_DOMAIN = 'timechaingraph.com';
 export const VIEW_TAGLINE = 'the living network of Bitcoin';
 export const VIEW_ACCENT = 'gold' as const;
 
-export const VIEW_HERO_TOP = 'The brain';
+export const VIEW_HERO_TOP = 'The Graph';
 export const VIEW_HERO_BOTTOM = 'of Bitcoin.';
 export const VIEW_HERO_DESCRIPTION =
-  'Bitcoin has been thinking in public for sixteen years. Until now, only specialists could read it. Timechain Graph is the lens — every wallet a neuron, every transaction a synapse, the whole network legible in a browser. Public ledger, public view. No one watches you watch.';
+  'Every wallet a node, every transaction an edge — sixteen years of the public ledger, rendered as one living network, finally legible in your browser. Public to watch, private to use: no accounts, no tracking, no one watching you watch.';
 
 export const OTHER_VIEW_BRAND = 'GRID';
 export const OTHER_VIEW_DOMAIN = 'timechaingrid.com';
@@ -43,7 +43,7 @@ export const SITE_URL = `https://${VIEW_DOMAIN}`;
 export const SITE_TITLE = `Timechain ${VIEW_BRAND}`;
 export const SITE_TITLE_FULL = `${BRAND_TAGLINE} — Timechain ${VIEW_BRAND}`;
 export const SITE_DESCRIPTION =
-  'Bitcoin Visualised. The living network — every wallet a neuron, every transaction a synapse. Public, privacy-first, no third-party scripts.';
+  'Bitcoin Visualised. The living network — every wallet a node, every transaction an edge. Public, privacy-first, no third-party scripts.';
 
 /** Proper-case brand for prose ("Timechain Graph"). VIEW_BRAND is the
  *  stylised uppercase form; this is the readable one. Diverges Graph/Grid. */
@@ -57,10 +57,10 @@ export const VIEW_BRAND_NAME = 'Graph';
  * is on custodians, not self-custody). Lightning arrives later via a
  * SELF-HOSTED node (BTCPay/LNbits), never a custodial service.
  *
- * ⚠️  DONATION_BTC_ADDRESS is a PLACEHOLDER. /donate detects the placeholder
- * and shows a "coming" state instead of a bogus address, so a wrong address
- * can never reach a donor. Replace with the real Graph on-chain receive
- * address (from any wallet you control) to go live.
+ * DONATION_BTC_ADDRESS is the live, verified operator receive address —
+ * a native segwit (bech32) address the operator controls. Because it is a
+ * real address (not a placeholder), DONATION_LIVE evaluates true, so /donate
+ * renders the address plus its QR rather than a "coming" state.
  */
 export const DONATION_BTC_ADDRESS = 'bc1q2hhsxyuzj4e6wcjegayddjphdry02wdef9v62l';
 export const DONATION_LIGHTNING_ADDRESS = ''; // coming: self-hosted via BTCPay/LNbits

@@ -70,10 +70,9 @@ html, body {
 
 body {
   min-height: 100dvh;
-  background-image:
-    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(255, 215, 0, 0.045) 0%, transparent 60%),
-    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(194, 136, 64, 0.045) 0%, transparent 60%);
-  background-attachment: fixed;
+  /* Ambient glows moved to the fixed body::after layer (below) so they stay
+     pinned to the viewport WITHOUT background-attachment: fixed, which jitters
+     on mobile as the URL bar collapses. */
 }
 
 /* Constellation backdrop — thin brass dots + connecting lines.
@@ -87,7 +86,6 @@ body::before {
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center center;
-  background-attachment: fixed;
   pointer-events: none;
   z-index: 0;
   opacity: 0.9;
@@ -98,13 +96,16 @@ body::after {
   content: "";
   position: fixed;
   inset: 0;
-  background-image: repeating-linear-gradient(
-    0deg,
-    transparent 0,
-    transparent 3px,
-    rgba(255, 255, 255, 0.012) 3px,
-    rgba(255, 255, 255, 0.012) 4px
-  );
+  background-image:
+    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(255, 215, 0, 0.045) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(194, 136, 64, 0.045) 0%, transparent 60%),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 3px,
+      rgba(255, 255, 255, 0.012) 3px,
+      rgba(255, 255, 255, 0.012) 4px
+    );
   pointer-events: none;
   z-index: 1;
 }
@@ -246,17 +247,37 @@ body::after {
 }
 
 .brass-shimmer {
+  /* Shared theme ramp — same dimmed brass → gold → amber as .hero-gradient
+     and the emblem's #hero-brass-grad, so the wordmark, footer, and every
+     page heading read as one palette with the hero. Animated (slides 200%). */
   background: linear-gradient(
     90deg,
-    var(--color-brass-deep) 0%,
-    var(--color-brass) 30%,
-    var(--color-brass-bright) 50%,
-    var(--color-brass) 70%,
-    var(--color-brass-deep) 100%
+    #D89A4E 0%,
+    #E8C028 30%,
+    #D88E1C 50%,
+    #E8C028 70%,
+    #D89A4E 100%
   );
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   animation: shimmer 6s linear infinite;
+}
+
+/* Home-hero headline — a vivid gold gradient (punchier than brass-shimmer,
+   which the smaller page heroes keep). Static for a bold, clean read; the
+   animated HeroVisual beside it carries the motion. */
+.hero-gradient {
+  background: linear-gradient(
+    115deg,
+    #D89A4E 0%,
+    #E8C028 35%,
+    #D88E1C 58%,
+    #E8C028 80%,
+    #D89A4E 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }

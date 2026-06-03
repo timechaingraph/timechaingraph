@@ -2,7 +2,7 @@
  * HeroVisual — living network emblem for the Graph landing.
  *
  * Composition (back to front):
- *   1. Background bloom — soft amber/cyan radial glow
+ *   1. Background bloom — soft gold/brass radial glow
  *   2. Outer brass ring — slowly rotating, dashed, halving notches at quadrants
  *   3. Inner stationary brass ring — fine accent line + rivet pattern
  *   4. Corner gear motifs — same as before, slow contra-rotation
@@ -56,8 +56,8 @@ function seededDot(seed: number): Dot {
   const whale = role > 0.94;
   const miner = !whale && role > 0.86;
   const dotR = whale ? 3.4 : miner ? 2.4 : 1.5;
-  // ~28% of dots pulse (was ~7%); more dots = more aliveness
-  const pulse = rand(seed, 4) < 0.28;
+  // ~38% of dots pulse — denser flicker reads as a living vault graph
+  const pulse = rand(seed, 4) < 0.38;
   const delayIdx = Math.floor(rand(seed, 5) * 14);
   return { x, y, r: dotR, pulse, whale, miner, delayIdx };
 }
@@ -79,11 +79,11 @@ function buildBonds(dots: Dot[], maxPerNode = 1, maxDist = 30): Bond[] {
       const key = i < j ? `${i}-${j}` : `${j}-${i}`;
       if (seen.has(key)) continue;
       const skip = rand(i + j, 9);
-      if (skip > 0.32) continue;
+      if (skip > 0.6) continue;
       seen.add(key);
       const alpha = Math.max(0.08, 0.55 - dist / maxDist);
-      // every ~8th bond gets an opacity fade animation (staggered delay)
-      const fadeIdx = (i + j) % 9 === 0 ? (i % 12) : -1;
+      // ~every 6th bond breathes (opacity fade, staggered) — synapse activity
+      const fadeIdx = (i + j) % 6 === 0 ? (i % 12) : -1;
       out.push({ from: i, to: j, alpha, fadeIdx });
       added++;
     }
@@ -91,7 +91,19 @@ function buildBonds(dots: Dot[], maxPerNode = 1, maxDist = 30): Bond[] {
   return out;
 }
 
-const BONDS = buildBonds(DOTS, 1, 30);
+const BONDS = buildBonds(DOTS, 2, 36);
+
+// Obsidian-style hub sizing: each node swells with its degree (connection
+// count), so well-linked nodes read as hubs and isolated ones stay small —
+// the signature "important nodes are bigger" of a vault graph view.
+const degree = new Array<number>(N_DOTS).fill(0);
+for (const b of BONDS) {
+  degree[b.from]++;
+  degree[b.to]++;
+}
+DOTS.forEach((d, i) => {
+  d.r += Math.log(1 + degree[i]) * 0.7;
+});
 
 function gearPath(cx: number, cy: number, outerR: number, innerR: number, teeth: number): string {
   const step = (Math.PI * 2) / (teeth * 2);
@@ -113,7 +125,7 @@ export function HeroVisual() {
       width="100%"
       height="100%"
       role="img"
-      aria-label="Timechain Graph: a brass-framed living network of Bitcoin wallets — pulsing neurons connected by synaptic edges, halving notches on the rotating outer ring, Satoshi at the gold center."
+      aria-label="Timechain Graph: a brass-framed living network of Bitcoin wallets — pulsing wallet nodes connected by transaction edges, halving notches on the rotating outer ring, Satoshi at the gold center."
       className="max-w-[460px]"
     >
       <defs>
@@ -141,6 +153,32 @@ export function HeroVisual() {
           <stop offset="50%" stopColor="#C28840" />
           <stop offset="100%" stopColor="#8C5E29" />
         </linearGradient>
+        {/* Hero-matched gradient — same brass-bright → gold → dimmed-amber
+            palette as the headline (.hero-gradient), so the emblem's metal
+            reads as one piece with the title. */}
+        <linearGradient id="hero-brass-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#D89A4E" />
+          <stop offset="35%" stopColor="#E8C028" />
+          <stop offset="58%" stopColor="#D88E1C" />
+          <stop offset="80%" stopColor="#E8C028" />
+          <stop offset="100%" stopColor="#D89A4E" />
+        </linearGradient>
+        {/* Gear body fill — a soft radial so each cog reads as a solid brass
+            disc with depth (dark hub → warm rim) rather than a hollow outline. */}
+        <radialGradient id="gear-fill" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="rgba(140, 95, 40, 0.38)" />
+          <stop offset="65%" stopColor="rgba(194, 136, 64, 0.16)" />
+          <stop offset="100%" stopColor="rgba(224, 166, 86, 0.04)" />
+        </radialGradient>
+        {/* Soft Gaussian bloom — makes whales + the Satoshi core feel lit,
+            not flat. Applied only to the few brightest nodes (cheap). */}
+        <filter id="node-glow" x="-120%" y="-120%" width="340%" height="340%">
+          <feGaussianBlur stdDeviation="1.6" result="b" />
+          <feMerge>
+            <feMergeNode in="b" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
 
       {/* Background bloom */}
@@ -161,7 +199,7 @@ export function HeroVisual() {
           cy={CENTER}
           r={OUTER_FRAME}
           fill="none"
-          stroke="url(#brass-grad)"
+          stroke="url(#hero-brass-grad)"
           strokeWidth={1.5}
           strokeDasharray="3 6"
           opacity={0.7}
@@ -223,8 +261,8 @@ export function HeroVisual() {
       >
         <path
           d={gearPath(54, 54, 32, 25, 12)}
-          fill="none"
-          stroke="url(#brass-grad)"
+          fill="url(#gear-fill)"
+          stroke="url(#hero-brass-grad)"
           strokeWidth={2.2}
           strokeLinejoin="round"
         />
@@ -256,8 +294,8 @@ export function HeroVisual() {
       >
         <path
           d={gearPath(SIZE - 58, SIZE - 58, 26, 20, 10)}
-          fill="none"
-          stroke="url(#brass-grad-vertical)"
+          fill="url(#gear-fill)"
+          stroke="url(#hero-brass-grad)"
           strokeWidth={2.0}
           strokeLinejoin="round"
         />
@@ -318,11 +356,12 @@ export function HeroVisual() {
           cx={d.x}
           cy={d.y}
           r={d.r}
+          filter={d.whale ? 'url(#node-glow)' : undefined}
           fill={
             d.whale
-              ? 'rgba(255, 215, 0, 0.92)'
+              ? 'rgba(232, 192, 40, 0.95)'
               : d.miner
-                ? 'rgba(245, 166, 35, 0.78)'
+                ? 'rgba(225, 153, 31, 0.80)'
                 : 'rgba(224, 166, 86, 0.55)'
           }
           style={
@@ -346,6 +385,7 @@ export function HeroVisual() {
         cy={CENTER}
         r={4.5}
         fill="rgb(255, 215, 0)"
+        filter="url(#node-glow)"
         style={{ animation: 'pulse-satoshi 3.2s ease-in-out infinite' }}
       />
     </svg>

@@ -4,7 +4,7 @@ import Link from 'next/link';
 export const metadata: Metadata = {
   title: 'Graph view — under development',
   description:
-    "Bitcoin's living network. Every wallet a neuron. Every transaction a synapse. The graph view is under development; data ingestion is in progress.",
+    "Bitcoin's living network. Every wallet a node, every transaction an edge. The graph view is under development; data ingestion is in progress.",
 };
 
 /**
