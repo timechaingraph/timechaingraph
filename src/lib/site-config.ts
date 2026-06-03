@@ -62,7 +62,7 @@ export const VIEW_BRAND_NAME = 'Graph';
  * can never reach a donor. Replace with the real Graph on-chain receive
  * address (from any wallet you control) to go live.
  */
-export const DONATION_BTC_ADDRESS = 'PLACEHOLDER_REPLACE_WITH_REAL_GRAPH_BTC_ADDRESS';
+export const DONATION_BTC_ADDRESS = 'bc1q2hhsxyuzj4e6wcjegayddjphdry02wdef9v62l';
 export const DONATION_LIGHTNING_ADDRESS = ''; // coming: self-hosted via BTCPay/LNbits
 export const DONATION_LIVE =
   DONATION_BTC_ADDRESS.length > 0 && !DONATION_BTC_ADDRESS.includes('PLACEHOLDER');
