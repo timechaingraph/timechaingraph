@@ -44,3 +44,25 @@ export const SITE_TITLE = `Timechain ${VIEW_BRAND}`;
 export const SITE_TITLE_FULL = `${BRAND_TAGLINE} — Timechain ${VIEW_BRAND}`;
 export const SITE_DESCRIPTION =
   'Bitcoin Visualised. The living network — every wallet a neuron, every transaction a synapse. Public, privacy-first, no third-party scripts.';
+
+/** Proper-case brand for prose ("Timechain Graph"). VIEW_BRAND is the
+ *  stylised uppercase form; this is the readable one. Diverges Graph/Grid. */
+export const VIEW_BRAND_NAME = 'Graph';
+
+/**
+ * Donation rails — Bitcoin-native, self-custodial (see /donate). The ONLY
+ * operator receive identifiers; these MUST differ between Graph and Grid.
+ * Self-custodial on-chain receipt needs no account, no KYC, no third party —
+ * the regulatorily-cleanest path under Turkey's CASP regime (the weight there
+ * is on custodians, not self-custody). Lightning arrives later via a
+ * SELF-HOSTED node (BTCPay/LNbits), never a custodial service.
+ *
+ * ⚠️  DONATION_BTC_ADDRESS is a PLACEHOLDER. /donate detects the placeholder
+ * and shows a "coming" state instead of a bogus address, so a wrong address
+ * can never reach a donor. Replace with the real Graph on-chain receive
+ * address (from any wallet you control) to go live.
+ */
+export const DONATION_BTC_ADDRESS = 'PLACEHOLDER_REPLACE_WITH_REAL_GRAPH_BTC_ADDRESS';
+export const DONATION_LIGHTNING_ADDRESS = ''; // coming: self-hosted via BTCPay/LNbits
+export const DONATION_LIVE =
+  DONATION_BTC_ADDRESS.length > 0 && !DONATION_BTC_ADDRESS.includes('PLACEHOLDER');

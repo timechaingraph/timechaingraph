@@ -5,6 +5,7 @@
 # live site. GitHub Sponsors will be added once a Sponsors profile
 # is set up. OpenSats application planned post-launch.
 
-github: # set to GitHub username/org once a Sponsors profile is configured
+# Bitcoin-native donations only — no GitHub Sponsors (no fiat/KYC rail, by
+# design). The repo's Sponsor button links to the on-chain donate page.
 custom:
   - 'https://timechaingraph.com/donate'
