@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Application, Container, Graphics } from 'pixi.js';
+import { Application, Container, Graphics, Sprite } from 'pixi.js';
 import { getActiveSubstrate } from '@/data/substrate';
 import { ROLE_COLOR, ROLE_RADIUS } from '@/lib/role-visuals';
 import { useTimegridStore } from '@/store/timegridStore';
@@ -17,16 +17,18 @@ import type { WalletBond, WalletData, WalletRole } from '@/types/wallet';
 // calls loadSubstrate() before it dynamic-imports this module, so these
 // capture real chain data (static importers like tests get the fixture).
 //
-// Barnes-Hut (src/lib/forceLayout) makes physics O(n log n), so this cap is now
-// render-bound (one PIXI.Graphics per node + a per-tick edge redraw), not
-// physics-bound. 5000 is comfortable for the current retained-mode renderer; it
-// can rise further once node draws move to a ParticleContainer / instancing.
+// Barnes-Hut (src/lib/forceLayout) makes physics O(n log n), and nodes now render
+// as batched, shared-texture Sprites (one draw call for the whole set) instead of
+// a Graphics-per-node — so this cap can sit at the free-tier scale. The remaining
+// per-tick cost is the single `edges` Graphics redraw; lifting the cap much higher
+// would make THAT the bottleneck (next steps: edge batching / viewport culling +
+// LOD for the Max tier's millions).
 // EDGE-FIRST selection: greedily take the strongest bonds + their endpoints
 // up to MAX_RENDER_NODES, then keep further bonds that join two already-kept
 // wallets. Every node ends up with ≥1 connection, so the layout shows real
 // hubs + spokes — picking top wallets by *value* instead leaves them
 // disconnected (their bonds point outside the set) and it collapses to a blob.
-const MAX_RENDER_NODES = 5000;
+const MAX_RENDER_NODES = 12000;
 const _sub = getActiveSubstrate();
 let WALLETS: readonly WalletData[];
 let BONDS: readonly WalletBond[];
@@ -161,7 +163,7 @@ type Body = {
   vy: number;
   mass: number;
   pinned: boolean;
-  graphics: Graphics;
+  node: Sprite;
   halo: Graphics | null;
 };
 
@@ -340,7 +342,7 @@ export function GraphView() {
             const a = bodies[link.a];
             const b = bodies[link.b];
             // Skip if either endpoint isn't yet visible
-            if (a.graphics.alpha === 0 || b.graphics.alpha === 0) continue;
+            if (a.node.alpha === 0 || b.node.alpha === 0) continue;
             pulses.push({ fromIdx: link.a, toIdx: link.b, progress: 0 });
             spawned++;
           }
@@ -426,7 +428,7 @@ export function GraphView() {
         for (const body of bodies) {
           if (body === draggedBody) continue;
           const alpha = nodeAlpha(body);
-          body.graphics.alpha = alpha;
+          body.node.alpha = alpha;
           if (body.halo) body.halo.alpha = alpha === 0 ? 0 : 0.75 * alpha;
         }
       }
@@ -443,20 +445,39 @@ export function GraphView() {
         };
       }
 
+      // One shared, high-res white circle texture for every node. Sprites that
+      // share a texture batch into ~one draw call (vs a Graphics-per-node) — the
+      // key to scaling the node count. Generated big + hi-res then scaled DOWN
+      // per role, so dots stay crisp at any zoom.
+      const NODE_TEX_RADIUS = 32;
+      const circleTex = new Graphics().circle(0, 0, NODE_TEX_RADIUS).fill(0xffffff);
+      const nodeTexture = app.renderer.generateTexture({
+        target: circleTex,
+        resolution: Math.max(2, (window.devicePixelRatio || 1) * 2),
+        antialias: true,
+      });
+      circleTex.destroy();
+
       const bodies: Body[] = WALLETS.map((wallet) => {
         const seed = seedPosition(wallet);
         const radius = ROLE_RADIUS[wallet.role];
+        const scale = radius / NODE_TEX_RADIUS;
 
-        const dot = new Graphics();
-        dot.circle(0, 0, radius).fill(ROLE_COLOR[wallet.role]);
+        // Shared-texture Sprite (batched) instead of a per-node Graphics. Sprite
+        // and Graphics share the interaction API, so every handler below is
+        // unchanged — only the visual + hit-area math differ.
+        const dot = new Sprite(nodeTexture);
+        dot.anchor.set(0.5);
+        dot.tint = ROLE_COLOR[wallet.role];
+        dot.scale.set(scale);
         dot.position.set(cx + seed.x, cy + seed.y);
         dot.eventMode = 'static';
         dot.cursor = 'grab';
+        // hitArea is tested in the sprite's LOCAL (unscaled) space; divide the
+        // desired world hit radius (≥6px — generous for tiny dots) by the scale.
+        const hitR = Math.max(radius, 6) / scale;
         dot.hitArea = {
-          contains: (mx: number, my: number) => {
-            const hitR = Math.max(radius, 6);
-            return mx * mx + my * my <= hitR * hitR;
-          },
+          contains: (mx: number, my: number) => mx * mx + my * my <= hitR * hitR,
         };
 
         const body: Body = {
@@ -467,7 +488,7 @@ export function GraphView() {
           vy: 0,
           mass: massOf(wallet),
           pinned: false,
-          graphics: dot,
+          node: dot,
           halo: null,
         };
 
@@ -591,8 +612,8 @@ export function GraphView() {
         if (!draggedBody) return;
         const body = draggedBody;
         draggedBody = null;
-        body.graphics.cursor = 'grab';
-        body.graphics.alpha =
+        body.node.cursor = 'grab';
+        body.node.alpha =
           body.wallet.firstSeenBlock <= currentBlock ? 1 : 0;
         body.pinned = shouldBePinned(body);
       }
@@ -791,7 +812,7 @@ export function GraphView() {
         physicsStep(bodies, links, app.ticker.deltaMS / 1000, PHYSICS);
 
         for (const body of bodies) {
-          body.graphics.position.set(cx + body.x, cy + body.y);
+          body.node.position.set(cx + body.x, cy + body.y);
           if (body.halo) body.halo.position.set(cx + body.x, cy + body.y);
         }
 
@@ -814,7 +835,7 @@ export function GraphView() {
           const fromBody = bodies[p.fromIdx];
           const toBody = bodies[p.toIdx];
           // Skip pulses where either endpoint is invisible (pre-birth)
-          if (fromBody.graphics.alpha === 0 || toBody.graphics.alpha === 0) {
+          if (fromBody.node.alpha === 0 || toBody.node.alpha === 0) {
             continue;
           }
           const t = p.progress;
@@ -833,7 +854,7 @@ export function GraphView() {
           const a = bodies[link.a];
           const b = bodies[link.b];
           // Skip edges where either endpoint is fully invisible (pre-birth)
-          if (a.graphics.alpha === 0 || b.graphics.alpha === 0) continue;
+          if (a.node.alpha === 0 || b.node.alpha === 0) continue;
           // Synapse formation ramp — 0 → 1 over the bond's first
           // BOND_FORMATION_BLOCKS blocks. Pre-formation: edge invisible.
           const formationAge = currentBlock - link.formationBlock;

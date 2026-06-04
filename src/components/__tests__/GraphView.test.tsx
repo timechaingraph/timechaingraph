@@ -15,6 +15,9 @@ vi.mock('pixi.js', () => {
       hitArea: null as unknown,
     };
     ticker = { add: vi.fn(), deltaMS: 16 };
+    // jsdom has no WebGL; the node renderer mocks generateTexture so the
+    // shared-node-texture path doesn't throw during the async init.
+    renderer = { generateTexture: vi.fn(() => ({ destroy: vi.fn() })) };
     init = vi.fn().mockResolvedValue(undefined);
     destroy = vi.fn();
   }
@@ -50,8 +53,26 @@ vi.mock('pixi.js', () => {
     on() {
       return this;
     }
+    destroy() {}
   }
-  return { Application, Container, Graphics };
+  // Nodes now render as shared-texture Sprites; mirror the interaction API
+  // the GraphView handlers touch (anchor/scale/tint + events).
+  class Sprite {
+    eventMode: string = 'none';
+    cursor: string = 'auto';
+    hitArea: unknown = null;
+    alpha: number = 1;
+    tint: number = 0xffffff;
+    anchor = { set: vi.fn() };
+    scale = { set: vi.fn(), x: 1, y: 1 };
+    position = { set: vi.fn() };
+    constructor(_texture?: unknown) {}
+    on() {
+      return this;
+    }
+    destroy() {}
+  }
+  return { Application, Container, Graphics, Sprite };
 });
 
 describe('<GraphView>', () => {
