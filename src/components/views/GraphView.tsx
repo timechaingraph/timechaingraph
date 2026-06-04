@@ -197,18 +197,16 @@ export function GraphView() {
       setCamera,
     } = useTimegridStore.getState();
 
-    // Per user directive 2026-04-30: "the view always starts from
-    // genesis block." Every mount of /graph rewinds the scrubber to 0
-    // and kicks off Narrate-speed playback, regardless of where the
-    // visitor left it on a previous mount. Hard reload + SPA
-    // re-navigation both behave the same way: animation begins at
-    // block 0, advances one block per 10 seconds, pause/scrub/resume
-    // remain freely available during the session.
+    // Open at the chain tip so the full network is visible immediately.
+    // With real data, genesis-start shows an empty canvas (Free-tier wallets
+    // first appear thousands of blocks in) and Narrate-speed playback would
+    // take days to populate it. The scrubber + playback stay available, so a
+    // visitor can rewind to genesis and watch the lattice form.
     setLatestBlock(FIXTURE_LATEST_BLOCK);
-    setCurrentBlock(0);
+    setCurrentBlock(FIXTURE_LATEST_BLOCK);
     const { setPlaybackSpeedIdx, setPlaybackPlaying } = useTimegridStore.getState();
-    setPlaybackSpeedIdx(0); // Narrate (1 block / 10s)
-    setPlaybackPlaying(true);
+    setPlaybackSpeedIdx(0); // Narrate (1 block / 10s) once the visitor presses play
+    setPlaybackPlaying(false);
 
     function applyCamera(): void {
       const cam = useTimegridStore.getState().camera;
