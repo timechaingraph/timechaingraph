@@ -39,7 +39,7 @@ import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { createRpcClient } from '../lib/rpc.mjs';
-import { extractAddresses, bondKey } from '../lib/extract.mjs';
+import { createCombiner } from '../lib/combiner.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -101,72 +101,11 @@ function saveMeta(meta) {
 }
 
 // ---------- combiner state ---------------------------------------------------
-// walletAgg: address -> { f:firstSeen, l:lastActive, r:receivedSats(BigInt), c:txCount, m:isMiner }
-// bondAgg:   "a|b"   -> { x:from, y:to, s:sats(BigInt), f:formationBlock }   (x<y canonical)
-let walletAgg = new Map();
-let bondAgg = new Map();
+// Wallet + bond window aggregation lives in the combiner (../lib/combiner.mjs,
+// unit-tested); timestamps stay here (trivial). The walker is the I/O + RPC + flush
+// shell around the pure aggregation.
+const combiner = createCombiner({ bondPairCap: BOND_PAIR_CAP });
 let tsBuf = []; // { b:height, t:isoString }
-
-function touchWallet(address, h) {
-  let w = walletAgg.get(address);
-  if (!w) {
-    w = { f: h, l: h, r: 0n, c: 0, m: false };
-    walletAgg.set(address, w);
-  } else {
-    if (h < w.f) w.f = h;
-    if (h > w.l) w.l = h;
-  }
-  return w;
-}
-
-function addBond(a, b, sats, h) {
-  if (a === b) return;
-  const key = bondKey(a, b);
-  let bond = bondAgg.get(key);
-  if (!bond) {
-    const x = a < b ? a : b;
-    const y = a < b ? b : a;
-    bond = { x, y, s: 0n, f: h };
-    bondAgg.set(key, bond);
-  }
-  bond.s += BigInt(sats);
-  if (h < bond.f) bond.f = h;
-}
-
-function processBlock(h, header, txs) {
-  tsBuf.push({ b: h, t: new Date(header.timestamp * 1000).toISOString() });
-
-  for (const tx of txs) {
-    const { outputs, inputs, isCoinbase } = extractAddresses(tx);
-
-    // Outputs: received sats + txCount + miner flag (coinbase recipients).
-    for (const out of outputs) {
-      const w = touchWallet(out.address, h);
-      w.r += BigInt(out.sats);
-      w.c += 1;
-      if (isCoinbase) w.m = true;
-    }
-
-    if (isCoinbase) continue; // coinbase has no real inputs → no bonds
-
-    // Inputs: spenders. Touch (first/last seen) but no received/txCount —
-    // matches the original walker's semantics exactly.
-    for (const inp of inputs) touchWallet(inp.address, h);
-
-    // Bonds: input→output money-flow edges.
-    if (inputs.length === 0 || outputs.length === 0) continue;
-    if (inputs.length * outputs.length <= BOND_PAIR_CAP) {
-      for (const inp of inputs) {
-        for (const out of outputs) addBond(inp.address, out.address, out.sats, h);
-      }
-    } else {
-      // Consolidation/mixer: wire every input to the single largest output.
-      let largest = outputs[0];
-      for (const out of outputs) if (out.sats > largest.sats) largest = out;
-      for (const inp of inputs) addBond(inp.address, largest.address, largest.sats, h);
-    }
-  }
-}
 
 // ---------- flush ------------------------------------------------------------
 function pad7(n) {
@@ -193,13 +132,13 @@ async function writeJsonl(filePath, iterable, toObj) {
 }
 
 async function flush(windowStart, lastBlock, meta) {
-  if (walletAgg.size === 0 && bondAgg.size === 0 && tsBuf.length === 0) return;
+  if (combiner.size === 0 && tsBuf.length === 0) return;
   fs.mkdirSync(WALLETS_DIR, { recursive: true });
   fs.mkdirSync(BONDS_DIR, { recursive: true });
   fs.mkdirSync(TS_DIR, { recursive: true });
   const suffix = `part-${pad7(windowStart)}-${pad7(lastBlock)}.jsonl.gz`;
 
-  await writeJsonl(path.join(WALLETS_DIR, suffix), walletAgg, ([address, w]) => ({
+  await writeJsonl(path.join(WALLETS_DIR, suffix), combiner.wallets, ([address, w]) => ({
     address,
     firstSeenBlock: w.f,
     lastActiveBlock: w.l,
@@ -207,7 +146,7 @@ async function flush(windowStart, lastBlock, meta) {
     txCount: w.c,
     isMiner: w.m,
   }));
-  await writeJsonl(path.join(BONDS_DIR, suffix), bondAgg.values(), (b) => ({
+  await writeJsonl(path.join(BONDS_DIR, suffix), combiner.bonds.values(), (b) => ({
     fromAddress: b.x,
     toAddress: b.y,
     sats: b.s.toString(),
@@ -215,10 +154,9 @@ async function flush(windowStart, lastBlock, meta) {
   }));
   await writeJsonl(path.join(TS_DIR, suffix), tsBuf, (e) => e);
 
-  const wn = walletAgg.size;
-  const bn = bondAgg.size;
-  walletAgg = new Map();
-  bondAgg = new Map();
+  const wn = combiner.walletCount;
+  const bn = combiner.bondCount;
+  combiner.reset();
   tsBuf = [];
 
   meta.tipBlock = lastBlock;
@@ -262,11 +200,12 @@ async function main() {
       const { header, txs } = await rpc.fetchBlock(hash);
       if (BLOCK_DELAY_MS) await sleep(BLOCK_DELAY_MS);
 
-      processBlock(h, header, txs);
+      tsBuf.push({ b: h, t: new Date(header.timestamp * 1000).toISOString() });
+      combiner.processBlock(h, txs);
       walked += 1;
 
       const boundary = (h + 1) % FLUSH_INTERVAL === 0;
-      const pressure = walletAgg.size + bondAgg.size >= MAX_AGG_ENTRIES;
+      const pressure = combiner.size >= MAX_AGG_ENTRIES;
       if (boundary || pressure) {
         const info = await flush(windowStart, h, meta);
         windowStart = h + 1;
