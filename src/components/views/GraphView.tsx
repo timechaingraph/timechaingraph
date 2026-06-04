@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Application, Container, Graphics } from 'pixi.js';
-import { FIXTURE_SUBSTRATE } from '@/data/substrate';
+import { getActiveSubstrate } from '@/data/substrate';
 import { ROLE_COLOR, ROLE_RADIUS } from '@/lib/role-visuals';
 import { useTimegridStore } from '@/store/timegridStore';
 import { BRAND_TAGLINE } from '@/lib/site-config';
@@ -13,8 +13,27 @@ import type { WalletData, WalletRole } from '@/types/wallet';
 // contract rather than direct fixture imports. v0.1 substrate is
 // fixture-backed; v0.2+ swaps in an R2/parquet implementation
 // without touching this file.
-const WALLETS = FIXTURE_SUBSTRATE.wallets;
-const BONDS = FIXTURE_SUBSTRATE.bonds;
+// Read at module-evaluation time from the ACTIVE substrate — GraphCanvas
+// calls loadSubstrate() (swapping in R2/DuckDB) before it dynamic-imports
+// this module, so these capture real chain data. Static importers (tests)
+// get the fixture default.
+//
+// Physics is O(n²) until Barnes-Hut lands (M5/v0.2), so cap the rendered set
+// to the top wallets by lifetime value — a 26k-node Free tier would otherwise
+// freeze the tab. Bonds are restricted to the rendered set.
+const MAX_RENDER_NODES = 1000;
+const _substrate = getActiveSubstrate();
+const WALLETS =
+  _substrate.wallets.length > MAX_RENDER_NODES
+    ? [..._substrate.wallets]
+        .sort((a, b) => (b.totalReceivedSats > a.totalReceivedSats ? 1 : -1))
+        .slice(0, MAX_RENDER_NODES)
+    : _substrate.wallets;
+const _rendered = new Set(WALLETS.map((w) => w.address));
+const BONDS =
+  WALLETS === _substrate.wallets
+    ? _substrate.bonds
+    : _substrate.bonds.filter((b) => _rendered.has(b.fromAddress) && _rendered.has(b.toAddress));
 
 const RING_RADIUS: Record<WalletRole, number> = {
   satoshi: 0,
@@ -87,7 +106,7 @@ const ZOOM_STEP = 0.0015;
 // significant from ~150k, then the lattice plays forward through
 // epochs 1-4 with existing wallets active as edges fade in/out
 // across blocks.
-const FIXTURE_LATEST_BLOCK = 947_630;
+const FIXTURE_LATEST_BLOCK = getActiveSubstrate().tipBlock || 947_630;
 
 function djb2(s: string): number {
   let h = 5381;

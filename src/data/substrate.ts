@@ -81,3 +81,40 @@ class FixtureChainSubstrate implements ChainSubstrate {
  * (env-var or feature-flag) rather than a const.
  */
 export const FIXTURE_SUBSTRATE: ChainSubstrate = new FixtureChainSubstrate();
+
+/**
+ * The active substrate the views read. Defaults to the fixture so SSR,
+ * unit tests, and GraphView's synchronous module-level reads all work with
+ * zero async setup. `loadSubstrate()` swaps in the R2/DuckDB-backed
+ * implementation at runtime (client-only); callers then dynamic-import the
+ * view so its module-level reads observe the loaded data.
+ */
+let activeSubstrate: ChainSubstrate = FIXTURE_SUBSTRATE;
+
+export function getActiveSubstrate(): ChainSubstrate {
+  return activeSubstrate;
+}
+
+/**
+ * Load the runtime substrate. R2/DuckDB-backed by default; set
+ * NEXT_PUBLIC_USE_R2=0 to force the fixture. Falls back to the fixture if
+ * the parquet bundle can't be fetched. MUST be awaited before the view
+ * module is imported, so GraphView's module-level wallet/bond reads see the
+ * loaded data. The r2-substrate import is dynamic so DuckDB-Wasm never
+ * enters the fixture path or SSR.
+ */
+export async function loadSubstrate(): Promise<ChainSubstrate> {
+  const useR2 =
+    process.env.NEXT_PUBLIC_USE_R2 !== '0' && process.env.NEXT_PUBLIC_USE_R2 !== 'false';
+  if (useR2) {
+    try {
+      const { R2ChainSubstrate } = await import('./r2-substrate');
+      activeSubstrate = await new R2ChainSubstrate().init();
+      return activeSubstrate;
+    } catch (err) {
+      console.warn('[substrate] R2 load failed; falling back to fixture:', err);
+    }
+  }
+  activeSubstrate = FIXTURE_SUBSTRATE;
+  return activeSubstrate;
+}
