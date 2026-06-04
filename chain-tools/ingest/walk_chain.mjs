@@ -48,25 +48,18 @@ const ACTIVITY_DIR = path.join(REPO_ROOT, 'vault', 'activity');
 const BLOCKS_OUT_DIR = path.join(REPO_ROOT, 'public', 'blocks');
 const SHARD_SIZE = 1000;
 
-// Mempool.space free-tier endpoints. No auth required.
-const API_BASE = 'https://mempool.space/api';
-
-// Adaptive request pacing. Starts polite, ramps up on 429s, decays back when
-// the API stops pushing back. Walker is designed to run unattended for days,
-// so politeness compounds: a few extra ms per request beats getting blocked.
-// Tunable via env vars without editing source:
-//   WALKER_REQ_DELAY_MS   — starting baseline (default 250)
-//   WALKER_MIN_DELAY_MS   — floor for adaptive decay (default 250). Raise this
-//                           on battery / hot laptop to reduce CPU draw.
-//   WALKER_MAX_DELAY_MS   — ceiling on rate-limit doubling (default 5000)
+// Local bitcoind JSON-RPC — cookie auth, no rate limit (fast local reads).
+// Source of truth is the operator's own fully-synced node; nothing leaves the
+// box. Override host/cookie via env for a different datadir.
 const envInt = (name, fallback) => {
   const v = parseInt(process.env[name] ?? '', 10);
   return Number.isFinite(v) && v > 0 ? v : fallback;
 };
-const MIN_REQ_DELAY_MS = envInt('WALKER_MIN_DELAY_MS', 250);
-const MAX_REQ_DELAY_MS = envInt('WALKER_MAX_DELAY_MS', 5000);
-let REQ_DELAY_MS = Math.max(MIN_REQ_DELAY_MS, envInt('WALKER_REQ_DELAY_MS', 250));
-let recentSuccesses = 0;
+const RPC_URL = process.env.BITCOIND_RPC_URL || 'http://127.0.0.1:8332/';
+const COOKIE_PATH =
+  process.env.BITCOIND_COOKIE || '/Volumes/Timechaingraph/bitcoin/data/.cookie';
+// Optional per-block cooldown (ms); 0 by default. Raise to ease SSD/thermal load.
+const BLOCK_DELAY_MS = envInt('WALKER_BLOCK_DELAY_MS', 0);
 
 const CHECKPOINT_INTERVAL = 25;       // save every 25 blocks
 const DEFAULT_MAX_PER_RUN = 200;      // bump per invocation; resumable
@@ -179,85 +172,84 @@ function bondKey(fromAddr, toAddr) {
   return fromAddr < toAddr ? `${fromAddr}|${toAddr}` : `${toAddr}|${fromAddr}`;
 }
 
-// ---------- HTTP fetch with backoff ------------------------------------------
+// ---------- bitcoind JSON-RPC ------------------------------------------------
 
-async function apiGet(endpoint) {
+function readCookieAuth() {
+  // .cookie is "__cookie__:<password>" — HTTP Basic auth for RPC.
+  const raw = fs.readFileSync(COOKIE_PATH, 'utf8').trim();
+  return 'Basic ' + Buffer.from(raw).toString('base64');
+}
+const AUTH_HEADER = readCookieAuth();
+
+async function rpcCall(method, params = []) {
   let attempt = 1;
   while (true) {
     try {
-      const res = await fetch(`${API_BASE}${endpoint}`);
-      if (res.status === 429) {
-        // Rate limited: scale up base pacing AND back off the retry.
-        REQ_DELAY_MS = Math.min(REQ_DELAY_MS * 2, MAX_REQ_DELAY_MS);
-        recentSuccesses = 0;
-        const wait = Math.min(60_000, 2_000 * Math.pow(2, attempt - 1));
-        console.warn(`[rate-limit] base delay now ${REQ_DELAY_MS}ms; retrying in ${wait}ms (attempt ${attempt})`);
-        await sleep(wait);
-        if (attempt < 6) attempt += 1;
-        continue;
-      }
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status} on ${endpoint}: ${await res.text()}`);
-      }
-      // Success: count toward decay. After enough clean responses, ease pacing back down.
-      recentSuccesses += 1;
-      if (recentSuccesses >= 200 && REQ_DELAY_MS > MIN_REQ_DELAY_MS) {
-        const before = REQ_DELAY_MS;
-        REQ_DELAY_MS = Math.max(MIN_REQ_DELAY_MS, Math.floor(REQ_DELAY_MS * 0.8));
-        recentSuccesses = 0;
-        console.warn(`[rate-decay] base delay ${before}ms → ${REQ_DELAY_MS}ms after 200 clean responses`);
-      }
-      const ct = res.headers.get('content-type') || '';
-      if (ct.includes('application/json')) return res.json();
-      return res.text();
+      const res = await fetch(RPC_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'text/plain', authorization: AUTH_HEADER },
+        body: JSON.stringify({ jsonrpc: '1.0', id: 'walk', method, params }),
+      });
+      if (!res.ok) throw new Error(`RPC HTTP ${res.status} on ${method}: ${await res.text()}`);
+      const json = await res.json();
+      if (json.error) throw new Error(`RPC error on ${method}: ${JSON.stringify(json.error)}`);
+      return json.result;
     } catch (err) {
       if (attempt >= 5) {
-        // Don't crash the walker on prolonged outage. Sleep long, reset, continue.
-        console.warn(`[fetch error] ${err.message}; sleeping 5min before resume`);
-        await sleep(5 * 60_000);
+        console.warn(`[rpc error] ${err.message}; sleeping 30s before resume`);
+        await sleep(30_000);
         attempt = 1;
         continue;
       }
       const wait = 1_000 * attempt;
-      console.warn(`[fetch error] ${err.message}; retrying in ${wait}ms (attempt ${attempt})`);
+      console.warn(`[rpc error] ${err.message}; retrying in ${wait}ms (attempt ${attempt})`);
       await sleep(wait);
       attempt += 1;
     }
   }
 }
 
-// ---------- block walking ----------------------------------------------------
+// --- bitcoind getblock(verbosity 3) → mempool.space-shaped {header, txs} -----
+// v3 decodes every tx and resolves vin.prevout (spent address + value) from
+// undo data, so the extraction logic below is unchanged. bitcoind reports
+// values as BTC floats; convert to integer sats (round kills float drift).
+function btcToSats(btc) {
+  return Math.round((btc || 0) * 1e8);
+}
+function adaptVout(v) {
+  const spk = v.scriptPubKey || {};
+  return {
+    value: btcToSats(v.value),
+    scriptpubkey_address: spk.address,
+    scriptpubkey_type: spk.type === 'pubkey' ? 'p2pk' : spk.type, // only p2pk is special-cased downstream
+    scriptpubkey: spk.hex,
+  };
+}
+function adaptBlock(blk) {
+  const header = { id: blk.hash, timestamp: blk.time, tx_count: blk.nTx };
+  const txs = (blk.tx || []).map((tx) => ({
+    vin: (tx.vin || []).map((vin) =>
+      vin.coinbase !== undefined
+        ? { is_coinbase: true }
+        : { prevout: vin.prevout ? adaptVout(vin.prevout) : null },
+    ),
+    vout: (tx.vout || []).map(adaptVout),
+  }));
+  return { header, txs };
+}
+
+// ---------- block walking (bitcoind RPC) ------------------------------------
 
 async function blockHashAt(height) {
-  return apiGet(`/block-height/${height}`);
+  return rpcCall('getblockhash', [height]);
 }
 
-async function blockHeader(hash) {
-  return apiGet(`/block/${hash}`);
-}
-
-// Mempool.space returns transactions paged at 25 per request. For early
-// blocks there's just the coinbase; for late blocks pagination matters.
-// Each /api/block/<hash>/txs[/<startIndex>] returns up to 25 tx; iterate
-// until we have collected the block's known tx_count.
-//
-// Quirk: when tx_count is an exact multiple of 25, the next request at
-// /txs/<tx_count> returns 404 ("start index out of range") instead of an
-// empty array. Using the header's tx_count as the loop bound avoids that
-// boundary probe entirely.
-async function blockTransactions(hash, expectedCount) {
-  const txs = [];
-  let startIndex = 0;
-  while (txs.length < expectedCount) {
-    const page = await apiGet(`/block/${hash}/txs/${startIndex}`);
-    if (!Array.isArray(page) || page.length === 0) break;
-    txs.push(...page);
-    if (page.length < 25) break;
-    startIndex += 25;
-    if (txs.length >= expectedCount) break;
-    await sleep(REQ_DELAY_MS);
-  }
-  return txs;
+// One RPC call per block: getblock verbosity 3 returns header fields + every
+// tx fully decoded WITH vin.prevout — everything extraction needs, adapted to
+// the mempool.space shape so the wallet/bond logic below is unchanged.
+async function fetchBlock(hash) {
+  const blk = await rpcCall('getblock', [hash, 3]);
+  return adaptBlock(blk);
 }
 
 // ---------- wallet + bond extraction -----------------------------------------
@@ -607,10 +599,8 @@ async function main() {
   for (let h = startBlock; h <= endBlock; h++) {
     try {
       const hash = await blockHashAt(h);
-      await sleep(REQ_DELAY_MS);
-      const header = await blockHeader(hash);
-      await sleep(REQ_DELAY_MS);
-      const txs = await blockTransactions(hash, header.tx_count);
+      const { header, txs } = await fetchBlock(hash);
+      if (BLOCK_DELAY_MS) await sleep(BLOCK_DELAY_MS);
 
       const events = processBlock(state, h, header, txs);
       writeActivitySidecar(h, header, events);
@@ -634,7 +624,7 @@ async function main() {
 
       if (blocksWalked % CHECKPOINT_INTERVAL === 0) {
         await saveSubstrate(state);
-        console.log(`  [checkpoint] saved substrate at tip ${h} (req-delay ${REQ_DELAY_MS}ms)`);
+        console.log(`  [checkpoint] saved substrate at tip ${h} (${Object.keys(state.wallets).length} wallets, ${Object.keys(state.bonds).length} bonds)`);
       }
     } catch (err) {
       console.error(`  block ${h} ERROR: ${err.message}`);
