@@ -53,7 +53,7 @@ function Hero() {
           {VIEW_HERO_BOTTOM}
         </h1>
         <p
-          className="max-w-xl text-base leading-relaxed text-[color:var(--color-text-secondary)] md:text-lg"
+          className="max-w-xl text-pretty text-base leading-relaxed text-[color:var(--color-text-secondary)] md:text-lg"
           style={{ animation: 'drift-up 0.7s ease-out 0.25s both' }}
         >
           {VIEW_HERO_DESCRIPTION}

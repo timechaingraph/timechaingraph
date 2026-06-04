@@ -17,15 +17,15 @@ export const VIEW_DOMAIN = 'timechaingraph.com';
 export const VIEW_TAGLINE = 'the living network of Bitcoin';
 export const VIEW_ACCENT = 'gold' as const;
 
-export const VIEW_HERO_TOP = 'The Graph';
+export const VIEW_HERO_TOP = 'Timechain Graph';
 export const VIEW_HERO_BOTTOM = 'of Bitcoin.';
 export const VIEW_HERO_DESCRIPTION =
-  'Every wallet a node, every transaction an edge — sixteen years of the public ledger, rendered as one living network, finally legible in your browser. Public to watch, private to use: no accounts, no tracking, no one watching you watch.';
+  '“Timechain” was Satoshi’s name for the blockchain — a chain of timestamped blocks. Here it is, the living network it always was: every wallet a node, every transaction an edge, the ledger legible in your browser. Public to watch, private to use.';
 
 export const OTHER_VIEW_BRAND = 'GRID';
 export const OTHER_VIEW_DOMAIN = 'timechaingrid.com';
 export const OTHER_VIEW_TAGLINE = "Bitcoin's digital real estate";
-export const OTHER_VIEW_ACCENT = 'cyan' as const;
+export const OTHER_VIEW_ACCENT = 'gold' as const;
 export const OTHER_VIEW_URL = `https://${OTHER_VIEW_DOMAIN}`;
 
 export const BRAND_TAGLINE = 'Bitcoin Visualised';
@@ -43,7 +43,7 @@ export const SITE_URL = `https://${VIEW_DOMAIN}`;
 export const SITE_TITLE = `Timechain ${VIEW_BRAND}`;
 export const SITE_TITLE_FULL = `${BRAND_TAGLINE} — Timechain ${VIEW_BRAND}`;
 export const SITE_DESCRIPTION =
-  'Bitcoin Visualised. The living network — every wallet a node, every transaction an edge. Public, privacy-first, no third-party scripts.';
+  'The Timechain Graph — Satoshi’s name for the blockchain, drawn as a living network. Every wallet a node, every transaction an edge. Public, privacy-first, no third-party scripts.';
 
 /** Proper-case brand for prose ("Timechain Graph"). VIEW_BRAND is the
  *  stylised uppercase form; this is the readable one. Diverges Graph/Grid. */

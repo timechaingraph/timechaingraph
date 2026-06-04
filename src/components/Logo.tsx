@@ -8,9 +8,9 @@ import { VIEW } from '@/lib/site-config';
  *     connected to a central gold ₿ node, plus inter-peripheral
  *     edges — a force-directed network silhouette.
  *
- *   - Grid view (cyan accent): square brass frame with corner
+ *   - Grid view (brass accent): square brass frame with corner
  *     rivets; 3×3 tile arrangement around a central gold ₿ tile,
- *     with cyan-tinted satellite tiles — a spiral-real-estate
+ *     with brass-toned satellite tiles — a spiral-real-estate
  *     silhouette.
  *
  * Pure SVG, no external font (uses system serif for the ₿ glyph).
@@ -131,8 +131,8 @@ function GridLogo({ size, label }: { size: number; label: string }) {
     >
       <defs>
         <radialGradient id="logo-grid-glow" cx="50%" cy="50%" r="55%">
-          <stop offset="0%" stopColor="rgba(0, 212, 255, 0.28)" />
-          <stop offset="55%" stopColor="rgba(0, 212, 255, 0.08)" />
+          <stop offset="0%" stopColor="rgba(255, 215, 0, 0.30)" />
+          <stop offset="55%" stopColor="rgba(255, 215, 0, 0.10)" />
           <stop offset="100%" stopColor="rgba(0, 0, 0, 0)" />
         </radialGradient>
         <linearGradient id="logo-grid-brass" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -153,10 +153,10 @@ function GridLogo({ size, label }: { size: number; label: string }) {
       <circle cx="90" cy="90" r="1.8" fill="#8C5E29" />
 
       {/* 3×3 tile arrangement */}
-      <rect x="20" y="20" width="18" height="18" rx="2" fill="#006080" opacity="0.85" />
-      <rect x="41" y="20" width="18" height="18" rx="2" fill="#00A8CC" />
-      <rect x="62" y="20" width="18" height="18" rx="2" fill="#006080" opacity="0.85" />
-      <rect x="20" y="41" width="18" height="18" rx="2" fill="#00A8CC" />
+      <rect x="20" y="20" width="18" height="18" rx="2" fill="#8C5E29" opacity="0.85" />
+      <rect x="41" y="20" width="18" height="18" rx="2" fill="#C28840" />
+      <rect x="62" y="20" width="18" height="18" rx="2" fill="#8C5E29" opacity="0.85" />
+      <rect x="20" y="41" width="18" height="18" rx="2" fill="#C28840" />
       <rect x="41" y="41" width="18" height="18" rx="2" fill="#FFD700" />
       <text
         x="50"
@@ -169,10 +169,10 @@ function GridLogo({ size, label }: { size: number; label: string }) {
       >
         ₿
       </text>
-      <rect x="62" y="41" width="18" height="18" rx="2" fill="#00A8CC" />
-      <rect x="20" y="62" width="18" height="18" rx="2" fill="#006080" opacity="0.85" />
-      <rect x="41" y="62" width="18" height="18" rx="2" fill="#00A8CC" />
-      <rect x="62" y="62" width="18" height="18" rx="2" fill="#006080" opacity="0.85" />
+      <rect x="62" y="41" width="18" height="18" rx="2" fill="#C28840" />
+      <rect x="20" y="62" width="18" height="18" rx="2" fill="#8C5E29" opacity="0.85" />
+      <rect x="41" y="62" width="18" height="18" rx="2" fill="#C28840" />
+      <rect x="62" y="62" width="18" height="18" rx="2" fill="#8C5E29" opacity="0.85" />
       <rect x="42" y="42" width="16" height="3" rx="1.5" fill="rgba(255,255,255,0.25)" />
     </svg>
   );

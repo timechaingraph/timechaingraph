@@ -122,6 +122,33 @@ body::after {
   50%      { opacity: 1.0;  filter: drop-shadow(0 0 18px rgba(255, 215, 0, 1.0)); }
 }
 
+/* Hero graph "scrub": leaf wallets + their edges fade in, hold, fade out —
+   staggered so the network reshapes continuously, like scrubbing the live
+   graph across chain time. Nodes scale only UP TO 1 (their baked radius), so
+   the no-overlap spacing is never violated mid-animation. */
+@keyframes node-scrub {
+  0%   { opacity: 0; transform: scale(0.25); }
+  9%   { opacity: 1; transform: scale(1); }
+  46%  { opacity: 1; transform: scale(1); }
+  60%  { opacity: 0; transform: scale(0.25); }
+  100% { opacity: 0; transform: scale(0.25); }
+}
+
+@keyframes edge-scrub {
+  0%   { opacity: 0; }
+  11%  { opacity: 1; }
+  46%  { opacity: 1; }
+  60%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* Persistent (backbone) nodes — a gentle opacity flicker, no scale, so they
+   stay alive without ever crowding their neighbours. */
+@keyframes pulse-node {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
 @keyframes drift-up {
   0%   { opacity: 0; transform: translateY(14px); }
   100% { opacity: 1; transform: translateY(0); }
