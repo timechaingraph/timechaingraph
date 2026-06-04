@@ -30,8 +30,8 @@ const BTC = 100_000_000n;
  */
 function deriveRole(firstSeenBlock: number, total: bigint, txCount: number, isMiner: boolean): WalletRole {
   if (firstSeenBlock === 0 && isMiner) return 'satoshi';
-  if (total >= 1000n * BTC) return 'whale';
   if (isMiner) return 'miner';
+  if (total >= 1000n * BTC) return 'whale';
   if (total >= BTC || txCount >= 100) return 'significant';
   return 'dust';
 }
