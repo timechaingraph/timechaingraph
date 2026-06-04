@@ -61,6 +61,11 @@ public/blocks.pre-cutover-backup
 # 617MB substrate backup get committed once on 2026-06-03; rewritten out of history).
 /chain-tools/out
 /chain-tools/out.pre-cutover-backup
+/chain-tools/out.test
+
+# Operator-side Python venv (duckdb + pyarrow for reduce_substrate.py /
+# build_bundle.py) — large, regenerated via: python3 -m venv chain-tools/.venv
+/chain-tools/.venv
 
 # Python bytecode cache (anywhere in tree)
 __pycache__/
