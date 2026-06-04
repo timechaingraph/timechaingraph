@@ -7,33 +7,51 @@ import { ROLE_COLOR, ROLE_RADIUS } from '@/lib/role-visuals';
 import { useTimegridStore } from '@/store/timegridStore';
 import { BRAND_TAGLINE } from '@/lib/site-config';
 import { step as physicsStep, type PhysicsLink } from '@/lib/forceLayout';
-import type { WalletData, WalletRole } from '@/types/wallet';
+import type { WalletBond, WalletData, WalletRole } from '@/types/wallet';
 
 // GraphView reads its chain digest through the ChainSubstrate
 // contract rather than direct fixture imports. v0.1 substrate is
 // fixture-backed; v0.2+ swaps in an R2/parquet implementation
 // without touching this file.
 // Read at module-evaluation time from the ACTIVE substrate — GraphCanvas
-// calls loadSubstrate() (swapping in R2/DuckDB) before it dynamic-imports
-// this module, so these capture real chain data. Static importers (tests)
-// get the fixture default.
+// calls loadSubstrate() before it dynamic-imports this module, so these
+// capture real chain data (static importers like tests get the fixture).
 //
-// Physics is O(n²) until Barnes-Hut lands (M5/v0.2), so cap the rendered set
-// to the top wallets by lifetime value — a 26k-node Free tier would otherwise
-// freeze the tab. Bonds are restricted to the rendered set.
-const MAX_RENDER_NODES = 1000;
-const _substrate = getActiveSubstrate();
-const WALLETS =
-  _substrate.wallets.length > MAX_RENDER_NODES
-    ? [..._substrate.wallets]
-        .sort((a, b) => (b.totalReceivedSats > a.totalReceivedSats ? 1 : -1))
-        .slice(0, MAX_RENDER_NODES)
-    : _substrate.wallets;
-const _rendered = new Set(WALLETS.map((w) => w.address));
-const BONDS =
-  WALLETS === _substrate.wallets
-    ? _substrate.bonds
-    : _substrate.bonds.filter((b) => _rendered.has(b.fromAddress) && _rendered.has(b.toAddress));
+// Physics is O(n²) until Barnes-Hut lands (M5/v0.2), so cap the rendered set.
+// EDGE-FIRST selection: greedily take the strongest bonds + their endpoints
+// up to MAX_RENDER_NODES, then keep further bonds that join two already-kept
+// wallets. Every node ends up with ≥1 connection, so the layout shows real
+// hubs + spokes — picking top wallets by *value* instead leaves them
+// disconnected (their bonds point outside the set) and it collapses to a blob.
+const MAX_RENDER_NODES = 900;
+const _sub = getActiveSubstrate();
+let WALLETS: readonly WalletData[];
+let BONDS: readonly WalletBond[];
+if (_sub.wallets.length <= MAX_RENDER_NODES) {
+  WALLETS = _sub.wallets;
+  BONDS = _sub.bonds;
+} else {
+  const byAddr = new Map(_sub.wallets.map((w) => [w.address, w] as const));
+  const rankedBonds = [..._sub.bonds].sort((a, b) => (b.sats > a.sats ? 1 : -1));
+  const keptW = new Map<string, WalletData>();
+  const keptB: WalletBond[] = [];
+  for (const b of rankedBonds) {
+    const hasF = keptW.has(b.fromAddress);
+    const hasT = keptW.has(b.toAddress);
+    if (keptW.size + (hasF ? 0 : 1) + (hasT ? 0 : 1) > MAX_RENDER_NODES) {
+      if (hasF && hasT) keptB.push(b); // densify within the kept set
+      continue;
+    }
+    const wf = byAddr.get(b.fromAddress);
+    const wt = byAddr.get(b.toAddress);
+    if (!wf || !wt) continue;
+    keptW.set(wf.address, wf);
+    keptW.set(wt.address, wt);
+    keptB.push(b);
+  }
+  WALLETS = [...keptW.values()];
+  BONDS = keptB;
+}
 
 const RING_RADIUS: Record<WalletRole, number> = {
   satoshi: 0,
@@ -44,8 +62,11 @@ const RING_RADIUS: Record<WalletRole, number> = {
 };
 
 const PHYSICS = {
-  gravity: 0.04,
-  repulsion: 600,
+  // Tuned up from the 50-node fixture defaults for the ~900-node real graph:
+  // weaker gravity + stronger repulsion so it spreads into a readable network
+  // instead of a tight ball. (Barnes-Hut + adaptive tuning is M5.)
+  gravity: 0.025,
+  repulsion: 1200,
   spring: 0.012,
   springRest: 80,
   damping: 0.86,
