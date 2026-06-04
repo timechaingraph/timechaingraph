@@ -37,7 +37,7 @@
     "privacy-audit": "bash scripts/privacy-audit.sh out",
     "substrate:dump": "vitest run scripts/dump-substrate.test.ts",
     "vault:generate": "node chain-tools/vault/generate.mjs",
-    "deploy": "next build && wrangler pages deploy out --project-name=timechaingraph --branch=main"
+    "deploy": "bash scripts/deploy.sh"
   },
   "dependencies": {
     "@duckdb/duckdb-wasm": "^1.33.1-dev45.0",
