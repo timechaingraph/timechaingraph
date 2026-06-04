@@ -2,10 +2,13 @@ import { describe, it, expect } from 'vitest';
 import {
   applyGravity,
   applyRepulsion,
+  applyRepulsionBarnesHut,
+  buildQuadTree,
   applySprings,
   integrate,
   step,
   DEFAULT_PHYSICS,
+  BH_THRESHOLD,
   type PhysicsBody,
   type PhysicsLink,
 } from '../forceLayout';
@@ -161,5 +164,84 @@ describe('forceLayout — step', () => {
     expect(Math.abs(b.vx)).toBeLessThan(10);
     expect(Number.isFinite(a.x)).toBe(true);
     expect(Number.isFinite(b.x)).toBe(true);
+  });
+});
+
+// Deterministic scatter (no Math.random → stable across runs).
+function scatter(n: number): PhysicsBody[] {
+  let s = 12345;
+  const rand = () => {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return s / 0x7fffffff;
+  };
+  return Array.from({ length: n }, () =>
+    makeBody({ x: (rand() - 0.5) * 1000, y: (rand() - 0.5) * 1000 }),
+  );
+}
+const clone = (bodies: PhysicsBody[]): PhysicsBody[] => bodies.map((b) => ({ ...b }));
+
+describe('forceLayout — Barnes-Hut repulsion', () => {
+  it('buildQuadTree returns null for empty input, a leaf for one body', () => {
+    expect(buildQuadTree([])).toBeNull();
+    const t = buildQuadTree([makeBody({ x: 5, y: 7 })]);
+    expect(t?.count).toBe(1);
+    expect(t?.body).toBe(0);
+  });
+
+  it('reduces to EXACT brute-force repulsion at theta=0 (opens every cell)', () => {
+    const base = scatter(200);
+    const brute = clone(base);
+    const bh = clone(base);
+    applyRepulsion(brute, 1, 600);
+    applyRepulsionBarnesHut(bh, 1, 600, 0); // theta=0 → every cell opened → exact
+    let maxDiff = 0;
+    for (let i = 0; i < base.length; i++) {
+      maxDiff = Math.max(
+        maxDiff,
+        Math.abs(brute[i].vx - bh[i].vx),
+        Math.abs(brute[i].vy - bh[i].vy),
+      );
+    }
+    expect(maxDiff).toBeLessThan(1e-6); // only float summation-order drift
+  });
+
+  it('approximates brute force within a few percent at theta=0.7', () => {
+    const base = scatter(500);
+    const brute = clone(base);
+    const bh = clone(base);
+    applyRepulsion(brute, 1, 600);
+    applyRepulsionBarnesHut(bh, 1, 600, 0.7);
+    let num = 0;
+    let den = 0;
+    for (let i = 0; i < base.length; i++) {
+      num += Math.hypot(brute[i].vx - bh[i].vx, brute[i].vy - bh[i].vy);
+      den += Math.hypot(brute[i].vx, brute[i].vy);
+    }
+    expect(num / den).toBeLessThan(0.1); // < 10% aggregate error
+    expect(bh.every((b) => Number.isFinite(b.vx) && Number.isFinite(b.vy))).toBe(true);
+  });
+
+  it('pushes a body away from a distant dense cluster', () => {
+    const bodies: PhysicsBody[] = [makeBody({ x: 0, y: 0 })];
+    for (let i = 0; i < 300; i++) {
+      bodies.push(makeBody({ x: 500 + (i % 10), y: 500 + Math.floor(i / 10) }));
+    }
+    applyRepulsionBarnesHut(bodies, 1, 600, 0.7);
+    expect(bodies[0].vx).toBeLessThan(0); // cluster is +x,+y → pushed -x
+    expect(bodies[0].vy).toBeLessThan(0); // → pushed -y
+  });
+
+  it('treats pinned bodies as sources but never moves them', () => {
+    const bodies: PhysicsBody[] = [makeBody({ x: 0, y: 0, pinned: true })];
+    for (let i = 0; i < 600; i++) bodies.push(makeBody({ x: 100 + i, y: 0 }));
+    applyRepulsionBarnesHut(bodies, 1, 600, 0.7);
+    expect(bodies[0].vx).toBe(0);
+    expect(bodies[0].vy).toBe(0);
+  });
+
+  it('step() stays finite with > BH_THRESHOLD bodies (Barnes-Hut path)', () => {
+    const bodies = scatter(BH_THRESHOLD + 100);
+    for (let i = 0; i < 50; i++) step(bodies, [], 1 / 60);
+    expect(bodies.every((b) => Number.isFinite(b.x) && Number.isFinite(b.y))).toBe(true);
   });
 });

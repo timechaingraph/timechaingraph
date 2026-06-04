@@ -17,13 +17,16 @@ import type { WalletBond, WalletData, WalletRole } from '@/types/wallet';
 // calls loadSubstrate() before it dynamic-imports this module, so these
 // capture real chain data (static importers like tests get the fixture).
 //
-// Physics is O(n²) until Barnes-Hut lands (M5/v0.2), so cap the rendered set.
+// Barnes-Hut (src/lib/forceLayout) makes physics O(n log n), so this cap is now
+// render-bound (one PIXI.Graphics per node + a per-tick edge redraw), not
+// physics-bound. 5000 is comfortable for the current retained-mode renderer; it
+// can rise further once node draws move to a ParticleContainer / instancing.
 // EDGE-FIRST selection: greedily take the strongest bonds + their endpoints
 // up to MAX_RENDER_NODES, then keep further bonds that join two already-kept
 // wallets. Every node ends up with ≥1 connection, so the layout shows real
 // hubs + spokes — picking top wallets by *value* instead leaves them
 // disconnected (their bonds point outside the set) and it collapses to a blob.
-const MAX_RENDER_NODES = 900;
+const MAX_RENDER_NODES = 5000;
 const _sub = getActiveSubstrate();
 let WALLETS: readonly WalletData[];
 let BONDS: readonly WalletBond[];
@@ -62,15 +65,17 @@ const RING_RADIUS: Record<WalletRole, number> = {
 };
 
 const PHYSICS = {
-  // Tuned up from the 50-node fixture defaults for the ~900-node real graph:
-  // weaker gravity + stronger repulsion so it spreads into a readable network
-  // instead of a tight ball. (Barnes-Hut + adaptive tuning is M5.)
+  // Tuned up from the 50-node fixture defaults for the multi-thousand-node real
+  // graph: weaker gravity + stronger repulsion so it spreads into a readable
+  // network instead of a tight ball. step() auto-switches to Barnes-Hut above
+  // BH_THRESHOLD; theta is its opening angle (0.8 = fast, fine for this view).
   gravity: 0.025,
   repulsion: 1200,
   spring: 0.012,
   springRest: 80,
   damping: 0.86,
   maxStep: 1 / 30,
+  theta: 0.8,
 };
 
 /** Edge fade per project spec — bonds fade to alpha 0 over 10 blocks of inactivity. */
