@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useTimegridStore } from '@/store/timegridStore';
 import { SPEED_OPTIONS } from '@/components/Playback';
+import { blockDate, formatBlockDate } from '@/lib/blockDate';
 
 /**
  * GraphPlayBar — graph-only compact playback control. A single-row
@@ -29,6 +30,10 @@ export function GraphPlayBar() {
   const ready = latestBlock > 0;
   const atTip = ready && currentBlock >= latestBlock;
   const speed = SPEED_OPTIONS[speedIdx] ?? SPEED_OPTIONS[0];
+  const { date: when, estimated: whenEstimated } = blockDate(currentBlock);
+  // Halving blocks within the loaded range → amber markers on the scrub track.
+  const halvings: number[] = [];
+  for (let h = 210_000; h <= latestBlock; h += 210_000) halvings.push(h);
 
   // Tick loop: same logic as Playback. Re-creates whenever play
   // state, speed, or readiness changes. Cleanup clears the prior
@@ -108,38 +113,63 @@ export function GraphPlayBar() {
         })}
       </div>
 
-      {/* Scrubber — flexes to fill remaining space */}
-      <input
-        type="range"
-        min={0}
-        max={Math.max(latestBlock, 1)}
-        value={currentBlock}
-        step={1}
-        disabled={!ready}
-        onChange={(e) => {
-          // Manual scrub pauses auto-play; the user has grabbed the
-          // wheel and Narrate-mode shouldn't fight them.
-          setPlaying(false);
-          setCurrentBlock(Number(e.target.value));
-        }}
-        className="min-w-0 flex-1 accent-[color:var(--color-amber)] disabled:opacity-30"
-        aria-label={`Block scrubber. Current block: ${currentBlock.toLocaleString()} of ${latestBlock.toLocaleString()}`}
-      />
+      {/* Scrubber — flexes to fill remaining space; halving ticks behind it */}
+      <div className="relative min-w-0 flex-1">
+        {ready && halvings.length > 0 && (
+          <div className="pointer-events-none absolute inset-0" aria-hidden>
+            {halvings.map((h) => (
+              <span
+                key={h}
+                className="absolute top-1/2 h-2.5 w-px -translate-x-1/2 -translate-y-1/2 bg-[color:var(--color-amber)]/70"
+                style={{ left: `${(h / latestBlock) * 100}%` }}
+                title={`halving · block ${h.toLocaleString()}`}
+              />
+            ))}
+          </div>
+        )}
+        <input
+          type="range"
+          min={0}
+          max={Math.max(latestBlock, 1)}
+          value={currentBlock}
+          step={1}
+          disabled={!ready}
+          onChange={(e) => {
+            // Manual scrub pauses auto-play; the user has grabbed the
+            // wheel and Narrate-mode shouldn't fight them.
+            setPlaying(false);
+            setCurrentBlock(Number(e.target.value));
+          }}
+          className="w-full accent-[color:var(--color-amber)] disabled:opacity-30"
+          aria-label={`Block scrubber. Current block: ${currentBlock.toLocaleString()} of ${latestBlock.toLocaleString()}`}
+        />
+      </div>
 
-      {/* Block readout */}
-      <span className="shrink-0 text-[10px] tabular-nums text-[color:var(--color-text-muted)]">
-        {ready ? (
-          <>
-            <span className="text-[color:var(--color-text-primary)]">
-              {currentBlock.toLocaleString()}
-            </span>
-            <span className="text-[color:var(--color-text-faint)]">
-              {' / '}
-              {latestBlock.toLocaleString()}
-            </span>
-          </>
-        ) : (
-          '—'
+      {/* Block + date readout (real mined date, ~ prefix = estimate) */}
+      <span className="flex shrink-0 flex-col items-end leading-tight">
+        <span className="text-[10px] tabular-nums">
+          {ready ? (
+            <>
+              <span className="text-[color:var(--color-text-primary)]">
+                {currentBlock.toLocaleString()}
+              </span>
+              <span className="text-[color:var(--color-text-faint)]">
+                {' / '}
+                {latestBlock.toLocaleString()}
+              </span>
+            </>
+          ) : (
+            '—'
+          )}
+        </span>
+        {ready && (
+          <span
+            className="text-[9px] tabular-nums text-[color:var(--color-text-muted)]"
+            title={whenEstimated ? 'estimated (10-min average)' : 'real mined time'}
+          >
+            {whenEstimated ? '~' : ''}
+            {formatBlockDate(when)}
+          </span>
         )}
       </span>
     </div>

@@ -44,6 +44,7 @@ interface Manifest {
   bundleVersion: string;
   tipBlock: number;
   tiers: Record<string, TierEntry>;
+  timestamps?: { path: string; rows: number };
 }
 
 export class R2ChainSubstrate implements ChainSubstrate {
@@ -52,6 +53,7 @@ export class R2ChainSubstrate implements ChainSubstrate {
   private _byAddr = new Map<string, WalletData>();
   private _bondsByAddr = new Map<string, WalletBond[]>();
   private _tipBlock = 0;
+  private _blockTime: Uint32Array | null = null; // height → unix seconds (0 = unknown)
   private _ready = false;
 
   constructor(
@@ -83,6 +85,13 @@ export class R2ChainSubstrate implements ChainSubstrate {
   }
   coinsOwnedBy(): readonly Coin[] {
     return [];
+  }
+
+  blockTime(height: number): number | undefined {
+    const arr = this._blockTime;
+    if (!arr || height < 0 || height >= arr.length) return undefined;
+    const t = arr[height];
+    return t > 0 ? t : undefined;
   }
 
   async init(): Promise<this> {
@@ -140,6 +149,28 @@ export class R2ChainSubstrate implements ChainSubstrate {
         this._bonds.push(b);
         this.indexBond(b.fromAddress, b);
         this.indexBond(b.toAddress, b);
+      }
+
+      // Timestamps: tier-independent block → unix-seconds, loaded into a
+      // height-indexed Uint32Array for O(1) blockTime() (the scrubber spans
+      // 0..tip regardless of tier). ~3.8MB at full chain; absent in old bundles.
+      if (manifest.timestamps) {
+        await db.registerFileURL(
+          'timestamps.parquet',
+          abs(manifest.timestamps.path),
+          DuckDBDataProtocol.HTTP,
+          false,
+        );
+        const tres = await conn.query(
+          `SELECT block, t FROM parquet_scan('timestamps.parquet')`,
+        );
+        const arr = new Uint32Array(this._tipBlock + 1);
+        for (const r of tres) {
+          const row = r as unknown as Record<string, number | bigint>;
+          const b = Number(row.block);
+          if (b >= 0 && b < arr.length) arr[b] = Number(row.t);
+        }
+        this._blockTime = arr;
       }
     } finally {
       await conn.close();

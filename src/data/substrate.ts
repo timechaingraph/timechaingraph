@@ -72,6 +72,12 @@ class FixtureChainSubstrate implements ChainSubstrate {
   coinsOwnedBy(address: string): readonly Coin[] {
     return this.coinOwnerIndex.get(address) ?? [];
   }
+
+  // The 50-node fixture carries no real block times; callers fall back to the
+  // 10-minute estimate. The R2/parquet substrate returns true times.
+  blockTime(): number | undefined {
+    return undefined;
+  }
 }
 
 /**

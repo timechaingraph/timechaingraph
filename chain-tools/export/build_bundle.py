@@ -150,12 +150,39 @@ def main() -> None:
         print(f'  {t:4s}: {len(wallet_rows[t]):>9,} wallets ({wpath.stat().st_size:>10,}B)  '
               f'{len(bond_rows[t]):>10,} bonds ({bpath.stat().st_size:>11,}B)')
 
+    # ---- timestamps: tier-independent block -> unix-seconds ----------------
+    # The scrubber spans block 0..tip regardless of tier, so this single asset
+    # carries real per-block wall-clock time (vs the 10-min estimate the UI
+    # falls back to). The browser loads it into a height-indexed Uint32Array.
+    ts_entry = None
+    ts_path = sub / 'real-substrate-timestamps.json'
+    if ts_path.exists():
+        from datetime import datetime
+        raw = json.loads(ts_path.read_text())
+        ts_rows = []
+        for block_str, iso in raw.items():
+            try:
+                unix = int(datetime.fromisoformat(iso.replace('Z', '+00:00')).timestamp())
+            except (ValueError, TypeError):
+                continue
+            ts_rows.append({'block': int(block_str), 't': unix})
+        ts_rows.sort(key=lambda r: r['block'])
+        ts_schema = pa.schema([('block', pa.uint32()), ('t', pa.uint32())])
+        tt = pa.Table.from_pylist(ts_rows, schema=ts_schema)
+        tpath = out / 'timestamps.parquet'
+        pq.write_table(tt, tpath, compression='zstd')
+        ts_entry = {'path': 'timestamps.parquet',
+                    'rows': len(ts_rows),
+                    'bytes': tpath.stat().st_size}
+        print(f'  timestamps: {len(ts_rows):>7,} blocks ({tpath.stat().st_size:>10,}B)')
+
     manifest = {
         'schema': 'bundle-manifest/v1',
         'bundleVersion': args.bundle_version,
         'tipBlock': tip_block,
         'sourceSchema': meta.get('schema'),
         'tiers': manifest_tiers,
+        'timestamps': ts_entry,
         'freeTierNodeCount': manifest_tiers.get('free', {}).get('wallets', {}).get('rows', 0),
     }
     (out / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')

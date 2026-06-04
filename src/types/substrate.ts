@@ -73,4 +73,13 @@ export interface ChainSubstrate {
    * pipeline updates ownership per spend.
    */
   coinsOwnedBy(address: string): readonly Coin[];
+
+  /**
+   * Real wall-clock time (Unix seconds) a block was mined, or undefined if
+   * unknown for this source (e.g. the fixture, or a height past tipBlock).
+   * Backed by the bundle's `timestamps` asset for the parquet substrate; the
+   * scrubber uses it to show true dates + place halving markers, falling back
+   * to the 10-minute estimate when undefined.
+   */
+  blockTime(height: number): number | undefined;
 }

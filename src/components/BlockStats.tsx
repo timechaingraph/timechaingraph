@@ -3,6 +3,7 @@
 import { useTimegridStore } from '@/store/timegridStore';
 import { epochFromHeight, isHalvingBlock } from '@/types/block';
 import { subsidyAtBlock, cumulativeSubsidy } from '@/lib/spiral';
+import { blockDate, formatBlockDate } from '@/lib/blockDate';
 
 /**
  * BlockStats — block-level metadata for whatever block the scrubber
@@ -11,25 +12,12 @@ import { subsidyAtBlock, cumulativeSubsidy } from '@/lib/spiral';
  * Graph views can mount this; both write to the same `currentBlock`
  * slice in `useTimegridStore`.
  *
- * For v0.1 (no real adapter yet) this only surfaces fields that can
- * be derived deterministically from the block height: epoch number,
- * halvings crossed, halving-block flag, and an estimated wall-clock
- * date assuming the canonical 10-minute average block time. Once the
- * BitcoinChainAdapter ships, fields like miner / txCount / feeSats
- * fill in from the parquet shard.
+ * Surfaces fields derived deterministically from the block height (epoch,
+ * halvings crossed, halving-block flag, subsidy, issuance) plus the block's
+ * date — the REAL mined time when the bundle carries timestamps (via
+ * `blockDate`), falling back to a 10-minute estimate otherwise. Once the
+ * adapter ships richer per-block data, miner / txCount / feeSats fill in.
  */
-
-// Bitcoin's genesis block timestamp: 2009-01-03 18:15:05 UTC
-const GENESIS_TIMESTAMP_MS = 1_231_006_505 * 1000;
-const AVG_BLOCK_TIME_MS = 10 * 60 * 1000;
-
-function estimateBlockDate(height: number): Date {
-  return new Date(GENESIS_TIMESTAMP_MS + height * AVG_BLOCK_TIME_MS);
-}
-
-function formatDate(d: Date): string {
-  return d.toISOString().slice(0, 10); // YYYY-MM-DD
-}
 
 // Compact BTC formatter for the issuance running-total. Uses comma
 // thousands at >=1k, two decimals at fractional values, no fractional
@@ -49,7 +37,7 @@ export function BlockStats() {
   const epoch = epochFromHeight(currentBlock);
   const halvings = Math.floor(currentBlock / 210_000);
   const isHalving = isHalvingBlock(currentBlock);
-  const estimatedDate = estimateBlockDate(currentBlock);
+  const { date: blockWhen, estimated: dateEstimated } = blockDate(currentBlock);
   // Per user directive 2026-04-30: "fractions will always be
   // scrubbed to whole BTC" — every display value floors to the
   // nearest whole BTC since the grid quantizes 1 cell = 1 BTC.
@@ -94,7 +82,10 @@ export function BlockStats() {
               label="Next halving"
               value={`in ${blocksToNextHalving.toLocaleString()} blocks`}
             />
-            <Field label="Estimated date" value={formatDate(estimatedDate)} />
+            <Field
+              label={dateEstimated ? 'Est. date' : 'Date'}
+              value={formatBlockDate(blockWhen)}
+            />
             <Field label="Latest tip" value={`block ${latestBlock.toLocaleString()}`} />
           </dl>
         </>

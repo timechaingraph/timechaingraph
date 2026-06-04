@@ -16,6 +16,7 @@ import { loadSubstrate } from '@/data/substrate';
 import { useTimegridStore } from '@/store/timegridStore';
 import { GraphPlayBar } from './GraphPlayBar';
 import { WalletInspector } from '@/components/WalletInspector';
+import { BlockStats } from '@/components/BlockStats';
 
 export function GraphCanvas() {
   const [Graph, setGraph] = useState<ComponentType | null>(null);
@@ -62,6 +63,13 @@ export function GraphCanvas() {
       {/* The lattice — fills the area, beneath the overlays. */}
       <div className="absolute inset-0">
         <Graph />
+      </div>
+
+      {/* Block stats — timeline position (date, epoch, halvings) top-left (lg+). */}
+      <div className="pointer-events-none absolute top-3 left-3 z-10 hidden w-[280px] max-w-[calc(100vw-1.5rem)] lg:block">
+        <div className="pointer-events-auto">
+          <BlockStats />
+        </div>
       </div>
 
       {/* Wallet inspector — appears when a wallet is selected (lg+). */}
