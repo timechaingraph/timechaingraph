@@ -1,7 +1,7 @@
 'use client';
 
 import { useTimegridStore } from '@/store/timegridStore';
-import { FIXTURE_SUBSTRATE } from '@/data/substrate';
+import { getActiveSubstrate } from '@/data/substrate';
 import { ROLE_LABEL, ROLE_CSS } from '@/lib/role-visuals';
 import type { WalletData } from '@/types/wallet';
 
@@ -32,7 +32,7 @@ function shortAddress(addr: string): string {
 }
 
 function findNeighbors(address: string): WalletData[] {
-  const bonds = FIXTURE_SUBSTRATE.bondsForAddress(address);
+  const bonds = getActiveSubstrate().bondsForAddress(address);
   const neighborAddrs = new Set<string>();
   for (const bond of bonds) {
     if (bond.fromAddress === address) neighborAddrs.add(bond.toAddress);
@@ -40,7 +40,7 @@ function findNeighbors(address: string): WalletData[] {
   }
   const result: WalletData[] = [];
   for (const addr of neighborAddrs) {
-    const w = FIXTURE_SUBSTRATE.walletByAddress(addr);
+    const w = getActiveSubstrate().walletByAddress(addr);
     if (w) result.push(w);
   }
   return result;
@@ -51,14 +51,14 @@ const MAX_NEIGHBORS_SHOWN = 5;
 export function WalletInspector() {
   const selectedAddress = useTimegridStore((s) => s.selectedWallet);
   const wallet = selectedAddress
-    ? FIXTURE_SUBSTRATE.walletByAddress(selectedAddress)
+    ? getActiveSubstrate().walletByAddress(selectedAddress)
     : undefined;
   const neighbors = wallet ? findNeighbors(wallet.address) : [];
   // v0.1 invariant: ownerAddress === minterAddress (no transfers).
   // v0.2+ this becomes "coins held at tipBlock" once the multi-input
   // pipeline updates ownership per spend.
   const coinsOwned = wallet
-    ? FIXTURE_SUBSTRATE.coinsOwnedBy(wallet.address).length
+    ? getActiveSubstrate().coinsOwnedBy(wallet.address).length
     : 0;
 
   if (!wallet) {
