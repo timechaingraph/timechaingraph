@@ -25,7 +25,9 @@
     "wallet-graph"
   ],
   "scripts": {
+    "predev": "node scripts/copy-duckdb-assets.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/copy-duckdb-assets.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -38,6 +40,7 @@
     "deploy": "next build && wrangler pages deploy out --project-name=timechaingraph --branch=main"
   },
   "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.33.1-dev45.0",
     "next": "^16.2.6",
     "pixi.js": "^8.18.1",
     "react": "19.2.6",
