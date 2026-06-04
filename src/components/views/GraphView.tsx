@@ -844,7 +844,12 @@ export function GraphView() {
     return () => {
       cancelled = true;
       for (const fn of cleanupFns) fn();
-      app.destroy(true, { children: true });
+      // Only destroy once PixiJS has finished its async init(). React
+      // StrictMode runs this cleanup before init() resolves on the first
+      // mount, and destroy() on an uninitialized app throws
+      // ("_cancelResize is not a function"); the async init's own
+      // `if (cancelled)` guard handles teardown in that case.
+      if (app.renderer) app.destroy(true, { children: true });
     };
   }, []);
 
