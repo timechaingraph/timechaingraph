@@ -1,13 +1,13 @@
 /**
- * AccessTiers — three-tier subscription model for Bitcoin viz data resolution.
+ * AccessTiers — three data-resolution tiers. ALL FREE; the tier is a density
+ * choice (browser perf vs node count), never a paywall.
  *
  * Free  → only "whale" wallets and major miners (~10k nodes visible)
  * Pro   → relaxed holdings + midsize miners (~500k nodes)
  * Max   → full database — every miner + every significant wallet (~1-3M)
  *
- * Tier gating is data-resolution, not feature-locking. Every tier sees the
- * same canvas, scrubber, and physics; what changes is how dense the lattice
- * gets. Payment in BTC / Lightning planned.
+ * Every tier sees the same canvas, scrubber, and physics; what changes is how
+ * dense the lattice gets. No payment, no sign-in — funded by donations.
  */
 
 const TIERS: Array<{
@@ -36,7 +36,7 @@ const TIERS: Array<{
   {
     id: 'pro',
     name: 'Pro',
-    price: 'TBD ⚡',
+    price: '0 sats',
     cap: '~500k nodes',
     threshold: '> 10 BTC ever held · midsize miners',
     visible: 'Relaxed holdings · midsize miners',
@@ -50,7 +50,7 @@ const TIERS: Array<{
   {
     id: 'max',
     name: 'Max',
-    price: 'TBD ⚡',
+    price: '0 sats',
     cap: '~1–3M nodes',
     threshold: '> 1 BTC OR > 100 lifetime txs · all miners',
     visible: 'Full database — every significant wallet',
@@ -135,11 +135,9 @@ function Footer({ tier }: { tier: (typeof TIERS)[number] }) {
           v0.1
         </span>
       </div>
-      {tier.id !== 'free' && (
-        <p className="mt-2 text-mono text-[10px] text-[color:var(--color-text-faint)]">
-          paid in BTC / Lightning · KYC-free
-        </p>
-      )}
+      <p className="mt-2 text-mono text-[10px] text-[color:var(--color-text-faint)]">
+        no sign-in · no KYC · funded by donations
+      </p>
     </footer>
   );
 }
