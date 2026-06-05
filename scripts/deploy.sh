@@ -21,6 +21,9 @@ cd "$(dirname "$0")/.."
 echo "▸ vendor DuckDB-Wasm assets (same-origin worker + wasm into public/)"
 node scripts/copy-duckdb-assets.mjs
 
+echo "▸ generate OG share image (public/og.png)"
+node scripts/gen-og-image.mjs
+
 echo "▸ clean build"
 rm -rf .next out
 npx next build

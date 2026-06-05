@@ -27,7 +27,7 @@
   "scripts": {
     "predev": "node scripts/copy-duckdb-assets.mjs",
     "dev": "next dev",
-    "prebuild": "node scripts/copy-duckdb-assets.mjs",
+    "prebuild": "node scripts/copy-duckdb-assets.mjs && node scripts/gen-og-image.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -48,6 +48,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
