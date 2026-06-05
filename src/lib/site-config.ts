@@ -66,3 +66,26 @@ export const DONATION_BTC_ADDRESS = 'bc1q2hhsxyuzj4e6wcjegayddjphdry02wdef9v62l'
 export const DONATION_LIGHTNING_ADDRESS = ''; // coming: self-hosted via BTCPay/LNbits
 export const DONATION_LIVE =
   DONATION_BTC_ADDRESS.length > 0 && !DONATION_BTC_ADDRESS.includes('PLACEHOLDER');
+
+/**
+ * Contact + social. Per-site support mailbox (operator provisions it). Social
+ * handles are EMPTY until the accounts exist — each footer link renders only
+ * when its handle is set, so going live is a one-line edit here (no code change,
+ * same gating idea as DONATION_LIVE). These MUST diverge between Graph and Grid.
+ * Typed `: string` so the "is it set?" conditionals aren't constant-folded.
+ */
+export const SUPPORT_EMAIL: string = 'support@timechaingraph.com';
+export const X_HANDLE: string = ''; // e.g. 'timechaingraph' (no @)
+export const NOSTR_NPUB: string = ''; // e.g. 'npub1…'
+export const GITHUB_URL: string = ''; // e.g. 'https://github.com/<org>/timechaingraph' (repo must be public)
+
+export interface SocialLink {
+  label: string;
+  href: string;
+}
+/** Configured socials only, in display order. Empty handles are skipped. */
+export const SOCIAL_LINKS: SocialLink[] = [
+  ...(X_HANDLE ? [{ label: 'X', href: `https://x.com/${X_HANDLE}` }] : []),
+  ...(NOSTR_NPUB ? [{ label: 'Nostr', href: `https://njump.me/${NOSTR_NPUB}` }] : []),
+  ...(GITHUB_URL ? [{ label: 'GitHub', href: GITHUB_URL }] : []),
+];

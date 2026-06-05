@@ -8,6 +8,8 @@ import {
   OTHER_VIEW_ACCENT,
   OTHER_VIEW_URL,
   SHOW_OTHER_VIEW_CALLOUTS,
+  SUPPORT_EMAIL,
+  SOCIAL_LINKS,
 } from '@/lib/site-config';
 
 /**
@@ -41,7 +43,10 @@ const SITEMAP: Array<{ heading: string; links: Array<{ href: string; label: stri
   },
   {
     heading: 'Support',
-    links: [{ href: '/donate', label: 'Donate' }],
+    links: [
+      { href: '/donate', label: 'Donate' },
+      ...(SUPPORT_EMAIL ? [{ href: `mailto:${SUPPORT_EMAIL}`, label: 'Contact' }] : []),
+    ],
   },
 ];
 
@@ -88,16 +93,32 @@ export function SiteFooter() {
               {section.heading}
             </h3>
             <ul className="mt-3 space-y-2">
-              {section.links.map((l) => (
-                <li key={l.href}>
-                  <Link
-                    href={l.href}
-                    className="transition-colors hover:text-[color:var(--color-text-primary)]"
-                  >
-                    {l.label}
-                  </Link>
-                </li>
-              ))}
+              {section.links.map((l) => {
+                const external =
+                  l.href.startsWith('http') || l.href.startsWith('mailto:');
+                return (
+                  <li key={l.href}>
+                    {external ? (
+                      <a
+                        href={l.href}
+                        className="transition-colors hover:text-[color:var(--color-text-primary)]"
+                        {...(l.href.startsWith('http')
+                          ? { target: '_blank', rel: 'noopener noreferrer' }
+                          : {})}
+                      >
+                        {l.label}
+                      </a>
+                    ) : (
+                      <Link
+                        href={l.href}
+                        className="transition-colors hover:text-[color:var(--color-text-primary)]"
+                      >
+                        {l.label}
+                      </Link>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         ))}
@@ -125,6 +146,22 @@ export function SiteFooter() {
 
       <div className="mt-10 flex flex-col gap-3 border-t border-[color:var(--color-card-border)] pt-6 md:flex-row md:items-center md:justify-between">
         <p>Built on the open Bitcoin protocol. No coin, no token, no funding round.</p>
+        {SOCIAL_LINKS.length > 0 && (
+          <ul className="flex items-center gap-4">
+            {SOCIAL_LINKS.map((s) => (
+              <li key={s.label}>
+                <a
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="uppercase tracking-[0.18em] transition-colors hover:text-[color:var(--color-text-primary)]"
+                >
+                  {s.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
         <p className="text-[color:var(--color-text-faint)]">
           v{BUILD_VERSION} · {BUILD_HASH}
         </p>
