@@ -51,7 +51,8 @@ export const VIEW_BRAND_NAME = 'Graph';
 
 /**
  * Donation rails — Bitcoin-native, self-custodial (see /donate). The ONLY
- * operator receive identifiers; these MUST differ between Graph and Grid.
+ * operator receive identifier; Grid intentionally shares this SAME address
+ * (one Sparrow wallet collects for both sites — operator decision 2026-06-05).
  * Self-custodial on-chain receipt needs no account, no KYC, no third party —
  * the regulatorily-cleanest path under Turkey's CASP regime (the weight there
  * is on custodians, not self-custody). Lightning arrives later via a
