@@ -28,11 +28,12 @@ const BRASS = '#c28840';
 const MUTED = '#a1a1aa';
 const FAINT = '#6b6b73';
 
-// Hub-and-spoke network motif on the right — evokes the force-directed graph.
-const hub = { x: 940, y: 250 };
+// Hub-and-spoke network motif in the lower-right — evokes the force-directed
+// graph. Positioned clear of the title (which ends ~x900 on its first line).
+const hub = { x: 985, y: 378 };
 const spokes = Array.from({ length: 8 }, (_, i) => {
   const a = (i / 8) * Math.PI * 2 + 0.3;
-  const r = 120 + (i % 3) * 34;
+  const r = 100 + (i % 3) * 26;
   return { x: hub.x + Math.cos(a) * r, y: hub.y + Math.sin(a) * r, rad: 4 + (i % 3) * 2 };
 });
 const edges = spokes
