@@ -22,7 +22,8 @@ export default function PrivacyPage() {
         <div className="space-y-6 text-base leading-relaxed text-[color:var(--color-text-secondary)] md:text-lg">
           <p>
             Source data flows from Bitcoin&apos;s own peer-to-peer protocol
-            into a self-hosted full node (bitcoind + electrs). Extraction
+            into a self-hosted Bitcoin full node (bitcoind), read directly
+            over its JSON-RPC interface — no third-party indexer. Extraction
             runs offline on infrastructure we control. Snapshots are
             distributed from a CDN bucket we control (Cloudflare R2). At
             no point does the viewer&apos;s browser talk to a third-party
@@ -51,12 +52,12 @@ export default function PrivacyPage() {
 
         <ul className="space-y-3 text-sm text-[color:var(--color-text-secondary)]">
           {[
-            'Self-hosted bitcoind + electrs',
+            'Self-hosted bitcoind full node (JSON-RPC)',
             'Static parquet on own CDN (Cloudflare R2)',
             'No third-party scripts, no Google Fonts',
             'No analytics, no fingerprinting',
             'No per-viewer telemetry',
-            'Donations via Lightning — no KYC',
+            'Self-custodial Bitcoin donations — no KYC',
             'OAuth lives only on api.* subdomain',
             'Tor onion service planned for v0.3',
           ].map((line) => (

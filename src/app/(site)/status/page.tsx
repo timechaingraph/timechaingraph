@@ -35,9 +35,9 @@ export default function StatusPage() {
           <ul className="mt-3 space-y-2 text-mono text-xs text-[color:var(--color-text-secondary)]">
             {[
               { label: 'bitcoind sync', state: 'stubbed' },
-              { label: 'electrs index', state: 'stubbed' },
-              { label: 'R2 bucket', state: 'stubbed' },
+              { label: 'substrate walk', state: 'stubbed' },
               { label: 'parquet snapshots', state: 'stubbed' },
+              { label: 'R2 bucket', state: 'stubbed' },
             ].map((row) => (
               <li key={row.label} className="flex justify-between">
                 <span>{row.label}</span>

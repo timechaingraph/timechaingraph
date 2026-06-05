@@ -76,8 +76,8 @@ export default function AboutPage() {
           </li>
           <li>
             <strong className="text-[color:var(--color-text-primary)]">Educators</strong>{' '}
-            — show 16 years of monetary history as a single scrubbable
-            surface.
+            — show Bitcoin&apos;s full monetary history as a single
+            scrubbable surface.
           </li>
           <li>
             <strong className="text-[color:var(--color-text-primary)]">Privacy advocates</strong>{' '}

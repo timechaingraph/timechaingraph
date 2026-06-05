@@ -18,6 +18,9 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
+        // /data-check is an unlinked dev/proof route (DuckDB-Wasm pipeline
+        // check) — keep it out of the index.
+        disallow: '/data-check',
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
