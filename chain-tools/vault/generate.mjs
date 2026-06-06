@@ -32,7 +32,7 @@
 // step (delegated to sister; she owns CI infra).
 //
 // Run with:  node chain-tools/vault/generate.mjs
-//            (writes to $REPO/vault relative to repo root)
+//            (writes to ./vault relative to repo root)
 //
 // fixture-sync: this script duplicates the wallet-synthesis logic from
 // src/data/__fixtures__/free-tier-50.ts. If that file changes, sync

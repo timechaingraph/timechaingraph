@@ -100,11 +100,10 @@ src/
 └── types/              wallet, block, lattice — typed contracts
 
 chain-tools/            offline operator-side data pipeline
-├── ingest/             bitcoind / electrs → LMDB substrate
-├── lib/                LMDB store, halving math, OP_RETURN decoders,
-│                       Union-Find clustering
-├── schema/             schema design + migration plans
-└── ops/                lifecycle scripts (shutdown, resume)
+├── ingest/             bitcoind JSON-RPC (getblock v3) block walker
+├── lib/                RPC client, window combiner, extractors, halving math
+├── export/             DuckDB out-of-core reduce → tiered Parquet bundle
+└── audit/              substrate validation
 
 public/
 ├── status.json         live status metadata (regenerated per-block)
@@ -129,9 +128,10 @@ the chain as a graph in the literal mathematical sense — wallets are nodes,
 transactions are edges, position emerges from interaction frequency.
 
 The data pipeline is local: source data flows from Bitcoin's own peer-to-peer
-network into a self-hosted bitcoind + electrs that this project's operator
-provisions. Distribution is via a CDN bucket we control. No KYC, no per-viewer
-telemetry, no third-party dependencies at runtime.
+network into a self-hosted bitcoind full node that this project's operator
+provisions, read directly over its JSON-RPC interface — no third-party indexer.
+Distribution is via a CDN bucket we control. No KYC, no per-viewer telemetry,
+no third-party dependencies at runtime.
 
 ---
 
