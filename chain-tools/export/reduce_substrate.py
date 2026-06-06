@@ -62,7 +62,7 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     p.add_argument('--agg-dir', type=Path, default=repo_root / 'chain-tools' / 'out' / 'agg')
     p.add_argument('--out-dir', type=Path, default=repo_root / 'chain-tools' / 'out')
-    p.add_argument('--memory-limit', default='8GB')
+    p.add_argument('--memory-limit', default='12GB')
     p.add_argument('--threads', type=int, default=4)
     return p.parse_args()
 
@@ -96,6 +96,10 @@ def main() -> None:
     con.execute(f"PRAGMA memory_limit='{args.memory_limit}'")
     con.execute(f"PRAGMA threads={args.threads}")
     con.execute(f"PRAGMA temp_directory='{tmp_dir}'")
+    # Full-chain aggregates (≈1.3M distinct wallets across 3k+ partials) blow the
+    # memory_limit if DuckDB also tracks insertion order; disabling it lets the
+    # hash-aggregate spill to temp_directory and keeps the reduce memory-bounded.
+    con.execute("PRAGMA preserve_insertion_order=false")
 
     # ---- wallets: merge windows, keep significant ----------------------------
     con.execute(f"""
