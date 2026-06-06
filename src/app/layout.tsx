@@ -5,6 +5,7 @@ import {
   SITE_TITLE,
   SITE_TITLE_FULL,
   SITE_DESCRIPTION,
+  SOCIAL_LINKS,
 } from '@/lib/site-config';
 import './globals.css';
 
@@ -67,10 +68,59 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+/**
+ * Structured data (schema.org JSON-LD) — helps search engines understand the
+ * site as a free, web-based application published by the project, and enables
+ * richer results. Built from site-config so it stays brand-correct across the
+ * Graph/Grid siblings; `sameAs` is emitted only once social handles exist
+ * (same config-gating as the footer links — no empty/placeholder profiles).
+ */
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: SITE_TITLE,
+      description: SITE_DESCRIPTION,
+      publisher: { '@id': `${SITE_URL}/#org` },
+      inLanguage: 'en',
+    },
+    {
+      '@type': 'Organization',
+      '@id': `${SITE_URL}/#org`,
+      name: SITE_TITLE,
+      url: SITE_URL,
+      logo: `${SITE_URL}/og.png`,
+      description: SITE_DESCRIPTION,
+      ...(SOCIAL_LINKS.length > 0
+        ? { sameAs: SOCIAL_LINKS.map((l) => l.href) }
+        : {}),
+    },
+    {
+      '@type': 'SoftwareApplication',
+      '@id': `${SITE_URL}/#app`,
+      name: SITE_TITLE_FULL,
+      applicationCategory: 'BrowserApplication',
+      operatingSystem: 'Web',
+      url: SITE_URL,
+      isAccessibleForFree: true,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    },
+  ],
+};
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        {children}
+      </body>
     </html>
   );
 }
