@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <div className="py-12 md:py-16">
-      <p className="text-mono text-xs uppercase tracking-[0.32em] text-[color:var(--color-accent-cyan)]">
+      <p className="text-mono text-xs uppercase tracking-[0.32em] text-[color:var(--color-accent)]">
         Background
       </p>
       <h1 className="text-display mt-3 text-4xl font-semibold leading-[1.05] md:text-6xl">
@@ -36,7 +36,7 @@ export default function AboutPage() {
           concentrates. The stationary{' '}
           <a
             href="https://timechaingrid.com"
-            className="text-[color:var(--color-accent-cyan)] underline-offset-4 hover:underline"
+            className="text-[color:var(--color-accent)] underline-offset-4 hover:underline"
           >
             Grid
           </a>{' '}

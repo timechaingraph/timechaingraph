@@ -7,16 +7,15 @@
  * the BitcoinChainAdapter.
  */
 
-const SEGMENTS: Array<{ label: string; value: string; tone: 'cyan' | 'amber' | 'gold' }> = [
+const SEGMENTS: Array<{ label: string; value: string; tone: 'amber' | 'gold' }> = [
   { label: 'Block height', value: '~876,500', tone: 'amber' },
-  { label: 'Cycle', value: '~10 min', tone: 'cyan' },
+  { label: 'Cycle', value: '~10 min', tone: 'gold' },
   { label: 'Halvings', value: '4 / ∞', tone: 'gold' },
-  { label: 'Wallets indexed', value: '1.0M – 3.0M', tone: 'cyan' },
+  { label: 'Wallets indexed', value: '1.0M – 3.0M', tone: 'amber' },
   { label: 'Live tail', value: 'P2P', tone: 'amber' },
 ];
 
-const TONE_COLOR: Record<'cyan' | 'amber' | 'gold', string> = {
-  cyan: 'var(--color-accent-cyan)',
+const TONE_COLOR: Record<'amber' | 'gold', string> = {
   amber: 'var(--color-amber)',
   gold: 'var(--color-gold)',
 };
@@ -54,7 +53,7 @@ function Indicator() {
       <span className="text-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-text-secondary)]">
         Network
       </span>
-      <span className="text-mono text-xs text-[color:var(--color-accent-cyan)]">
+      <span className="text-mono text-xs text-[color:var(--color-accent)]">
         Mainnet
       </span>
     </div>

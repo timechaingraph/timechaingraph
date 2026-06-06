@@ -15,12 +15,12 @@ export const metadata: Metadata = {
  * the site so the 404 doesn't feel like an outage.
  */
 
-const ROUTES: Array<{ href: string; label: string; blurb: string; tone: 'cyan' | 'amber' | 'gold' }> = [
+const ROUTES: Array<{ href: string; label: string; blurb: string; tone: 'amber' | 'gold' }> = [
   {
     href: '/',
     label: 'Landing',
     blurb: 'Project overview, hero, mission',
-    tone: 'cyan',
+    tone: 'gold',
   },
   {
     href: '/graph',
@@ -32,7 +32,7 @@ const ROUTES: Array<{ href: string; label: string; blurb: string; tone: 'cyan' |
     href: '/about',
     label: '/about',
     blurb: 'Why this exists, who it is for, lineage',
-    tone: 'cyan',
+    tone: 'gold',
   },
   {
     href: '/pricing',
@@ -43,20 +43,20 @@ const ROUTES: Array<{ href: string; label: string; blurb: string; tone: 'cyan' |
   {
     href: '/donate',
     label: '/donate',
-    blurb: 'Lightning, GitHub Sponsors, OpenSats',
+    blurb: 'Self-custodial on-chain Bitcoin — no KYC',
     tone: 'amber',
   },
   {
     href: '/privacy',
     label: '/privacy',
     blurb: 'Full privacy posture, observable in DevTools',
-    tone: 'cyan',
+    tone: 'gold',
   },
   {
     href: '/status',
     label: '/status',
     blurb: 'Block height, snapshot age, infra health',
-    tone: 'cyan',
+    tone: 'gold',
   },
   {
     href: '/api',
@@ -72,8 +72,7 @@ const ROUTES: Array<{ href: string; label: string; blurb: string; tone: 'cyan' |
   },
 ];
 
-const TONE_COLOR: Record<'cyan' | 'amber' | 'gold', string> = {
-  cyan: 'var(--color-accent-cyan)',
+const TONE_COLOR: Record<'amber' | 'gold', string> = {
   amber: 'var(--color-amber)',
   gold: 'var(--color-gold)',
 };

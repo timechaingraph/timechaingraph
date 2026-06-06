@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function ApiOverview() {
   return (
     <div className="py-12 md:py-16">
-      <p className="text-mono text-xs uppercase tracking-[0.32em] text-[color:var(--color-accent-cyan)]">
+      <p className="text-mono text-xs uppercase tracking-[0.32em] text-[color:var(--color-accent)]">
         Developer surface
       </p>
       <h1 className="text-display mt-3 text-4xl font-semibold leading-[1.05] md:text-6xl">
@@ -20,7 +20,7 @@ export default function ApiOverview() {
       </h1>
       <p className="mt-6 max-w-2xl text-lg leading-relaxed text-[color:var(--color-text-secondary)] md:text-xl">
         Same data that drives the Grid and the Graph, exposed as a JSON API
-        at <span className="text-mono text-[color:var(--color-accent-cyan)]">api.timechaingraph.com</span>.
+        at <span className="text-mono text-[color:var(--color-accent)]">api.timechaingraph.com</span>.
         Free for everyone, with per-key rate limits to keep the service
         healthy. Sign in with Google or GitHub to mint a key. Heavy users
         can request lifted limits — no payment, just a stated use case.
@@ -53,7 +53,7 @@ function Endpoint({ method, path, desc }: { method: string; path: string; desc: 
           className="rounded px-2 py-0.5 text-mono text-[10px] uppercase tracking-wider"
           style={{
             background: 'rgba(0, 212, 255, 0.12)',
-            color: 'var(--color-accent-cyan)',
+            color: 'var(--color-accent)',
           }}
         >
           {method}

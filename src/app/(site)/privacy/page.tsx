@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <div className="py-12 md:py-16">
-      <p className="text-mono text-xs uppercase tracking-[0.32em] text-[color:var(--color-accent-cyan)]">
+      <p className="text-mono text-xs uppercase tracking-[0.32em] text-[color:var(--color-accent)]">
         Posture · privacy-first
       </p>
       <h1 className="text-display mt-3 text-4xl font-semibold leading-[1.05] md:text-6xl">
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
           </p>
           <p>
             The viewer pages on{' '}
-            <span className="text-[color:var(--color-accent-cyan)]">timechaingrid.com</span>{' '}
+            <span className="text-[color:var(--color-accent)]">timechaingrid.com</span>{' '}
             and{' '}
             <span className="text-[color:var(--color-gold)]">timechaingraph.com</span>{' '}
             ship system fonts only — no Google Fonts, no Adobe Fonts, no
@@ -40,7 +40,7 @@ export default function PrivacyPage() {
           </p>
           <p>
             The developer API at{' '}
-            <span className="text-mono text-[color:var(--color-accent-cyan)]">
+            <span className="text-mono text-[color:var(--color-accent)]">
               api.timechaingraph.com
             </span>{' '}
             requires Google or GitHub OAuth to mint an API key. That is

@@ -39,7 +39,7 @@ function Hero() {
     <section className="grid items-center gap-12 py-4 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-8 lg:gap-20 lg:py-10">
       <div className="flex flex-col gap-8">
         <p
-          className="text-mono text-[11px] uppercase tracking-[0.36em] text-[color:var(--color-accent-cyan)]"
+          className="text-mono text-[11px] uppercase tracking-[0.36em] text-[color:var(--color-accent)]"
           style={{ animation: 'drift-up 0.7s ease-out 0.05s both' }}
         >
           {BRAND_TAGLINE}
@@ -74,8 +74,8 @@ function Hero() {
               aria-hidden
               className="inline-block h-1.5 w-1.5 rounded-full"
               style={{
-                background: 'var(--color-accent-cyan)',
-                boxShadow: '0 0 6px var(--color-accent-cyan)',
+                background: 'var(--color-accent)',
+                boxShadow: '0 0 6px var(--color-accent)',
               }}
             />
             open source · no sign-up · no tracking

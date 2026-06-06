@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function DocsPage() {
   return (
     <div className="py-12 md:py-16">
-      <p className="text-mono text-xs uppercase tracking-[0.32em] text-[color:var(--color-accent-cyan)]">
+      <p className="text-mono text-xs uppercase tracking-[0.32em] text-[color:var(--color-accent)]">
         Developer documentation
       </p>
       <h1 className="text-display mt-3 text-4xl font-semibold leading-[1.05] md:text-6xl">
@@ -22,7 +22,7 @@ export default function DocsPage() {
         Full OpenAPI specification, getting-started guide, and Prolog
         query cookbook. Render via Scalar (self-hosted, no third-party
         CDN) and mirror at{' '}
-        <span className="text-mono text-[color:var(--color-accent-cyan)]">
+        <span className="text-mono text-[color:var(--color-accent)]">
           api.timechaingraph.com/docs
         </span>
         .

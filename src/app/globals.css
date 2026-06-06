@@ -18,6 +18,13 @@
   --color-accent-cyan-dim: #00A8CC;
   --color-accent-cyan-deep: #006080;
 
+  /* Brand chrome accent = the view accent (gold). Use this for UI accents:
+     eyebrow labels, links, focus rings, the status dot. The cyan tokens above
+     stay a SEMANTIC data color (significant wallets / halving), never chrome. */
+  --color-accent: #FFD700;
+  --color-accent-dim: #E0A656;
+  --color-accent-deep: #B8950E;
+
   /* Steampunk palette (warm metallics) */
   --color-brass: #C28840;
   --color-brass-bright: #E0A656;
@@ -235,8 +242,8 @@ body::after {
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: var(--color-accent-cyan);
-  box-shadow: 0 0 8px rgba(0, 212, 255, 0.7);
+  background: var(--color-accent);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
   animation: status-blink 2.2s ease-in-out infinite;
 }
 
