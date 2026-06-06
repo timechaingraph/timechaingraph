@@ -71,11 +71,6 @@ public/blocks.pre-cutover-backup
 __pycache__/
 *.pyc
 
-# Local editor/assistant session state — operator-only, never committed.
-# These hold local context that is not part of the public project.
-/the project spec
-internal session files/
-
 # Operator-internal cross-project coordination script — local-only,
 # never part of the public repo.
 scripts/sync-sibling.sh
