@@ -7,7 +7,7 @@ assets blow past that:
 |---|---|---|
 | `duckdb-mvp.wasm` | 39 MB | DuckDB-Wasm runtime (MVP build) |
 | `duckdb-eh.wasm` | 34 MB | DuckDB-Wasm runtime (exception-handling build) |
-| `data/v0.1.0/**/pro.parquet` (and `max` later) | 44 MB+ | the tiered chain bundle |
+| `data/v0.1.0/wallets.parquet` + `bonds.parquet` | 40 MB+ | the public chain dataset |
 
 So these live in our own **Cloudflare R2** bucket and the browser fetches them
 cross-origin. The privacy posture holds: R2 is Cloudflare (same provider as
@@ -34,7 +34,6 @@ The runtime reads three build-time env vars (Next inlines `NEXT_PUBLIC_*`):
 - `NEXT_PUBLIC_DATA_BASE_URL` — full versioned base for the parquet bundle (e.g.
   `https://data.timechaingraph.com/data/v0.1.0`). Empty ⇒ `/data/v0.1.0`. See
   `src/data/substrate.ts`.
-- `NEXT_PUBLIC_TIER` — `free` | `pro` | `max` (default `free`).
 
 Dev (`npm run dev`) leaves them unset → everything served same-origin from
 `public/` → no R2 needed locally.
@@ -94,7 +93,6 @@ npx wrangler r2 object put timechaingraph-data/duckdb/duckdb-eh.wasm  --file pub
 ```bash
 export NEXT_PUBLIC_DUCKDB_WASM_BASE="https://data.timechaingraph.com"
 export NEXT_PUBLIC_DATA_BASE_URL="https://data.timechaingraph.com/data/v0.1.0"
-export NEXT_PUBLIC_TIER="free"
 npm run deploy           # → scripts/deploy.sh (build, strip >25MB, audit, deploy)
 ```
 

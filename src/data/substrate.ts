@@ -117,10 +117,9 @@ export async function loadSubstrate(): Promise<ChainSubstrate> {
       const { R2ChainSubstrate } = await import('./r2-substrate');
       // Same-origin /data/v0.1.0 in dev; in prod the parquet bundle is served
       // from R2 (NEXT_PUBLIC_DATA_BASE_URL, full versioned base e.g.
-      // https://data.timechaingraph.com/data/v0.1.0). Tier is overridable too.
+      // https://data.timechaingraph.com/data/v0.1.0).
       const baseUrl = process.env.NEXT_PUBLIC_DATA_BASE_URL || '/data/v0.1.0';
-      const tier = (process.env.NEXT_PUBLIC_TIER || 'free') as 'free' | 'pro' | 'max';
-      activeSubstrate = await new R2ChainSubstrate(baseUrl, tier).init();
+      activeSubstrate = await new R2ChainSubstrate(baseUrl).init();
       return activeSubstrate;
     } catch (err) {
       console.warn('[substrate] R2 load failed; falling back to fixture:', err);

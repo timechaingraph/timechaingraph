@@ -35,12 +35,6 @@ const ROUTES: Array<{ href: string; label: string; blurb: string; tone: 'amber' 
     tone: 'gold',
   },
   {
-    href: '/pricing',
-    label: '/pricing',
-    blurb: 'All tiers free; donation-supported',
-    tone: 'amber',
-  },
-  {
     href: '/donate',
     label: '/donate',
     blurb: 'Self-custodial on-chain Bitcoin — no KYC',

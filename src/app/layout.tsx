@@ -19,7 +19,7 @@ import './globals.css';
  *
  * Splitting the chrome out of root lets `/graph` truly own the
  * viewport without fighting the centered max-w-6xl container, and
- * keeps document-style pages (`/about`, `/pricing`, etc.) unchanged.
+ * keeps document-style pages (`/about`, `/donate`, etc.) unchanged.
  */
 
 export const metadata: Metadata = {

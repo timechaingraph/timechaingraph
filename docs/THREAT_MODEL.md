@@ -32,7 +32,7 @@ Bitcoin P2P network
                                                         DuckDB reduce → Parquet)
         │
         ▼
-   tiered Parquet bundle  ──▶  Cloudflare R2 (operator-controlled CDN)
+   public Parquet bundle  ──▶  Cloudflare R2 (operator-controlled CDN)
         │
         ▼
    viewer's browser  ──range-reads via self-hosted DuckDB-Wasm──▶  render

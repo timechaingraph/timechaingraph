@@ -2,8 +2,9 @@
 
 Operator-side data pipeline for **Timechain Graph**. It reads the operator's
 own fully-synced **bitcoind** over JSON-RPC, aggregates wallets + bonds +
-timestamps, and emits a static tiered **Parquet** bundle for distribution via a
-CDN we control (Cloudflare R2).
+timestamps, and emits a single static public **Parquet** bundle for distribution
+via a CDN we control (Cloudflare R2). The site is all-free / all-public /
+donation-funded — there are no tiers.
 
 The browser never talks to any of these tools at runtime — they produce static
 artifacts the frontend range-reads as Parquet via self-hosted DuckDB-Wasm. This
@@ -29,8 +30,8 @@ read-only. **No third-party indexer (no electrs), no third-party API.**
         │  timestamps,meta}; applies the significance floor (miner OR ≥1 BTC
         ▼  OR ≥100 txs) and keeps significant↔significant bonds (2-pass filter)
 3. EXPORT  export/build_bundle.py
-        │  carves tiered (free/pro/max) parquet + timestamps.parquet +
-        ▼  manifest.json → public/data/<version>/
+        │  carves ONE public parquet (wallets+bonds above --min-btc) +
+        ▼  timestamps.parquet + manifest.json → public/data/<version>/
    Cloudflare R2  ──▶  browser (DuckDB-Wasm range reads) ──▶ /graph canvas
 ```
 
@@ -49,7 +50,7 @@ chain-tools/
 │   └── schemas.py              pyarrow WALLETS/BONDS/COINS/ACTIVITY schemas (the contract)
 ├── export/
 │   ├── reduce_substrate.py     DuckDB out-of-core reduce → real-substrate-*
-│   └── build_bundle.py         tiered Parquet bundle + manifest
+│   └── build_bundle.py         single public Parquet bundle + manifest
 ├── audit/
 │   └── audit_substrate.mjs     validate the reduced substrate on demand
 ├── vault/                       Obsidian-vault projection (generate*/validate)
@@ -76,12 +77,16 @@ The output contract (column names + types every consumer reads against) is in
 # 1. Full-chain walk → out/agg/* partials (resumable; raise heap for the long run)
 node --max-old-space-size=12288 chain-tools/ingest/walk_chain_scalable.mjs
 
-# 2. Merge window partials → out/real-substrate-* (DuckDB, out-of-core)
-chain-tools/.venv/bin/python chain-tools/export/reduce_substrate.py
+# 2. Merge window partials → out/real-substrate-* (DuckDB, out-of-core).
+#    Full chain (~1.6B addresses) MUST be memory-bounded: single-threaded,
+#    chunked reads, hash-bucketed final aggregate (see reduce_substrate.py).
+chain-tools/.venv/bin/python chain-tools/export/reduce_substrate.py \
+    --threads 1 --batch-files 50 --address-buckets 32 --memory-limit 12GB
 
-# 3. Carve the tiered parquet bundle → public/data/<version>/
+# 3. Carve the single public parquet bundle → public/data/<version>/.
+#    --min-btc bounds the node count to what the renderer handles (no tiers).
 chain-tools/.venv/bin/python chain-tools/export/build_bundle.py \
-    --substrate-dir chain-tools/out --output-dir public/data/v0.1.0 --tiers free,pro,max
+    --substrate-dir chain-tools/out --output-dir public/data/v0.1.0 --min-btc 1000
 
 # (optional) audit the reduced substrate
 node chain-tools/audit/audit_substrate.mjs

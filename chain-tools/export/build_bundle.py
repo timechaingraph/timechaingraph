@@ -1,26 +1,23 @@
 #!/usr/bin/env python3
-"""build_bundle.py — JSONL substrate -> tiered Parquet bundle for the browser.
+"""build_bundle.py — JSONL substrate -> single public Parquet bundle for the browser.
 
 Reads the reduced operator substrate (real-substrate-{wallets,bonds}.jsonl,
 produced by walk_chain_scalable.mjs + reduce_substrate.py) and emits a static,
 versioned Parquet bundle the browser fetches via DuckDB-Wasm
 (see chain-tools/README.md).
 
-Tiers (nested supersets, Free subset of Pro subset of Max), thresholds from
-the tier model in the README:
-    free  : >= 1000 BTC ever received          (whales + major pools)
-    pro   : >= 10 BTC ever received OR miner
-    max   : significance floor (miner OR >=1 BTC OR >=100 txs)
-
-A bond is included in a tier iff BOTH endpoints are in that tier (no edges
-dangling to unrendered nodes). Wallet parquet matches WALLETS_SCHEMA exactly;
-the client derives role (whale/miner/significant/dust/satoshi) from the columns.
+The site is all-free / all-public / donation-funded — there are no tiers. This
+carves ONE public dataset: a wallet is included if it is a miner OR ever
+received >= --min-btc BTC. A bond is included iff BOTH endpoints are in the set
+(no edges dangling to unrendered nodes). Wallet parquet matches WALLETS_SCHEMA
+exactly; the client derives role (whale/miner/significant/dust/satoshi) from the
+columns. Raise --min-btc to shrink the node count to what the renderer handles.
 
 Usage:
     python3 chain-tools/export/build_bundle.py \\
-        --substrate-dir chain-tools/out.pre-cutover-backup \\
+        --substrate-dir chain-tools/out \\
         --output-dir public/data/v0.1.0 \\
-        --tiers free,pro \\
+        --min-btc 1000 \\
         --bundle-version v0.1.0
 """
 from __future__ import annotations
@@ -38,27 +35,17 @@ except ImportError as exc:
     raise SystemExit('Cannot import chain-tools/lib/schemas.py — run from repo root') from exc
 
 SATS = 100_000_000
-TIERS = ['free', 'pro', 'max']  # index 0..2; smaller index = more exclusive
-TIER_IDX = {t: i for i, t in enumerate(TIERS)}
-
-
-def min_tier(total_sats: int, is_miner: bool, tx_count: int) -> int:
-    """Smallest (most exclusive) tier index the wallet qualifies for, or -1."""
-    if total_sats >= 1000 * SATS:
-        return 0  # free
-    if total_sats >= 10 * SATS or is_miner:
-        return 1  # pro
-    if is_miner or total_sats >= 1 * SATS or tx_count >= 100:
-        return 2  # max
-    return -1     # below the significance floor (shouldn't occur if pre-filtered)
 
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     p.add_argument('--substrate-dir', type=Path, required=True)
     p.add_argument('--output-dir', type=Path, required=True)
-    p.add_argument('--tiers', default='free,pro',
-                   help='comma list of tiers to emit (free,pro,max)')
+    p.add_argument('--min-btc', type=float, default=1000.0,
+                   help='include a wallet if it ever received >= this many BTC '
+                        '(miners always included). The site ships a SINGLE public '
+                        'dataset (no tiers); raise this to shrink the node count '
+                        'to what the renderer handles.')
     p.add_argument('--bundle-version', default='v0.1.0')
     return p.parse_args()
 
@@ -68,93 +55,68 @@ def main() -> None:
     import pyarrow as pa
     import pyarrow.parquet as pq
 
-    emit = [t for t in args.tiers.split(',') if t in TIERS]
-    if not emit:
-        raise SystemExit(f'No valid tiers in {args.tiers!r} (choose from {TIERS})')
-
     sub = args.substrate_dir
     meta = json.loads((sub / 'real-substrate-meta.json').read_text())
     tip_block = int(meta.get('tipBlock', 0))
+    floor_sats = int(args.min_btc * SATS)
 
-    # ---- Pass 1: wallets -> per-tier rows + address sets -------------------
-    wallet_rows: dict[str, list[dict]] = {t: [] for t in emit}
-    addr_set: dict[str, set[str]] = {t: set() for t in emit}
-    n_wallets = 0
+    # ---- Pass 1: wallets above the public floor (single dataset, no tiers) --
+    wallet_rows: list[dict] = []
+    addr_set: set[str] = set()
+    n_scanned = 0
     with (sub / 'real-substrate-wallets.jsonl').open() as f:
         for line in f:
             if not line.strip():
                 continue
             w = json.loads(line)
+            n_scanned += 1
             total = int(w['totalReceivedSats'])
             miner = bool(w['isMiner'])
-            txc = int(w['txCount'])
-            m = min_tier(total, miner, txc)
-            if m < 0:
+            if not (miner or total >= floor_sats):
                 continue
-            row = {
+            wallet_rows.append({
                 'address': w['address'],
                 'first_seen_block': int(w['firstSeenBlock']),
                 'last_active_block': int(w['lastActiveBlock']),
                 'total_received_sats': total,
-                'tx_count': txc,
+                'tx_count': int(w['txCount']),
                 'is_miner': miner,
-            }
-            for t in emit:
-                if TIER_IDX[t] >= m:
-                    wallet_rows[t].append(row)
-                    addr_set[t].add(w['address'])
-            n_wallets += 1
+            })
+            addr_set.add(w['address'])
 
-    # ---- Pass 2: bonds -> per-tier (both endpoints in tier) ----------------
-    bond_rows: dict[str, list[dict]] = {t: [] for t in emit}
+    # ---- Pass 2: bonds where BOTH endpoints are in the public set -----------
+    bond_rows: list[dict] = []
     with (sub / 'real-substrate-bonds.jsonl').open() as f:
         for line in f:
             if not line.strip():
                 continue
             b = json.loads(line)
             fr, to = b['fromAddress'], b['toAddress']
-            row = None
-            for t in emit:
-                s = addr_set[t]
-                if fr in s and to in s:
-                    if row is None:
-                        row = {
-                            'from_address': fr,
-                            'to_address': to,
-                            'sats': int(b['sats']),
-                            'formation_block': int(b.get('formationBlock', 0)),
-                        }
-                    bond_rows[t].append(row)
+            if fr in addr_set and to in addr_set:
+                bond_rows.append({
+                    'from_address': fr,
+                    'to_address': to,
+                    'sats': int(b['sats']),
+                    'formation_block': int(b.get('formationBlock', 0)),
+                })
 
-    # ---- Write parquet + manifest -----------------------------------------
+    # ---- Write parquet (flat, single dataset) ------------------------------
     out = args.output_dir
-    (out / 'wallets').mkdir(parents=True, exist_ok=True)
-    (out / 'bonds').mkdir(parents=True, exist_ok=True)
-    manifest_tiers: dict[str, dict] = {}
+    out.mkdir(parents=True, exist_ok=True)
+    wt = pa.Table.from_pylist(wallet_rows, schema=WALLETS_SCHEMA)
+    wpath = out / 'wallets.parquet'
+    pq.write_table(wt, wpath, compression='zstd', use_dictionary=['address'])
+    bt = pa.Table.from_pylist(bond_rows, schema=BONDS_SCHEMA)
+    bpath = out / 'bonds.parquet'
+    pq.write_table(bt, bpath, compression='zstd',
+                   use_dictionary=['from_address', 'to_address'])
+    print(f'  wallets: {len(wallet_rows):>9,} ({wpath.stat().st_size:>11,}B)  '
+          f'bonds: {len(bond_rows):>10,} ({bpath.stat().st_size:>12,}B)')
 
-    for t in emit:
-        wt = pa.Table.from_pylist(wallet_rows[t], schema=WALLETS_SCHEMA)
-        wpath = out / 'wallets' / f'{t}.parquet'
-        pq.write_table(wt, wpath, compression='zstd', use_dictionary=['address'])
-        bt = pa.Table.from_pylist(bond_rows[t], schema=BONDS_SCHEMA)
-        bpath = out / 'bonds' / f'{t}.parquet'
-        pq.write_table(bt, bpath, compression='zstd',
-                       use_dictionary=['from_address', 'to_address'])
-        manifest_tiers[t] = {
-            'wallets': {'path': f'wallets/{t}.parquet',
-                        'rows': len(wallet_rows[t]),
-                        'bytes': wpath.stat().st_size},
-            'bonds': {'path': f'bonds/{t}.parquet',
-                      'rows': len(bond_rows[t]),
-                      'bytes': bpath.stat().st_size},
-        }
-        print(f'  {t:4s}: {len(wallet_rows[t]):>9,} wallets ({wpath.stat().st_size:>10,}B)  '
-              f'{len(bond_rows[t]):>10,} bonds ({bpath.stat().st_size:>11,}B)')
-
-    # ---- timestamps: tier-independent block -> unix-seconds ----------------
-    # The scrubber spans block 0..tip regardless of tier, so this single asset
-    # carries real per-block wall-clock time (vs the 10-min estimate the UI
-    # falls back to). The browser loads it into a height-indexed Uint32Array.
+    # ---- timestamps: block -> unix-seconds (scrubber wall-clock) -----------
+    # The scrubber spans block 0..tip; this single asset carries real per-block
+    # wall-clock time (vs the 10-min estimate the UI falls back to). The browser
+    # loads it into a height-indexed Uint32Array.
     ts_entry = None
     ts_path = sub / 'real-substrate-timestamps.json'
     if ts_path.exists():
@@ -178,17 +140,22 @@ def main() -> None:
         print(f'  timestamps: {len(ts_rows):>7,} blocks ({tpath.stat().st_size:>10,}B)')
 
     manifest = {
-        'schema': 'bundle-manifest/v1',
+        'schema': 'bundle-manifest/v2',
         'bundleVersion': args.bundle_version,
         'tipBlock': tip_block,
         'sourceSchema': meta.get('schema'),
-        'tiers': manifest_tiers,
+        'wallets': {'path': 'wallets.parquet',
+                    'rows': len(wallet_rows),
+                    'bytes': wpath.stat().st_size},
+        'bonds': {'path': 'bonds.parquet',
+                  'rows': len(bond_rows),
+                  'bytes': bpath.stat().st_size},
         'timestamps': ts_entry,
-        'freeTierNodeCount': manifest_tiers.get('free', {}).get('wallets', {}).get('rows', 0),
+        'nodeCount': len(wallet_rows),
     }
     (out / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(f'\n  manifest -> {out / "manifest.json"}  (tipBlock {tip_block:,}, '
-          f'{n_wallets:,} significant wallets scanned)')
+          f'{len(wallet_rows):,} public wallets, {n_scanned:,} scanned)')
 
 
 if __name__ == '__main__':

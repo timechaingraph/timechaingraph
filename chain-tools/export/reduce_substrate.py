@@ -17,7 +17,7 @@ walker produced — so build_bundle.py is unchanged:
     out/real-substrate-timestamps.json
 
 Two-pass significance filter (the key scale lever):
-  * Wallets: keep only the Max-tier floor (miner OR >=1 BTC ever OR >=100 txs).
+  * Wallets: keep only the significance floor (miner OR >=1 BTC ever OR >=100 txs).
     The full chain has ~1B+ addresses, almost all dust the exporter would drop
     anyway; filtering here shrinks the output ~20x.
   * Bonds: keep only edges where BOTH endpoints survived the wallet filter
@@ -36,7 +36,8 @@ import json
 from pathlib import Path
 
 SATS = 100_000_000
-# Max-tier / significance floor — must match build_bundle.min_tier()'s level-2.
+# Significance floor for the reduced substrate — the base set build_bundle.py
+# then filters to the public dataset via --min-btc.
 SIGNIFICANCE_SQL = "(is_miner OR total_received_sats >= 100000000 OR tx_count >= 100)"
 
 WALLET_COLS = {

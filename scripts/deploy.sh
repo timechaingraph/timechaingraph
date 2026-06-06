@@ -12,7 +12,6 @@
 # exist on Pages):
 #   export NEXT_PUBLIC_DUCKDB_WASM_BASE="https://data.timechaingraph.com"
 #   export NEXT_PUBLIC_DATA_BASE_URL="https://data.timechaingraph.com/data/v0.1.0"
-#   export NEXT_PUBLIC_TIER="free"
 #
 # One-time R2 bucket + CORS + upload steps: docs/DEPLOY_r2_hosting.md
 set -euo pipefail

@@ -27,7 +27,6 @@ interface NavLink {
 
 const SECTIONS: NavLink[] = [
   { href: '/about', label: 'About' },
-  { href: '/pricing', label: 'Pricing' },
   { href: '/api', label: 'API', inDev: true },
   { href: '/docs', label: 'Docs', inDev: true },
   { href: '/status', label: 'Status' },

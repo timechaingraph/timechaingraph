@@ -4,7 +4,7 @@ import { SiteFooter } from '@/components/SiteFooter';
 
 /**
  * (site) layout — the standard document-style shell applied to every
- * regular page (`/`, `/about`, `/pricing`, `/donate`, etc.). Centers
+ * regular page (`/`, `/about`, `/donate`, etc.). Centers
  * content in a max-w-6xl container with the brass NavBar at top and
  * SiteFooter at the bottom.
  *

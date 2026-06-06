@@ -29,7 +29,6 @@ const SITEMAP: Array<{ heading: string; links: Array<{ href: string; label: stri
     heading: 'Project',
     links: [
       { href: '/about', label: 'About' },
-      { href: '/pricing', label: 'Pricing' },
       { href: '/status', label: 'Status' },
       { href: '/privacy', label: 'Privacy' },
     ],

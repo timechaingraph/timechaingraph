@@ -3,9 +3,9 @@
 /**
  * r2-substrate.ts — a DuckDB-Wasm-backed ChainSubstrate.
  *
- * Fetches the versioned manifest, registers the active tier's parquet over
- * HTTP (DuckDB range-reads the footer + needed row groups; the small Free
- * file is read whole), and materializes rows into the same Map-indexed shape
+ * Fetches the versioned manifest, registers the dataset's parquet over
+ * HTTP (DuckDB range-reads the footer + needed row groups), and
+ * materializes rows into the same Map-indexed shape
  * the fixture exposes — so every consumer keeps the synchronous ChainSubstrate
  * contract (readonly arrays + O(1) lookups). Call `await init()` once before
  * use; the view gates on a `dataReady` flag while it resolves.
@@ -18,8 +18,6 @@ import type { ChainSubstrate } from '@/types/substrate';
 import type { Coin } from '@/types/coin';
 import type { WalletBond, WalletData, WalletRole } from '@/types/wallet';
 import { getDuckDB } from './duckdb';
-
-export type Tier = 'free' | 'pro' | 'max';
 
 const BTC = 100_000_000n;
 
@@ -36,14 +34,11 @@ function deriveRole(firstSeenBlock: number, total: bigint, txCount: number, isMi
   return 'dust';
 }
 
-interface TierEntry {
-  wallets: { path: string; rows: number };
-  bonds: { path: string; rows: number };
-}
 interface Manifest {
   bundleVersion: string;
   tipBlock: number;
-  tiers: Record<string, TierEntry>;
+  wallets: { path: string; rows: number };
+  bonds: { path: string; rows: number };
   timestamps?: { path: string; rows: number };
 }
 
@@ -56,10 +51,7 @@ export class R2ChainSubstrate implements ChainSubstrate {
   private _blockTime: Uint32Array | null = null; // height → unix seconds (0 = unknown)
   private _ready = false;
 
-  constructor(
-    private readonly baseUrl: string = '/data/v0.1.0',
-    private readonly tier: Tier = 'free',
-  ) {}
+  constructor(private readonly baseUrl: string = '/data/v0.1.0') {}
 
   get tipBlock(): number {
     return this._tipBlock;
@@ -102,12 +94,11 @@ export class R2ChainSubstrate implements ChainSubstrate {
       return r.json();
     });
     this._tipBlock = manifest.tipBlock;
-    const tier = manifest.tiers[this.tier] ?? manifest.tiers.free;
 
     const db = await getDuckDB();
     const abs = (p: string) => new URL(`${this.baseUrl}/${p}`, window.location.origin).href;
-    await db.registerFileURL('wallets.parquet', abs(tier.wallets.path), DuckDBDataProtocol.HTTP, false);
-    await db.registerFileURL('bonds.parquet', abs(tier.bonds.path), DuckDBDataProtocol.HTTP, false);
+    await db.registerFileURL('wallets.parquet', abs(manifest.wallets.path), DuckDBDataProtocol.HTTP, false);
+    await db.registerFileURL('bonds.parquet', abs(manifest.bonds.path), DuckDBDataProtocol.HTTP, false);
 
     const conn = await db.connect();
     try {

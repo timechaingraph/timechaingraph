@@ -14,7 +14,7 @@ never touches the operator's SSD or bitcoind.
 OPERATOR PLANE ("kitchen" — SSD + laptop/box)     SERVING PLANE ("restaurant" — Cloudflare)
   bitcoind full node (~870 GB)                       R2 bucket: parquet bundle + DuckDB-Wasm .wasm
     → walk_chain_scalable → reduce_substrate         Pages: static site shell
-    → build_bundle → tiered parquet  ── upload ──►    browser HTTP-range-reads parquet,
+    → build_bundle → public parquet  ── upload ──►    browser HTTP-range-reads parquet,
   online only to BUILD / UPDATE the bundle           queries it in-browser; serves all viewers 24/7
 ```
 
@@ -40,7 +40,7 @@ OPERATOR PLANE ("kitchen" — SSD + laptop/box)     SERVING PLANE ("restaurant" 
 
 ## Serving — how the data reaches the domains
 
-Browser fetches **static files only**: the tiered parquet bundle + DuckDB-Wasm
+Browser fetches **static files only**: the public parquet bundle + DuckDB-Wasm
 runtime from **Cloudflare R2**, the site shell from **Cloudflare Pages**. It then
 queries the parquet **in-browser** via DuckDB-Wasm using **HTTP range reads**
 (pulls the footer + only the needed row-groups, not the whole file). No backend,
@@ -50,10 +50,11 @@ no per-viewer query server — that's the privacy posture.
 upload to R2 once → unplug; Cloudflare keeps serving. The SSD/laptop matters only
 when building/updating the bundle (or running bitcoind to ingest).
 
-> Max-tier caveat: a multi-GB Max parquet serves fine from R2 (range-read), but
-> the current browser code materializes the whole tier into memory — fine for
-> Free/Pro (MB-scale), Max needs **query-on-demand + render culling/LOD** first.
-> Free + Pro work end-to-end today.
+> Scale caveat: a multi-GB parquet serves fine from R2 (range-read), but the
+> current browser code materializes the whole dataset into memory. The single
+> public dataset is therefore bounded (high significance floor) to a node count
+> the renderer handles; going larger needs **query-on-demand + render
+> culling/LOD** first.
 
 ## New blocks — the timechaincalendar-style live tail
 
@@ -72,4 +73,4 @@ it's refreshed. The walker is **resumable**, so catching up to the tip is cheap
    continuous tail needs bitcoind synced *somewhere* always-on.
 
 Incremental-update optimization (later): merge only new partials into the existing
-reduced substrate + re-export only changed tiers, instead of a full re-reduce.
+reduced substrate + re-export the bundle, instead of a full re-reduce.

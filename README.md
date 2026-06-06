@@ -106,7 +106,7 @@ src/
 chain-tools/            offline operator-side data pipeline
 ├── ingest/             bitcoind JSON-RPC (getblock v3) block walker
 ├── lib/                RPC client, window combiner, extractors, halving math
-├── export/             DuckDB out-of-core reduce → tiered Parquet bundle
+├── export/             DuckDB out-of-core reduce → public Parquet bundle
 └── audit/              substrate validation
 
 public/
@@ -158,16 +158,12 @@ list and audit logic.
 
 ---
 
-## Tiers
+## Access
 
-All tiers are **free**. Tier selection is a *data-resolution* UX choice (browser
-performance vs node density), not a paywall.
-
-| Tier | Visibility threshold | Approx. nodes |
-|------|---------------------|---------------|
-| Free | > 1,000 BTC ever held · top miners | ~10,000 |
-| Pro  | > 10 BTC ever held · midsize miners | ~500,000 |
-| Max  | > 1 BTC OR > 100 lifetime txs · all miners | ~1–3M |
+Everything is **free and public** — no tiers, no accounts, no paywall, no KYC.
+The viewer loads a single public dataset of the most economically significant
+wallets (the node count is bounded to what the browser can render). The project
+is funded entirely by voluntary Bitcoin donations — see [Support](#support).
 
 ---
 

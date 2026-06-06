@@ -3,7 +3,7 @@
 /**
  * /data-check — pipeline validation page (not linked in nav).
  *
- * Loads the v0.1.0 Free-tier parquet bundle in the browser via self-hosted
+ * Loads the v0.1.0 parquet bundle in the browser via self-hosted
  * DuckDB-Wasm and shows what came back: proof that R2 parquet → DuckDB-Wasm →
  * ChainSubstrate works end-to-end with real chain data, before wiring the
  * PixiJS GraphView (M5). r2-substrate is dynamically imported inside the
@@ -66,7 +66,7 @@ export default function DataCheck() {
     <section className="py-12">
       <h1 className="text-display hero-gradient text-4xl font-bold">DuckDB-Wasm data check</h1>
       <p className="mt-3 max-w-2xl text-pretty leading-relaxed text-[color:var(--color-text-secondary)]">
-        Loads the <code>v0.1.0</code> Free-tier parquet bundle in your browser via self-hosted
+        Loads the <code>v0.1.0</code> parquet bundle in your browser via self-hosted
         DuckDB-Wasm — end-to-end proof of the data pipeline (parquet → DuckDB → ChainSubstrate),
         with no third-party requests.
       </p>

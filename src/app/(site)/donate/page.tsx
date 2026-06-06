@@ -26,7 +26,7 @@ export default function DonatePage() {
       <div className="mt-6 max-w-2xl space-y-4 text-lg leading-relaxed text-[color:var(--color-text-secondary)] md:text-xl">
         <p>
           Timechain {VIEW_BRAND_NAME} is 100% free and 100% open source — every
-          view, every block, every tier. No paywall, no token, no funding round,
+          view, every block. No paywall, no token, no funding round,
           no ads, no tracking. We don&apos;t sell your attention because we never
           collect it.
         </p>

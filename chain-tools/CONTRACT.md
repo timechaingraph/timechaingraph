@@ -30,24 +30,24 @@ consumers MUST read against those names + types.
 
 ## Output bundle layout
 
-When the operator runs the full pipeline against bitcoind, the
-tiered bundle lands under `public/data/<version>/`:
+When the operator runs the full pipeline against bitcoind, the single
+public bundle lands under `public/data/<version>/`:
 
 ```
 public/data/<version>/
-├── wallets.parquet              # WALLETS_SCHEMA, ~1-3M rows (Max tier)
-├── bonds.parquet                # BONDS_SCHEMA, ~10-100M rows
+├── wallets.parquet              # WALLETS_SCHEMA (above the public floor)
+├── bonds.parquet                # BONDS_SCHEMA (both endpoints in the set)
 ├── coins.parquet                # COINS_SCHEMA (full chain)
 ├── timestamps.parquet           # block height → unix time (scrubber dates)
 ├── activity/
 │   ├── epoch-0000.parquet       # ACTIVITY_SCHEMA, blocks [0, 2016)
 │   ├── epoch-0001.parquet       # blocks [2016, 4032)
 │   └── ...
-└── manifest.json                # tier index, row counts, tip block, schema version
+└── manifest.json                # paths, row counts, tip block, schema version
 ```
 
-`build_bundle.py` carves nested tiers (free ⊂ pro ⊂ max); the browser
-reads the tier the viewer selected.
+`build_bundle.py` carves one public dataset (no tiers — `--min-btc` bounds the
+node count); the browser reads it directly.
 
 `deploy/push_to_r2.sh` uploads the entire `out/` tree to a versioned
 R2 prefix (e.g., `s3://timechaingraph/data/v0.2.5/`); the browser
