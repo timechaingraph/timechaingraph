@@ -68,6 +68,12 @@ def parse_args() -> argparse.Namespace:
                    help='window partials per read_json chunk. A single read_json '
                         'over the full-chain glob (~269GB) cannot spill and OOMs; '
                         'chunking bounds memory. Lower = safer/slower.')
+    p.add_argument('--address-buckets', type=int, default=32,
+                   help='partitions for the final wallets aggregate. The full '
+                        'chain has ~1.6B distinct addresses; one GROUP BY needs a '
+                        '~1.6B-group hash table that fits no RAM. Bucketing by '
+                        'hash(address) keeps each bucket to ~1/N. Higher = '
+                        'safer/slower (more passes over the staging table).')
     return p.parse_args()
 
 
@@ -139,18 +145,33 @@ def main() -> None:
         """)
         print(f'  wallets: staged {min(i + args.batch_files, len(wallet_files))}/'
               f'{len(wallet_files)} partials', flush=True)
-    con.execute(f"""
-        CREATE TABLE wallets AS
-        SELECT address,
-               MIN(first_seen_block)    AS first_seen_block,
-               MAX(last_active_block)   AS last_active_block,
-               SUM(total_received_sats) AS total_received_sats,
-               SUM(tx_count)::BIGINT    AS tx_count,
-               bool_or(is_miner)        AS is_miner
-        FROM wallets_stage
-        GROUP BY address
-        HAVING {SIGNIFICANCE_SQL}
+    # Final aggregate, BUCKETED by hash(address): the full chain has ~1.6B
+    # distinct addresses, so one GROUP BY needs a ~1.6B-group hash table that
+    # fits no RAM and can't spill. Partitioning by address bucket keeps each
+    # bucket's hash table to ~1/N (all rows for an address share a bucket, so
+    # the per-bucket aggregate + significance HAVING is exact).
+    con.execute("""
+        CREATE TABLE wallets (
+            address VARCHAR, first_seen_block BIGINT, last_active_block BIGINT,
+            total_received_sats HUGEINT, tx_count BIGINT, is_miner BOOLEAN
+        )
     """)
+    nb = args.address_buckets
+    for k in range(nb):
+        con.execute(f"""
+            INSERT INTO wallets
+            SELECT address,
+                   MIN(first_seen_block)    AS first_seen_block,
+                   MAX(last_active_block)   AS last_active_block,
+                   SUM(total_received_sats) AS total_received_sats,
+                   SUM(tx_count)::BIGINT    AS tx_count,
+                   bool_or(is_miner)        AS is_miner
+            FROM wallets_stage
+            WHERE hash(address) % {nb} = {k}
+            GROUP BY address
+            HAVING {SIGNIFICANCE_SQL}
+        """)
+        print(f'  wallets: reduced bucket {k + 1}/{nb}', flush=True)
     con.execute("DROP TABLE wallets_stage")
     (n_wallets,) = con.execute("SELECT count(*) FROM wallets").fetchone()
     print(f'  significant wallets: {n_wallets:,}', flush=True)
@@ -174,16 +195,19 @@ def main() -> None:
             """)
             print(f'  bonds: staged {min(i + args.batch_files, len(bond_files))}/'
                   f'{len(bond_files)} partials', flush=True)
+        # Filter to significant<->significant endpoints BEFORE grouping. The raw
+        # bond set is ~1B+ pairs, but only edges between the ~1.6M significant
+        # wallets survive; filtering first (a streaming semi-join against the
+        # small wallets set) collapses the input so the GROUP BY is tiny. This
+        # commutes with per-pair aggregation, so the result is identical.
         con.execute(f"""
             CREATE TABLE bonds AS
-            WITH merged AS (
-                SELECT from_address, to_address,
-                       SUM(sats) AS sats, MIN(formation_block) AS formation_block
-                FROM bonds_stage GROUP BY from_address, to_address
-            )
-            SELECT m.* FROM merged m
-            WHERE m.from_address IN (SELECT address FROM wallets)
-              AND m.to_address   IN (SELECT address FROM wallets)
+            SELECT from_address, to_address,
+                   SUM(sats) AS sats, MIN(formation_block) AS formation_block
+            FROM bonds_stage
+            WHERE from_address IN (SELECT address FROM wallets)
+              AND to_address   IN (SELECT address FROM wallets)
+            GROUP BY from_address, to_address
         """)
         con.execute("DROP TABLE bonds_stage")
         (n_bonds,) = con.execute("SELECT count(*) FROM bonds").fetchone()
