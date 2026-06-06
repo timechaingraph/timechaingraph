@@ -92,13 +92,18 @@ def main() -> None:
     tmp_dir = out / 'duckdb-tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    con = duckdb.connect()
+    # Disk-backed database (not in-memory): the wallets/bonds result tables live
+    # on disk instead of RAM, so only the active operator's working set counts
+    # against memory_limit. Essential at full-chain scale (~1.3M wallets across
+    # 3k+ partials) — an in-memory connection OOMs even at 16GB.
+    db_path = tmp_dir / 'reduce.db'
+    db_path.unlink(missing_ok=True)
+    con = duckdb.connect(str(db_path))
     con.execute(f"PRAGMA memory_limit='{args.memory_limit}'")
     con.execute(f"PRAGMA threads={args.threads}")
     con.execute(f"PRAGMA temp_directory='{tmp_dir}'")
-    # Full-chain aggregates (≈1.3M distinct wallets across 3k+ partials) blow the
-    # memory_limit if DuckDB also tracks insertion order; disabling it lets the
-    # hash-aggregate spill to temp_directory and keeps the reduce memory-bounded.
+    # Don't track insertion order — lets the hash-aggregate spill to
+    # temp_directory and keeps the reduce memory-bounded.
     con.execute("PRAGMA preserve_insertion_order=false")
 
     # ---- wallets: merge windows, keep significant ----------------------------
