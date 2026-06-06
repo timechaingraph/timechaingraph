@@ -6,7 +6,7 @@ walk_chain.mjs) and emits a static, versioned Parquet bundle the browser
 fetches via DuckDB-Wasm (see docs/DESIGN_substrate_to_browser.md).
 
 Tiers (nested supersets, Free subset of Pro subset of Max), thresholds from
-significance_filter.py + the tier model in the project spec:
+significance_filter.py + the tier model in the README:
     free  : >= 1000 BTC ever received          (whales + major pools)
     pro   : >= 10 BTC ever received OR miner
     max   : significance floor (miner OR >=1 BTC OR >=100 txs)

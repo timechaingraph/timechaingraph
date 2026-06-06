@@ -1,9 +1,9 @@
 # Design Spec — Substrate → Live In-Browser Visualization
 
-**Status:** Draft for implementation. **Authored:** 2026-06-03 (overnight, by a research agent grounded in the actual code on `feat/lmdb-substrate`).
+**Status:** Draft for implementation. **Authored:** 2026-06-03, grounded in the actual code on `feat/lmdb-substrate`.
 **Scope:** End-to-end path from operator-side chain ingest → the live PixiJS canvases on **timechaingraph.com** (force-directed Graph) and **timechaingrid.com** (fixed-coordinate Grid).
 
-> **READ FIRST — reality check.** The LMDB "Path B" pipeline + v5 enrichments described in `the project spec` (`walk_chain_lmdb_v2/_v5.mjs`, `backfill`, `audit_lmdb`, `chain-tools/ops/*`, clusters/fingerprints/protocolPayloads/lightningChannels) **do not exist on this branch.** Build against what's real:
+> **READ FIRST — reality check.** The LMDB "Path B" pipeline + v5 enrichments described in the project spec (`walk_chain_lmdb_v2/_v5.mjs`, `backfill`, `audit_lmdb`, `chain-tools/ops/*`, clusters/fingerprints/protocolPayloads/lightningChannels) **do not exist on this branch.** Build against what's real:
 > - **Real working walker:** `chain-tools/ingest/walk_chain.mjs` (JSONL substrate `real-substrate/v2`, mempool.space).
 > - **Stable parquet contract:** `chain-tools/lib/schemas.py` (WALLETS/BONDS/COINS/ACTIVITY pyarrow schemas) — THE seam. `from_fixture.py` works and is the schema oracle. `extract_wallets.py` is a skeleton (`write_parquet` works, RPC walk raises NotImplementedError).
 > - **TS types already align:** `src/types/{wallet,coin,lattice,block,substrate}.ts`, and `src/components/views/GraphView.tsx` already implements the FULL visual model (edge fade, role colors, mass, pulses, scrubber) against `FIXTURE_SUBSTRATE`.
@@ -22,7 +22,7 @@
 - `coins.parquet` = COINS_SCHEMA (Grid). Substrate has no coins → DERIVE one row per coinbase output via `src/lib/spiral.ts::spiralCoord` + `chain.mjs::subsidyBtcAt` (same as `coin-roster.ts`): `id=B{blk}I{ix}`, `minted_at_block`, `minted_index`, `minter_address`, `owner_address=minter` (v0 invariant), `spiral_index`, `grid_x/grid_y` precomputed, `is_halving`.
 - `activity/epoch-NNNN.parquet` = ACTIVITY_SCHEMA, **sharded per difficulty epoch (2016 blocks)**. `spenders`/`recipients` filtered to **Max-tier** addresses at export (else lists explode); render intersects vs loaded tier.
 
-**Tier predicates (nested supersets Free ⊂ Pro ⊂ Max; thresholds from the project spec + `significance_filter.py`):**
+**Tier predicates (nested supersets Free ⊂ Pro ⊂ Max; thresholds from the README + `significance_filter.py`):**
 ```js
 const SATS = 100_000_000n;
 const inMax  = w => w.is_miner || BigInt(w.total_received_sats) >= 1n*SATS || w.tx_count >= 100;  // significance floor

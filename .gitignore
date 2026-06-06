@@ -71,26 +71,20 @@ public/blocks.pre-cutover-backup
 __pycache__/
 *.pyc
 
-# local assistant tooling agent state — never commit to git (per user directive
-# 2026-05-03: "make sure we are not storing session and prompt data on
-# github ever"). The internal session files/ tree contains agent identity, memory,
-# inter-agent messaging (sibling-inbox/outbox), session state, and
-# learned context — all of which is local-only. The root the project spec
-# duplicates README.md content for local assistant tooling's session-start context;
-# OSS contributors read README.md instead. Anyone wanting to use
-# local assistant tooling with this project re-bootstraps their own internal session files/.
+# Local editor/assistant session state — operator-only, never committed.
+# These hold local context that is not part of the public project.
 /the project spec
 internal session files/
 
-# Operator-internal sister-coordination script (per Grid sister B-002,
-# adopted as Joint via B-003). References sister project's internal session files/.
+# Operator-internal cross-project coordination script — local-only,
+# never part of the public repo.
 scripts/sync-sibling.sh
 
-# Timechain Corporation internal documents — operating agreements, board
-# decisions, financial detail, contracts. Public corp/ documents (charter,
-# policies, templates, public reports) ARE tracked; only corp/internal/
-# is local-only.
-corp/internal/
+# Operator-internal records — local-only, NOT part of the public OSS repo.
+# The entire corp/ tree is operator-private (matches the Grid sister's
+# stance). The public-facing OSS standards (LICENSE, README, CONTRIBUTING,
+# CODE_OF_CONDUCT, SECURITY) live at the repo root instead.
+corp/
 
 # Auto-generated Obsidian vault output. Per user directive 2026-04-30:
 # "vault gitignored at all times". Both projections — vault/ (sister's

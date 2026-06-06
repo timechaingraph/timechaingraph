@@ -45,9 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Snapshot pipeline tip bumped** from block `876_000` to `947_630`
   (live tip per Mempool.space) so the snapshot range extends through
   the present.
-- **`.gitignore`**: extended to exclude `internal session files/`, `/the project spec`, and
-  `corp/internal/`. Session/prompt data and operator-internal corporate
-  artifacts never enter the public repo.
+- **`.gitignore`**: extended to exclude local session state and
+  operator-internal records so they never enter the public repo.
 
 ### Fixed
 
