@@ -44,7 +44,7 @@ const TIERS: Array<{
       'Everything in Free',
       'Search any address in the visible set',
       'Wallet activity timeline (full history)',
-      'Pre-baked physics keyframes — fluid scrubbing',
+      'Fluid scrubbing with real block dates + halving markers',
     ],
   },
   {

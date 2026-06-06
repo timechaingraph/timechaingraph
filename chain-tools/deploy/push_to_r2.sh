@@ -2,7 +2,8 @@
 # push_to_r2.sh — upload the parquet bundle to Cloudflare R2.
 #
 # Inputs:
-#   $1 = local out/ directory (containing wallets.parquet, activity/, keyframes/)
+#   $1 = local bundle directory (public/data/<version>/ from build_bundle.py:
+#        tiered wallets/bonds/coins parquet + timestamps.parquet + manifest.json)
 #   $2 = R2 bucket name
 #
 # Privacy: this is the only point in the pipeline where data leaves the operator's
@@ -42,16 +43,11 @@ for f in "$LOCAL_DIR"/activity/epoch-*.parquet; do
   wrangler r2 object put "$BUCKET/activity/$base" --file "$f"
 done
 
-# keyframes/NNNNNN.parquet — many small files
-for f in "$LOCAL_DIR"/keyframes/*.parquet; do
-  base=$(basename "$f")
-  wrangler r2 object put "$BUCKET/keyframes/$base" --file "$f"
+# manifest.json + timestamps.parquet — tiny, always present
+for f in manifest.json timestamps.parquet; do
+  if [[ -f "$LOCAL_DIR/$f" ]]; then
+    wrangler r2 object put "$BUCKET/$f" --file "$LOCAL_DIR/$f"
+  fi
 done
-
-# status.json — tiny, frequently refreshed
-if [[ -f "$LOCAL_DIR/status.json" ]]; then
-  wrangler r2 object put "$BUCKET/status.json" \
-    --file "$LOCAL_DIR/status.json"
-fi
 
 echo "Done."

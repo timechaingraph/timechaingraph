@@ -53,8 +53,6 @@ chain-tools/
 ├── audit/
 │   └── audit_substrate.mjs     validate the reduced substrate on demand
 ├── vault/                       Obsidian-vault projection (generate*/validate)
-├── physics/                     EXPERIMENTAL Rust force-sim — not part of the
-│                                v0.1 pipeline (the browser uses JS Barnes-Hut)
 └── deploy/
     └── push_to_r2.sh            upload the parquet bundle to R2
 ```
