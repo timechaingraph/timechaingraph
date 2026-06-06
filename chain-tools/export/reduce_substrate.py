@@ -64,12 +64,21 @@ def parse_args() -> argparse.Namespace:
     p.add_argument('--out-dir', type=Path, default=repo_root / 'chain-tools' / 'out')
     p.add_argument('--memory-limit', default='12GB')
     p.add_argument('--threads', type=int, default=4)
+    p.add_argument('--batch-files', type=int, default=50,
+                   help='window partials per read_json chunk. A single read_json '
+                        'over the full-chain glob (~269GB) cannot spill and OOMs; '
+                        'chunking bounds memory. Lower = safer/slower.')
     return p.parse_args()
 
 
 def cols_struct(cols: dict[str, str]) -> str:
     inner = ', '.join(f"'{k}': '{v}'" for k, v in cols.items())
     return '{' + inner + '}'
+
+
+def file_list_sql(files: list[str]) -> str:
+    """DuckDB list literal of file paths for read_json([...])."""
+    return '[' + ', '.join("'" + f + "'" for f in files) + ']'
 
 
 def main() -> None:
@@ -106,50 +115,82 @@ def main() -> None:
     # temp_directory and keeps the reduce memory-bounded.
     con.execute("PRAGMA preserve_insertion_order=false")
 
-    # ---- wallets: merge windows, keep significant ----------------------------
+    # ---- wallets: chunked two-phase merge ------------------------------------
+    # A single read_json over the full-chain glob (~269GB gzipped) cannot spill
+    # and OOMs at any memory_limit. So read the partials in bounded chunks into a
+    # native staging table, then run the final GROUP BY over that table — native
+    # table aggregates DO spill to temp_directory, so this stays memory-bounded.
+    wallet_files = sorted(glob.glob(wallets_glob))
+    con.execute("""
+        CREATE TABLE wallets_stage (
+            address VARCHAR, first_seen_block BIGINT, last_active_block BIGINT,
+            total_received_sats HUGEINT, tx_count BIGINT, is_miner BOOLEAN
+        )
+    """)
+    for i in range(0, len(wallet_files), args.batch_files):
+        chunk = wallet_files[i:i + args.batch_files]
+        con.execute(f"""
+            INSERT INTO wallets_stage
+            SELECT address, MIN(firstSeenBlock), MAX(lastActiveBlock),
+                   SUM(totalReceivedSats::HUGEINT), SUM(txCount)::BIGINT, bool_or(isMiner)
+            FROM read_json({file_list_sql(chunk)},
+                           format='newline_delimited', columns={cols_struct(WALLET_COLS)})
+            GROUP BY address
+        """)
+        print(f'  wallets: staged {min(i + args.batch_files, len(wallet_files))}/'
+              f'{len(wallet_files)} partials', flush=True)
     con.execute(f"""
         CREATE TABLE wallets AS
-        SELECT
-            address,
-            MIN(firstSeenBlock)                  AS first_seen_block,
-            MAX(lastActiveBlock)                 AS last_active_block,
-            SUM(totalReceivedSats::HUGEINT)      AS total_received_sats,
-            SUM(txCount)::BIGINT                 AS tx_count,
-            bool_or(isMiner)                     AS is_miner
-        FROM read_json('{wallets_glob}',
-                       format='newline_delimited',
-                       columns={cols_struct(WALLET_COLS)})
+        SELECT address,
+               MIN(first_seen_block)    AS first_seen_block,
+               MAX(last_active_block)   AS last_active_block,
+               SUM(total_received_sats) AS total_received_sats,
+               SUM(tx_count)::BIGINT    AS tx_count,
+               bool_or(is_miner)        AS is_miner
+        FROM wallets_stage
         GROUP BY address
         HAVING {SIGNIFICANCE_SQL}
     """)
+    con.execute("DROP TABLE wallets_stage")
     (n_wallets,) = con.execute("SELECT count(*) FROM wallets").fetchone()
-    print(f'  significant wallets: {n_wallets:,}')
+    print(f'  significant wallets: {n_wallets:,}', flush=True)
 
-    # ---- bonds: merge windows, keep significant<->significant ----------------
-    has_bonds = len(glob.glob(bonds_glob)) > 0
-    if has_bonds:
+    # ---- bonds: same chunked two-phase, then significant<->significant --------
+    bond_files = sorted(glob.glob(bonds_glob))
+    if bond_files:
+        con.execute("""
+            CREATE TABLE bonds_stage (
+                from_address VARCHAR, to_address VARCHAR, sats HUGEINT, formation_block BIGINT
+            )
+        """)
+        for i in range(0, len(bond_files), args.batch_files):
+            chunk = bond_files[i:i + args.batch_files]
+            con.execute(f"""
+                INSERT INTO bonds_stage
+                SELECT fromAddress, toAddress, SUM(sats::HUGEINT), MIN(formationBlock)
+                FROM read_json({file_list_sql(chunk)},
+                               format='newline_delimited', columns={cols_struct(BOND_COLS)})
+                GROUP BY fromAddress, toAddress
+            """)
+            print(f'  bonds: staged {min(i + args.batch_files, len(bond_files))}/'
+                  f'{len(bond_files)} partials', flush=True)
         con.execute(f"""
             CREATE TABLE bonds AS
             WITH merged AS (
-                SELECT
-                    fromAddress AS from_address,
-                    toAddress   AS to_address,
-                    SUM(sats::HUGEINT)     AS sats,
-                    MIN(formationBlock)    AS formation_block
-                FROM read_json('{bonds_glob}',
-                               format='newline_delimited',
-                               columns={cols_struct(BOND_COLS)})
-                GROUP BY fromAddress, toAddress
+                SELECT from_address, to_address,
+                       SUM(sats) AS sats, MIN(formation_block) AS formation_block
+                FROM bonds_stage GROUP BY from_address, to_address
             )
             SELECT m.* FROM merged m
             WHERE m.from_address IN (SELECT address FROM wallets)
               AND m.to_address   IN (SELECT address FROM wallets)
         """)
+        con.execute("DROP TABLE bonds_stage")
         (n_bonds,) = con.execute("SELECT count(*) FROM bonds").fetchone()
     else:
         con.execute("CREATE TABLE bonds (from_address VARCHAR, to_address VARCHAR, sats HUGEINT, formation_block BIGINT)")
         n_bonds = 0
-    print(f'  significant<->significant bonds: {n_bonds:,}')
+    print(f'  significant<->significant bonds: {n_bonds:,}', flush=True)
 
     # ---- write substrate jsonl (build_bundle.py input shape) -----------------
     wallets_out = out / 'real-substrate-wallets.jsonl'
