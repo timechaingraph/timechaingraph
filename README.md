@@ -1,5 +1,9 @@
 # Timechain Graph
 
+<p align="center">
+  <img src="public/og.png" alt="Timechain Graph — the living network of Bitcoin" width="640" />
+</p>
+
 > **The Graph of Bitcoin.** Every wallet a node. Every transaction an edge.
 > Watch the network form — Satoshi at the gold center, miners glowing red,
 > whales gold, dust grey, all bound by the bonds they spent.
@@ -173,6 +177,21 @@ This repository (`timechaingraph`) is a sibling of `timechaingrid`. Both share
 most code byte-for-byte (components, types, utilities, theme); divergence is
 captured in **`src/lib/site-config.ts`**, which encodes brand, domain, sister
 pointer, and view-specific hero copy.
+
+---
+
+## Support
+
+Timechain Graph is free and open source, funded entirely by voluntary Bitcoin
+donations — no ads, no tracking, no token, no paywall, no funding round.
+
+**Donate on-chain (BTC):**
+[`bc1q2hhsxyuzj4e6wcjegayddjphdry02wdef9v62l`](https://timechaingraph.com/donate)
+
+Scan the QR on the **[donate page](https://timechaingraph.com/donate)** — always
+treat that page as the canonical source and verify the address there before
+sending. Donations go to running the project: hosting, the self-hosted bitcoind
+full node, and CDN bandwidth for the data bundle.
 
 ---
 
