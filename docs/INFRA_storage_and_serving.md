@@ -2,7 +2,8 @@
 
 How the data gets from Bitcoin's chain to a viewer's browser, what it costs in
 storage, and how new blocks are appended. Companion to `DEPLOY_r2_hosting.md`
-(the concrete R2 upload/deploy runbook) and `DESIGN_substrate_to_browser.md`.
+(the concrete R2 upload/deploy runbook) and `../chain-tools/CONTRACT.md`
+(the parquet output contract).
 
 ## Two planes (the key mental model)
 

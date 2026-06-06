@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """build_bundle.py — JSONL substrate -> tiered Parquet bundle for the browser.
 
-Reads the operator substrate (real-substrate-{wallets,bonds}.jsonl from
-walk_chain.mjs) and emits a static, versioned Parquet bundle the browser
-fetches via DuckDB-Wasm (see docs/DESIGN_substrate_to_browser.md).
+Reads the reduced operator substrate (real-substrate-{wallets,bonds}.jsonl,
+produced by walk_chain_scalable.mjs + reduce_substrate.py) and emits a static,
+versioned Parquet bundle the browser fetches via DuckDB-Wasm
+(see chain-tools/README.md).
 
 Tiers (nested supersets, Free subset of Pro subset of Max), thresholds from
-significance_filter.py + the tier model in the README:
+the tier model in the README:
     free  : >= 1000 BTC ever received          (whales + major pools)
     pro   : >= 10 BTC ever received OR miner
     max   : significance floor (miner OR >=1 BTC OR >=100 txs)

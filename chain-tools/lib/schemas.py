@@ -6,8 +6,8 @@ generators (brain vault: wallets + bonds; coin-real-estate vault:
 coins + subgrids) and the browser-side BitcoinChainAdapter consume.
 
 This file is the contract the operator's chain-tools pipeline must
-satisfy. Once bitcoind+electrs is online, the extract_*.py scripts
-populate these schemas and emit parquet bundles to R2; the browser
+satisfy. After the substrate walk + reduce run, build_bundle.py
+populates these schemas and emits parquet bundles to R2; the browser
 fetches them via DuckDB-Wasm and projects into the appropriate vault
 or canvas.
 
@@ -38,7 +38,7 @@ except ImportError as exc:  # pragma: no cover - guard against install-not-yet
 # ---------- wallets.parquet --------------------------------------------------
 #
 # One row per "significant" Bitcoin address (miners + >1 BTC ever held OR >100
-# txs). Filtered via significance_filter.is_significant. Feeds both vaults +
+# txs). Filtered via the significance floor in reduce_substrate.py. Feeds both vaults +
 # the browser BitcoinChainAdapter.getNodes().
 WALLETS_SCHEMA = pa.schema([
     pa.field('address', pa.string(), nullable=False,

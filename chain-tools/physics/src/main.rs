@@ -29,11 +29,11 @@ mod spatial_index;
 #[derive(Parser, Debug)]
 #[command(version, about = "Pre-bake force-directed wallet positions to keyframe parquet.")]
 struct Args {
-    /// Input wallets.parquet from extract_wallets.py
+    /// Input wallets.parquet from the chain-tools bundle
     #[arg(long)]
     wallets: PathBuf,
 
-    /// Input directory of epoch-NNNN.parquet from extract_activity.py
+    /// Input directory of epoch-NNNN.parquet from the chain-tools bundle
     #[arg(long)]
     activity_dir: PathBuf,
 

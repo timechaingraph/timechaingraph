@@ -1,11 +1,11 @@
 // chain-tools/lib/extract.mjs
 //
-// Pure wallet/bond extraction primitives, shared by every walker
-// (walk_chain.mjs and walk_chain_scalable.mjs). No I/O, no module
-// state — every function here is a deterministic transform of its
-// inputs, so the two walkers cannot drift in how they read a block.
+// Pure wallet/bond extraction primitives used by the walker
+// (walk_chain_scalable.mjs). No I/O, no module state — every function
+// here is a deterministic transform of its inputs, so block reading
+// stays consistent.
 //
-// Extracted verbatim from walk_chain.mjs (the proven cutover logic):
+// The proven cutover logic:
 //   - bitcoind getblock(verbosity 3) → mempool.space-shaped {header, txs}
 //   - P2PK pubkey → P2PKH address derivation (base58check)
 //   - per-tx (outputs, inputs, isCoinbase) extraction

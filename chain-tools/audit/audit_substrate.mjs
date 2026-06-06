@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Audit the v2 NDJSON substrate produced by chain-tools/ingest/walk_chain.mjs.
+// Audit the NDJSON substrate produced by chain-tools/ingest/walk_chain_scalable.mjs.
 //
 // Verifies completeness and integrity of the retrieved chain data:
 //   1. meta.tipBlock parses

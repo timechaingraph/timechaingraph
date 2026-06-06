@@ -23,7 +23,7 @@
 // hash into the overlap window of its endpoints.
 //
 // When the real chain-tools pipeline ships (Phase v0.2+ — bitcoind
-// + electrs + parquet), this generator gets replaced by a Python
+// + parquet), this generator gets replaced by a Python
 // pipeline reading wallets.parquet. The schema documented in
 // vault/README.md is the contract that pipeline must produce.
 //
@@ -63,8 +63,8 @@ const REAL_SUBSTRATE_WALLETS_PATH = path.join(REPO_ROOT, 'chain-tools', 'out', '
 const REAL_SUBSTRATE_BONDS_PATH = path.join(REPO_ROOT, 'chain-tools', 'out', 'real-substrate-bonds.jsonl');
 
 // When real-substrate-meta.json exists, prefer it over the mock fixture.
-// Walker (chain-tools/ingest/walk_chain.mjs) emits the real substrate
-// from public-API ingest; this generator reads it as the authority.
+// Walker (chain-tools/ingest/walk_chain_scalable.mjs) emits the real substrate
+// from bitcoind RPC ingest; this generator reads it as the authority.
 // Activity sidecars are walker-owned in real mode (skipped here);
 // in mock mode we emit synthesised sidecars as before.
 const USE_REAL_SUBSTRATE = fs.existsSync(REAL_SUBSTRATE_META_PATH);
@@ -1054,7 +1054,7 @@ for (const h of HALVING_BLOCKS) {
 
 let sidecarsWritten = 0;
 // In real-substrate mode, activity sidecars are owned by the walker
-// (chain-tools/ingest/walk_chain.mjs). Skip emission here to avoid
+// (chain-tools/ingest/walk_chain_scalable.mjs). Skip emission here to avoid
 // overwriting walker output with synthesised events.
 if (!USE_REAL_SUBSTRATE) {
   for (const [block, events] of activityByBlock) {

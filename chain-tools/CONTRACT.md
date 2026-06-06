@@ -13,7 +13,7 @@ against the same column names + types.
                                                   |   vault/bonds/*.md
                                                   +-- (Brain Vault)
                                                   |
-bitcoind  +-- electrs  +-- chain-tools  --+ R2 +--+
+bitcoind  +-- chain-tools  --+ R2 +--+
                                                   |
                                                   +-- vault/coins/*.md
                                                   |   vault/subgrids/*.md
@@ -30,24 +30,24 @@ consumers MUST read against those names + types.
 
 ## Output bundle layout
 
-When the operator runs the full pipeline against bitcoind+electrs,
-the outputs land at:
+When the operator runs the full pipeline against bitcoind, the
+tiered bundle lands under `public/data/<version>/`:
 
 ```
-out/
-├── wallets.parquet              # WALLETS_SCHEMA, ~1-3M rows
+public/data/<version>/
+├── wallets.parquet              # WALLETS_SCHEMA, ~1-3M rows (Max tier)
 ├── bonds.parquet                # BONDS_SCHEMA, ~10-100M rows
-├── coins.parquet                # COINS_SCHEMA, ~1B rows (full chain)
+├── coins.parquet                # COINS_SCHEMA (full chain)
+├── timestamps.parquet           # block height → unix time (scrubber dates)
 ├── activity/
 │   ├── epoch-0000.parquet       # ACTIVITY_SCHEMA, blocks [0, 2016)
 │   ├── epoch-0001.parquet       # blocks [2016, 4032)
 │   └── ...
-├── keyframes/                   # pre-baked force-sim positions
-│   ├── 0000000.parquet
-│   ├── 0001008.parquet
-│   └── ...
-└── status.json                  # tip block, snapshot age, pipeline health
+└── manifest.json                # tier index, row counts, tip block, schema version
 ```
+
+`build_bundle.py` carves nested tiers (free ⊂ pro ⊂ max); the browser
+reads the tier the viewer selected.
 
 `deploy/push_to_r2.sh` uploads the entire `out/` tree to a versioned
 R2 prefix (e.g., `s3://timechaingraph/data/v0.2.5/`); the browser
@@ -69,8 +69,8 @@ Brief field reference:
 | `tx_count`            | uint32  | Lifetime distinct tx references                    |
 | `is_miner`            | bool    | Has ever received a coinbase output                |
 
-Filtered by `significance_filter.is_significant`: miners + (>1 BTC
-ever held OR >100 lifetime txs).
+Filtered by the significance floor in `reduce_substrate.py`: miners +
+(>1 BTC ever received OR >100 lifetime txs).
 
 ### BONDS_SCHEMA — `bonds.parquet`
 
@@ -133,10 +133,10 @@ Companion sidecar — not parquet. Schema mirrors
   "snapshotGeneratedAt":  "2026-04-29T19:00:00Z",
   "freeTierNodeCount":    9853,
   "pipeline": {
-    "bitcoind":   "ok",
-    "electrs":   "ok",
-    "extractor": "stale",
-    "r2":        "ok"
+    "bitcoind": "ok",
+    "walk":     "ok",
+    "reduce":   "stale",
+    "r2":       "ok"
   }
 }
 ```
@@ -162,54 +162,26 @@ These shapes are the public contract. From v0.1 forward:
 
 ## Generating the bundle
 
-For now, the pipeline is operator-side and gated on bitcoind
-hosting (see `DEPLOY.md` Decisions to confirm). Until the operator
-provisions infra, **the fixture-to-parquet bridge is fully
-operational** — the schema set is exercised end-to-end without
-bitcoind:
+The pipeline runs operator-side against the operator's own bitcoind
+(full walkthrough in [README.md](README.md)):
 
 ```bash
-# Step 1: dump TS FIXTURE_SUBSTRATE to JSON
-npm run substrate:dump
-# writes chain-tools/out/substrate-dump.json (~1.5 MB)
+# 1. Walk the chain → out/agg/* window partials (resumable)
+node --max-old-space-size=12288 chain-tools/ingest/walk_chain_scalable.mjs
 
-# Step 2: convert JSON to parquet
-pip install -r chain-tools/ingest/requirements.txt   # pyarrow
-python3 chain-tools/ingest/from_fixture.py \
-    --input chain-tools/out/substrate-dump.json \
-    --output-dir chain-tools/out/
-# writes wallets.parquet, bonds.parquet, coins.parquet
+# 2. Reduce partials → out/real-substrate-* (DuckDB, out-of-core)
+chain-tools/.venv/bin/python chain-tools/export/reduce_substrate.py
+
+# 3. Carve the tiered parquet bundle → public/data/<version>/
+chain-tools/.venv/bin/python chain-tools/export/build_bundle.py \
+    --substrate-dir chain-tools/out --output-dir public/data/v0.1.0 --tiers free,pro,max
+
+# 4. deploy/push_to_r2.sh uploads the bundle to R2
 ```
 
-Three parquet files matching `WALLETS_SCHEMA` / `BONDS_SCHEMA` /
-`COINS_SCHEMA` exactly. Operator can validate downstream readers
-(brain-vault generator, coin-vault generator, browser
-DuckDB-Wasm queries) against this real-shape data before bitcoind
-is online.
-
-`chain-tools/ingest/extract_wallets.py::write_parquet(rows, output)`
-is the same writer the eventual full pipeline calls after RPC
-walking; the bridge proves it produces valid parquet.
-
-When bitcoind is online, the full pipeline runs:
-
-```bash
-cd chain-tools/ingest
-python extract_wallets.py \
-  --rpc-url http://localhost:8332 \
-  --rpc-cookie ~/.bitcoin/.cookie \
-  --electrs-rpc tcp://localhost:50001 \
-  --output ../out/wallets.parquet
-
-python extract_activity.py \
-  --rpc-url http://localhost:8332 \
-  --rpc-cookie ~/.bitcoin/.cookie \
-  --output-dir ../out/activity \
-  --wallets-parquet ../out/wallets.parquet
-
-# physics/ runs after to bake keyframes
-# deploy/push_to_r2.sh uploads everything
-```
+The output parquet matches `WALLETS_SCHEMA` / `BONDS_SCHEMA` /
+`COINS_SCHEMA` exactly; downstream readers (vault generators, browser
+DuckDB-Wasm queries) read against the schemas in `lib/schemas.py`.
 
 ## TypeScript ↔ pyarrow type mapping
 

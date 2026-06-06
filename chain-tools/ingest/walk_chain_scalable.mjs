@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // chain-tools/ingest/walk_chain_scalable.mjs
 //
-// SCALABLE full-chain walker (supersedes walk_chain.mjs, which holds the
-// whole substrate in V8 heap and OOMs mid-chain). Same extraction logic
+// SCALABLE full-chain walker (supersedes the original monolithic walker,
+// which held the whole substrate in V8 heap and OOMed mid-chain). Same extraction logic
 // (shared via ../lib/extract.mjs + ../lib/rpc.mjs — proven on the cutover)
 // but a *combiner* aggregation:
 //
