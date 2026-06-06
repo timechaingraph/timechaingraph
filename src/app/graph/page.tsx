@@ -17,5 +17,12 @@ export const metadata: Metadata = {
  * in GraphCanvas.
  */
 export default function GraphHome() {
-  return <GraphCanvas />;
+  return (
+    <>
+      {/* Screen-reader / crawler heading — the route is a full-viewport canvas
+          kiosk with no visible heading, so expose one for a11y + SEO. */}
+      <h1 className="sr-only">Timechain Graph — the living network of Bitcoin</h1>
+      <GraphCanvas />
+    </>
+  );
 }
