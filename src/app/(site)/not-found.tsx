@@ -74,7 +74,7 @@ const TONE_COLOR: Record<'amber' | 'gold', string> = {
 export default function NotFound() {
   return (
     <div className="py-12 md:py-16">
-      <p className="text-mono text-xs uppercase tracking-[0.32em] text-[color:var(--color-amber)]">
+      <p className="text-mono text-base uppercase tracking-[0.32em] text-[color:var(--color-amber)]">
         404 · off-network
       </p>
       <h1 className="text-display mt-3 text-4xl font-semibold leading-[1.05] md:text-6xl">

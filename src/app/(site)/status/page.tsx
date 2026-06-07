@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function StatusPage() {
   return (
     <div className="py-12 md:py-16">
-      <p className="text-mono text-xs uppercase tracking-[0.32em] text-[color:var(--color-accent)]">
+      <p className="text-mono text-base uppercase tracking-[0.32em] text-[color:var(--color-accent)]">
         Live status
       </p>
       <h1 className="text-display mt-3 text-4xl font-semibold leading-[1.05] md:text-6xl">
@@ -29,7 +29,7 @@ export default function StatusPage() {
       <div className="mt-10 grid gap-4 md:grid-cols-2">
         <LiveStatus />
         <div className="brass-panel rounded-lg p-5">
-          <p className="text-mono text-[10px] uppercase tracking-[0.32em] text-[color:var(--color-brass-bright)]">
+          <p className="text-mono text-base uppercase tracking-[0.32em] text-[color:var(--color-brass-bright)]">
             Pipeline health
           </p>
           <ul className="mt-3 space-y-2 text-mono text-xs text-[color:var(--color-text-secondary)]">

@@ -39,7 +39,7 @@ function Hero() {
     <section className="grid items-center gap-12 py-4 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-8 lg:gap-20 lg:py-10">
       <div className="flex flex-col gap-8">
         <p
-          className="text-mono text-[11px] uppercase tracking-[0.36em] text-[color:var(--color-accent)]"
+          className="text-mono text-base uppercase tracking-[0.36em] text-[color:var(--color-accent)]"
           style={{ animation: 'drift-up 0.7s ease-out 0.05s both' }}
         >
           {BRAND_TAGLINE}
@@ -64,12 +64,12 @@ function Hero() {
         >
           <Link
             href="/graph"
-            className="brass-panel rounded-full px-7 py-3.5 text-mono text-xs uppercase tracking-[0.2em] transition-all hover:border-[color:var(--color-amber)] hover:shadow-[0_0_24px_rgba(255,215,0,0.18)]"
+            className="brass-panel rounded-full px-7 py-3.5 text-mono text-base uppercase tracking-[0.2em] transition-all hover:border-[color:var(--color-amber)] hover:shadow-[0_0_24px_rgba(255,215,0,0.18)]"
             style={{ color: 'var(--color-gold)' }}
           >
             Open the graph ⟶
           </Link>
-          <span className="flex items-center gap-2 text-mono text-[10px] uppercase tracking-[0.24em] text-[color:var(--color-text-muted)]">
+          <span className="flex items-center gap-2 text-mono text-base uppercase tracking-[0.24em] text-[color:var(--color-text-muted)]">
             <span
               aria-hidden
               className="inline-block h-1.5 w-1.5 rounded-full"
@@ -136,7 +136,7 @@ function Pillars() {
             key={it.label}
             className="bg-[color:var(--color-background)] p-7 md:p-9"
           >
-            <p className="text-mono text-[10px] uppercase tracking-[0.28em] text-[color:var(--color-brass-bright)]">
+            <p className="text-mono text-base uppercase tracking-[0.28em] text-[color:var(--color-brass-bright)]">
               {it.label}
             </p>
             <p className="mt-5 leading-relaxed text-[color:var(--color-text-secondary)]">
@@ -159,7 +159,7 @@ function Promise() {
           Free. Forever. Funded by the people who see Bitcoin clearer
           because of it.
         </p>
-        <ul className="space-y-3 text-sm text-[color:var(--color-text-secondary)]">
+        <ul className="space-y-3 text-base text-[color:var(--color-text-secondary)]">
           {[
             'Self-hosted node · no third-party calls',
             'No analytics · no tracking · no sign-up',
@@ -176,11 +176,11 @@ function Promise() {
       <div className="mt-10 flex flex-wrap items-baseline gap-4">
         <Link
           href="/donate"
-          className="text-mono text-xs uppercase tracking-[0.22em] text-[color:var(--color-amber)] hover:underline"
+          className="text-mono text-base uppercase tracking-[0.22em] text-[color:var(--color-amber)] hover:underline"
         >
           Fund the node ⟶
         </Link>
-        <span className="text-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-text-muted)]">
+        <span className="text-mono text-base uppercase tracking-[0.22em] text-[color:var(--color-text-muted)]">
           {VIEW_DOMAIN}
         </span>
       </div>

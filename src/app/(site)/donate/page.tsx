@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default function DonatePage() {
   return (
     <div className="py-12 md:py-16">
-      <p className="text-mono text-xs uppercase tracking-[0.32em] text-[color:var(--color-amber)]">
+      <p className="text-mono text-base uppercase tracking-[0.32em] text-[color:var(--color-amber)]">
         Support the work · always optional
       </p>
       <h1 className="text-display mt-3 text-4xl font-semibold leading-[1.05] md:text-6xl">
@@ -47,7 +47,7 @@ export default function DonatePage() {
             >
               On-chain Bitcoin
             </span>
-            <span className="text-mono text-[10px] uppercase tracking-wider text-[color:var(--color-text-muted)]">
+            <span className="text-mono text-base uppercase tracking-wider text-[color:var(--color-text-muted)]">
               {DONATION_LIVE ? 'live' : 'coming'}
             </span>
           </div>
@@ -73,7 +73,7 @@ export default function DonatePage() {
             >
               Lightning
             </span>
-            <span className="text-mono text-[10px] uppercase tracking-wider text-[color:var(--color-text-muted)]">
+            <span className="text-mono text-base uppercase tracking-wider text-[color:var(--color-text-muted)]">
               coming
             </span>
           </div>
