@@ -116,15 +116,31 @@ export function GraphPlayBar() {
       {/* Scrubber — flexes to fill remaining space; halving ticks behind it */}
       <div className="relative min-w-0 flex-1">
         {ready && halvings.length > 0 && (
-          <div className="pointer-events-none absolute inset-0" aria-hidden>
-            {halvings.map((h) => (
-              <span
-                key={h}
-                className="absolute top-1/2 h-2.5 w-px -translate-x-1/2 -translate-y-1/2 bg-[color:var(--color-amber)]/70"
-                style={{ left: `${(h / latestBlock) * 100}%` }}
-                title={`halving · block ${h.toLocaleString()}`}
-              />
-            ))}
+          // Halving quick-jumps. The container ignores pointer events so the
+          // slider stays draggable everywhere; only the 4 narrow markers
+          // capture clicks (jump the scrubber to that halving block + pause).
+          // A drag begun on the thumb keeps pointer capture, so dragging
+          // straight through a marker still works.
+          <div className="pointer-events-none absolute inset-0 z-10">
+            {halvings.map((h, i) => {
+              const { date } = blockDate(h);
+              return (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => {
+                    setPlaying(false);
+                    setCurrentBlock(h);
+                  }}
+                  title={`Halving ${i + 1} · block ${h.toLocaleString()} · ${formatBlockDate(date)}`}
+                  aria-label={`Jump to halving ${i + 1}, block ${h.toLocaleString()}`}
+                  className="group pointer-events-auto absolute top-0 bottom-0 w-2.5 -translate-x-1/2 cursor-pointer"
+                  style={{ left: `${(h / latestBlock) * 100}%` }}
+                >
+                  <span className="absolute left-1/2 top-1/2 h-2.5 w-px -translate-x-1/2 -translate-y-1/2 bg-[color:var(--color-amber)]/70 transition-all group-hover:h-4 group-hover:bg-[color:var(--color-amber)]" />
+                </button>
+              );
+            })}
           </div>
         )}
         <input
