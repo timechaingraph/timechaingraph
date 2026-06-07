@@ -35,8 +35,8 @@ export default function HomePage() {
 
 function Hero() {
   return (
-    <section className="grid items-center gap-12 pb-4 md:grid-cols-[1.1fr_1fr] md:gap-16 md:pb-8 lg:gap-20 lg:pb-10">
-      <div className="flex flex-col gap-8">
+    <section className="grid items-center gap-12 py-4 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-8 lg:gap-20 lg:py-10">
+      <div className="flex flex-col gap-8 self-start">
         <h1
           className="text-display hero-gradient text-5xl font-bold leading-[1.02] tracking-tight md:text-7xl lg:text-[5.5rem]"
           style={{ animation: 'drift-up 0.7s ease-out 0.15s both' }}
