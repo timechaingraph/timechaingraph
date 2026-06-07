@@ -67,4 +67,13 @@ export interface WalletBond {
   toAddress: string;
   /** Bond size in satoshis (drives line color bucket). */
   sats: bigint;
+  /**
+   * Block height at which this bond first appeared on-chain — the first
+   * transaction between the two wallets. The parquet substrate carries it
+   * (reduce_substrate computes `MIN(formationBlock)` across the whole chain);
+   * the Graph view keys the synapse fade-in + formation pulse off it so they
+   * fire at the bond's TRUE birth as the scrubber crosses it. Optional: the
+   * 50-node fixture omits it and consumers fall back to a synthetic estimate.
+   */
+  formationBlock?: number;
 }

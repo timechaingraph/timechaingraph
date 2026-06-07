@@ -736,17 +736,21 @@ export function GraphView() {
           aWallet.lastActiveBlock,
           bWallet.lastActiveBlock,
         );
-        // Formation block: deterministic djb2 pick within the
-        // overlap window of the two endpoints' active ranges.
-        // Mirrors the snapshot generator's bondFormationBlock so
-        // the canvas + the per-block sidecars agree on synapse
-        // birth times.
-        const lo = Math.max(aWallet.firstSeenBlock, bWallet.firstSeenBlock);
-        const hi = Math.min(aWallet.lastActiveBlock, bWallet.lastActiveBlock);
-        const formationBlock =
-          hi <= lo
-            ? lo
-            : lo + (djb2(`${bond.fromAddress}|${bond.toAddress}`) % (hi - lo));
+        // Formation block — the bond's TRUE first-appearance block, carried by
+        // the parquet substrate (reduce computes MIN(formationBlock) across the
+        // chain). The synapse fade-in ramp + formation pulse fire as the scrubber
+        // crosses it, so playback from genesis replays each connection forming at
+        // its real on-chain birth. The 50-node fixture omits it, so fall back to a
+        // deterministic djb2 pick within the endpoints' overlap window.
+        let formationBlock = bond.formationBlock;
+        if (formationBlock === undefined) {
+          const lo = Math.max(aWallet.firstSeenBlock, bWallet.firstSeenBlock);
+          const hi = Math.min(aWallet.lastActiveBlock, bWallet.lastActiveBlock);
+          formationBlock =
+            hi <= lo
+              ? lo
+              : lo + (djb2(`${bond.fromAddress}|${bond.toAddress}`) % (hi - lo));
+        }
         links.push({ a, b, strength, bondLastActive, formationBlock });
       }
 

@@ -128,7 +128,7 @@ export class R2ChainSubstrate implements ChainSubstrate {
       }
 
       const bres = await conn.query(
-        `SELECT from_address, to_address, sats FROM parquet_scan('bonds.parquet')`,
+        `SELECT from_address, to_address, sats, formation_block FROM parquet_scan('bonds.parquet')`,
       );
       for (const r of bres) {
         const row = r as unknown as Record<string, number | bigint | string>;
@@ -136,6 +136,7 @@ export class R2ChainSubstrate implements ChainSubstrate {
           fromAddress: String(row.from_address),
           toAddress: String(row.to_address),
           sats: BigInt(row.sats as bigint | number),
+          formationBlock: Number(row.formation_block),
         };
         this._bonds.push(b);
         this.indexBond(b.fromAddress, b);
