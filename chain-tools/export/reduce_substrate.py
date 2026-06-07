@@ -36,9 +36,13 @@ import json
 from pathlib import Path
 
 SATS = 100_000_000
-# Significance floor for the reduced substrate — the base set build_bundle.py
-# then filters to the public dataset via --min-btc.
-SIGNIFICANCE_SQL = "(is_miner OR total_received_sats >= 100000000 OR tx_count >= 100)"
+# Base-substrate floor (no tiers; the site is all-public). Kept high enough that
+# the bonds reduce stays memory-safe over the full chain: miners + wallets that
+# ever received >= 1000 BTC (~850k nodes vs ~133M at the old >=1 BTC/>=100 tx
+# floor, whose 133M-address bond join OOMs). build_bundle.py then carves the
+# renderable public set (--top-n) from this base. Lower this + re-reduce for a
+# larger base once the renderer handles more nodes.
+SIGNIFICANCE_SQL = f"(is_miner OR total_received_sats >= {1000 * SATS})"
 
 WALLET_COLS = {
     'address': 'VARCHAR',

@@ -46,6 +46,11 @@ def parse_args() -> argparse.Namespace:
                         '(miners always included). The site ships a SINGLE public '
                         'dataset (no tiers); raise this to shrink the node count '
                         'to what the renderer handles.')
+    p.add_argument('--top-n', type=int, default=0,
+                   help='if >0, keep only the top-N wallets by lifetime received '
+                        '(after the --min-btc floor) — the renderable public set. '
+                        'Bonds are carved among those N. Raise N as the renderer '
+                        'handles more; no re-reduce needed.')
     p.add_argument('--bundle-version', default='v0.1.0')
     return p.parse_args()
 
@@ -83,6 +88,13 @@ def main() -> None:
                 'is_miner': miner,
             })
             addr_set.add(w['address'])
+
+    # ---- top-N cut (the renderable public set) ------------------------------
+    if args.top_n and len(wallet_rows) > args.top_n:
+        wallet_rows.sort(key=lambda r: r['total_received_sats'], reverse=True)
+        wallet_rows = wallet_rows[:args.top_n]
+        addr_set = {r['address'] for r in wallet_rows}
+        print(f'  top-N cut: kept top {args.top_n:,} of {n_scanned:,} by lifetime received')
 
     # ---- Pass 2: bonds where BOTH endpoints are in the public set -----------
     bond_rows: list[dict] = []
