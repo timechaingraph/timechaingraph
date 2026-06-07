@@ -5,7 +5,6 @@ import {
   VIEW_HERO_BOTTOM,
   VIEW_HERO_DESCRIPTION,
   VIEW_DOMAIN,
-  BRAND_TAGLINE,
 } from '@/lib/site-config';
 
 /**
@@ -36,14 +35,8 @@ export default function HomePage() {
 
 function Hero() {
   return (
-    <section className="grid items-center gap-12 py-4 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-8 lg:gap-20 lg:py-10">
+    <section className="grid items-center gap-12 pb-4 md:grid-cols-[1.1fr_1fr] md:gap-16 md:pb-8 lg:gap-20 lg:pb-10">
       <div className="flex flex-col gap-8">
-        <p
-          className="text-mono text-base uppercase tracking-[0.36em] text-[color:var(--color-accent)]"
-          style={{ animation: 'drift-up 0.7s ease-out 0.05s both' }}
-        >
-          {BRAND_TAGLINE}
-        </p>
         <h1
           className="text-display hero-gradient text-5xl font-bold leading-[1.02] tracking-tight md:text-7xl lg:text-[5.5rem]"
           style={{ animation: 'drift-up 0.7s ease-out 0.15s both' }}
@@ -69,7 +62,7 @@ function Hero() {
           >
             Open the graph ⟶
           </Link>
-          <span className="flex items-center gap-2 text-mono text-base uppercase tracking-[0.24em] text-[color:var(--color-text-muted)]">
+          <span className="flex items-center gap-2 whitespace-nowrap text-mono text-base uppercase tracking-[0.24em] text-[color:var(--color-text-muted)]">
             <span
               aria-hidden
               className="inline-block h-1.5 w-1.5 rounded-full"

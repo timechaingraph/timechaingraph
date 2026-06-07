@@ -41,12 +41,6 @@ const ROUTES: Array<{ href: string; label: string; blurb: string; tone: 'amber' 
     tone: 'amber',
   },
   {
-    href: '/privacy',
-    label: '/privacy',
-    blurb: 'Full privacy posture, observable in DevTools',
-    tone: 'gold',
-  },
-  {
     href: '/status',
     label: '/status',
     blurb: 'Block height, snapshot age, infra health',

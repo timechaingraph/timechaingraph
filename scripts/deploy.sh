@@ -48,5 +48,6 @@ echo "▸ deploy to Cloudflare Pages"
 npx wrangler pages deploy out --project-name=timechaingraph --branch=main
 
 echo "✓ deployed."
-echo "  DUCKDB_WASM_BASE = ${NEXT_PUBLIC_DUCKDB_WASM_BASE:-<unset → same-origin (won't serve the wasm on Pages!)>}"
-echo "  DATA_BASE_URL    = ${NEXT_PUBLIC_DATA_BASE_URL:-<unset → same-origin (won't serve parquet on Pages!)>}"
+echo "  DUCKDB_WASM_BASE = ${NEXT_PUBLIC_DUCKDB_WASM_BASE:-unset, same-origin}"
+echo "  DATA_BASE_URL    = ${NEXT_PUBLIC_DATA_BASE_URL:-unset, same-origin}"
+echo "  (unset = same-origin; the >25MB wasm/parquet are stripped, so set these to the R2 base before deploying once R2 is live — see docs/DEPLOY_r2_hosting.md)"

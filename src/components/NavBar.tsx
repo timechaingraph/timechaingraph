@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
   VIEW_BRAND,
-  VIEW_TAGLINE,
+  BRAND_TAGLINE,
   VIEW_ACCENT,
   OTHER_VIEW_BRAND,
   OTHER_VIEW_URL,
@@ -30,7 +30,6 @@ const SECTIONS: NavLink[] = [
   { href: '/api', label: 'API', inDev: true },
   { href: '/docs', label: 'Docs', inDev: true },
   { href: '/status', label: 'Status' },
-  { href: '/privacy', label: 'Privacy' },
 ];
 
 const ACCENT_VAR: Record<'cyan' | 'gold', string> = {
@@ -57,15 +56,15 @@ export function NavBar() {
           </span>
         </div>
         <span
-          className="hidden text-base uppercase tracking-[0.24em] md:inline"
+          className="hidden whitespace-nowrap text-sm uppercase tracking-[0.24em] md:inline"
           style={{ color: accent, opacity: 0.7 }}
         >
-          {VIEW_TAGLINE}
+          {BRAND_TAGLINE}
         </span>
       </Link>
 
       <nav
-        className="hidden items-center gap-5 text-mono text-base lg:flex"
+        className="hidden items-center gap-5 text-mono text-sm lg:flex"
         aria-label="Primary"
       >
         {SECTIONS.map((link) => (
@@ -136,7 +135,7 @@ function CrossDomainLink() {
   return (
     <a
       href={OTHER_VIEW_URL}
-      className="rounded-full border px-3 py-1 text-mono text-base uppercase tracking-wider transition-colors"
+      className="shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-mono text-sm uppercase tracking-wider transition-colors"
       style={{
         borderColor: 'var(--color-brass-border)',
         color: 'var(--color-amber)',
