@@ -24,9 +24,20 @@ describe('<WalletInspector>', () => {
     const wallet = FREE_TIER_50.find((w) => w.role === 'whale')!;
     useTimegridStore.getState().setSelectedWallet(wallet.address);
     const { getAllByText } = render(<WalletInspector />);
-    // "Whale" appears as the main role label AND in the Connections
-    // section if any neighbor is also a whale; just assert ≥1 match.
+    // "Whale" is the main role label (the bonds list shows sizes/dates,
+    // not role text); assert ≥1 match.
     expect(getAllByText('Whale').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('lists the wallet\'s strongest bonds with sizes', () => {
+    // Satoshi connects to all 5 miners in the bond fixture.
+    const sat = FREE_TIER_50.find((w) => w.role === 'satoshi')!;
+    useTimegridStore.getState().setSelectedWallet(sat.address);
+    const { getByText, getAllByText } = render(<WalletInspector />);
+    expect(getByText(/Strongest bonds \(5\)/)).toBeTruthy();
+    // Each bond row renders a "<n> BTC" size; the panel also has the
+    // "Total received" BTC field, so assert there are several BTC values.
+    expect(getAllByText(/BTC/).length).toBeGreaterThan(1);
   });
 
   it('shows the satoshi-marked address as Satoshi', () => {

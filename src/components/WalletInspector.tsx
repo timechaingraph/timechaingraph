@@ -3,6 +3,7 @@
 import { useTimegridStore } from '@/store/timegridStore';
 import { getActiveSubstrate } from '@/data/substrate';
 import { ROLE_LABEL, ROLE_CSS } from '@/lib/role-visuals';
+import { blockDate, formatBlockDate } from '@/lib/blockDate';
 import type { WalletData } from '@/types/wallet';
 
 /**
@@ -26,34 +27,57 @@ function btcFromSats(sats: bigint): string {
   return `${whole}.${frac}`;
 }
 
+/** Compact BTC for the bond list: whole BTC with thousands commas (≥1 BTC),
+ *  else up to 4 trimmed decimals. */
+function btcCompact(sats: bigint): string {
+  const whole = sats / SATS_PER_BTC;
+  if (whole > 0n) return whole.toLocaleString();
+  const frac = String(sats % SATS_PER_BTC).padStart(8, '0').slice(0, 4).replace(/0+$/, '');
+  return frac ? `0.${frac}` : '0';
+}
+
 function shortAddress(addr: string): string {
   if (addr.length <= 14) return addr;
   return `${addr.slice(0, 8)}…${addr.slice(-4)}`;
 }
 
-function findNeighbors(address: string): WalletData[] {
-  const bonds = getActiveSubstrate().bondsForAddress(address);
-  const neighborAddrs = new Set<string>();
-  for (const bond of bonds) {
-    if (bond.fromAddress === address) neighborAddrs.add(bond.toAddress);
-    else if (bond.toAddress === address) neighborAddrs.add(bond.fromAddress);
-  }
-  const result: WalletData[] = [];
-  for (const addr of neighborAddrs) {
-    const w = getActiveSubstrate().walletByAddress(addr);
-    if (w) result.push(w);
-  }
-  return result;
+interface BondView {
+  counterpartyAddr: string;
+  counterpartyRole: WalletData['role'] | null;
+  sats: bigint;
+  formationBlock?: number;
 }
 
-const MAX_NEIGHBORS_SHOWN = 5;
+/**
+ * The wallet's bonds, resolved to counterparty + size + (real) formation
+ * block, sorted strongest-first. The aggregated substrate carries one bond
+ * per wallet-pair, so each entry is a distinct connection. `formationBlock`
+ * is present for the parquet substrate (the wired column) and absent for the
+ * fixture — the UI shows the formation date only when it's known.
+ */
+function topBondsFor(address: string): BondView[] {
+  const sub = getActiveSubstrate();
+  const views: BondView[] = sub.bondsForAddress(address).map((b) => {
+    const other = b.fromAddress === address ? b.toAddress : b.fromAddress;
+    return {
+      counterpartyAddr: other,
+      counterpartyRole: sub.walletByAddress(other)?.role ?? null,
+      sats: b.sats,
+      formationBlock: b.formationBlock,
+    };
+  });
+  views.sort((a, b) => (b.sats > a.sats ? 1 : b.sats < a.sats ? -1 : 0));
+  return views;
+}
+
+const MAX_BONDS_SHOWN = 6;
 
 export function WalletInspector() {
   const selectedAddress = useTimegridStore((s) => s.selectedWallet);
   const wallet = selectedAddress
     ? getActiveSubstrate().walletByAddress(selectedAddress)
     : undefined;
-  const neighbors = wallet ? findNeighbors(wallet.address) : [];
+  const bonds = wallet ? topBondsFor(wallet.address) : [];
   // v0.1 invariant: ownerAddress === minterAddress (no transfers).
   // v0.2+ this becomes "coins held at tipBlock" once the multi-input
   // pipeline updates ownership per spend.
@@ -112,33 +136,50 @@ export function WalletInspector() {
           </span>
         </p>
       )}
-      {neighbors.length > 0 && (
+      {bonds.length > 0 && (
         <div className="mt-5 border-t border-[color:var(--color-card-border)] pt-4">
           <p className="text-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-text-muted)]">
-            Connections ({neighbors.length})
+            Strongest bonds ({bonds.length})
           </p>
-          <ul className="mt-3 space-y-1.5 text-mono text-[10px]">
-            {neighbors.slice(0, MAX_NEIGHBORS_SHOWN).map((n) => (
-              <li key={n.address} className="flex items-center gap-2">
-                <span
-                  aria-hidden
-                  className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ background: ROLE_CSS[n.role] }}
-                />
-                <span
-                  className="truncate text-[color:var(--color-text-secondary)]"
-                  title={n.address}
-                >
-                  {n.address.slice(0, 8)}…{n.address.slice(-4)}
-                </span>
-                <span className="ml-auto shrink-0 text-[color:var(--color-text-muted)]">
-                  {ROLE_LABEL[n.role]}
-                </span>
-              </li>
-            ))}
-            {neighbors.length > MAX_NEIGHBORS_SHOWN && (
+          <ul className="mt-3 space-y-2 text-mono text-[10px]">
+            {bonds.slice(0, MAX_BONDS_SHOWN).map((b) => {
+              const formed =
+                b.formationBlock !== undefined
+                  ? formatBlockDate(blockDate(b.formationBlock).date)
+                  : null;
+              return (
+                <li key={b.counterpartyAddr} className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-2">
+                    <span
+                      aria-hidden
+                      className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                      style={{
+                        background: b.counterpartyRole
+                          ? ROLE_CSS[b.counterpartyRole]
+                          : 'var(--color-text-faint)',
+                      }}
+                    />
+                    <span
+                      className="truncate text-[color:var(--color-text-secondary)]"
+                      title={b.counterpartyAddr}
+                    >
+                      {shortAddress(b.counterpartyAddr)}
+                    </span>
+                    <span className="ml-auto shrink-0 tabular-nums text-[color:var(--color-text-primary)]">
+                      {btcCompact(b.sats)} BTC
+                    </span>
+                  </div>
+                  {formed && (
+                    <span className="pl-3.5 text-[9px] tabular-nums text-[color:var(--color-text-faint)]">
+                      formed {formed}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+            {bonds.length > MAX_BONDS_SHOWN && (
               <li className="pt-1 text-[9px] text-[color:var(--color-text-muted)]">
-                + {neighbors.length - MAX_NEIGHBORS_SHOWN} more
+                + {bonds.length - MAX_BONDS_SHOWN} more
               </li>
             )}
           </ul>
