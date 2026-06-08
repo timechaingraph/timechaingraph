@@ -31,11 +31,12 @@ for f in duckdb-mvp.wasm duckdb-eh.wasm; do
   echo "  → $f ($(du -h "$WASM_DIR/$f" | cut -f1))"
   npx wrangler r2 object put "${BUCKET}/duckdb/${f}" \
     --file "${WASM_DIR}/${f}" \
-    --content-type "application/wasm"
+    --content-type "application/wasm" \
+    --remote
 done
 
 echo "▸ applying CORS (${CORS_RULES})"
-npx wrangler r2 bucket cors put "$BUCKET" --rules "./${CORS_RULES}"
+npx wrangler r2 bucket cors set "$BUCKET" --file "./${CORS_RULES}"
 
 echo "✓ wasm uploaded + CORS applied to '${BUCKET}'."
 cat <<EOF
