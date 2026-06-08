@@ -80,28 +80,15 @@ const PHYSICS = {
   theta: 0.8,
 };
 
-/** Edge fade per project spec — bonds fade to alpha 0 over 10 blocks of inactivity. */
+/**
+ * Transient edges: a bond is a per-block transaction event. It appears at its
+ * real formation block and fades to alpha 0 over the next EDGE_FADE_BLOCKS,
+ * then it's gone — so the canvas shows only what transacted near the scrubber's
+ * block, not a persistent hairball. (Focus mode overrides this to show a
+ * wallet's full lifetime ego-network.) Bump this to widen the visible window.
+ */
 const EDGE_FADE_BLOCKS = 10;
 const EDGE_BASE_ALPHA = 0.4;
-
-/**
- * Bond-formation ramp. A synapse fades in over its first N blocks
- * of life (rather than appearing fully formed). The brain learns
- * one connection at a time; new synapses ease in as the chain
- * scrubber crosses their formation block.
- */
-const BOND_FORMATION_BLOCKS = 10;
-
-/**
- * Synapse-pulse parameters. When the user targets a wallet (hover
- * or focus), a wave of pulses travels outward along every incident
- * synapse — the brain "fires" along its connections from the
- * targeted neuron. Per-frame progress increment; completion in
- * ~25 frames (~400ms at 60fps).
- */
-const PULSE_SPEED = 0.04;
-const PULSE_RADIUS = 1.8;
-const PULSE_COLOR = 0xffd700; // brass-gold
 
 /** Hover-spotlight multiplier for non-neighbors — focus on the active branch. */
 const SPOTLIGHT_DIM = 0.15;
@@ -168,9 +155,7 @@ type Body = {
 };
 
 type Link = PhysicsLink & {
-  /** Most recent activity from either endpoint — drives the fade-out math. */
-  bondLastActive: number;
-  /** Synapse formation block — drives the fade-in animation. */
+  /** The bond's real first-appearance block — drives the transient edge fade. */
   formationBlock: number;
 };
 
@@ -294,62 +279,6 @@ export function GraphView() {
       const edges = new Graphics();
       viewport.addChild(edges);
 
-      // Pulse layer renders on top of edges but below dots — the
-      // synapse-fire animation reads as "between the wires," not "on
-      // top of the neurons."
-      const pulseLayer = new Graphics();
-      viewport.addChild(pulseLayer);
-
-      // Active pulses traveling along synapses. Each entry is one
-      // pulse from `fromIdx` toward `toIdx`; progress 0..1; removed
-      // on completion.
-      type Pulse = { fromIdx: number; toIdx: number; progress: number };
-      const pulses: Pulse[] = [];
-
-      // Tracks which block the pulse-spawner last saw, so playback
-      // forward through history fires a pulse on each bond AT its
-      // formation block. The lattice "learns" its connections as the
-      // scrubber moves forward.
-      let lastSpawnedBlock = useTimegridStore.getState().currentBlock;
-      const MAX_PULSES_PER_FRAME = 5;
-
-      function spawnPulsesFromSeed(seedAddress: string): void {
-        const seedIdx = idxByAddr.get(seedAddress);
-        if (seedIdx === undefined) return;
-        for (const link of links) {
-          let toIdx: number | null = null;
-          if (link.a === seedIdx) toIdx = link.b;
-          else if (link.b === seedIdx) toIdx = link.a;
-          if (toIdx === null) continue;
-          pulses.push({ fromIdx: seedIdx, toIdx, progress: 0 });
-        }
-      }
-
-      function spawnPulsesForNewBonds(): void {
-        if (currentBlock <= lastSpawnedBlock) {
-          // Backward scrubbing or no advance — re-baseline without
-          // spawning.
-          lastSpawnedBlock = currentBlock;
-          return;
-        }
-        let spawned = 0;
-        for (const link of links) {
-          if (spawned >= MAX_PULSES_PER_FRAME) break;
-          if (
-            link.formationBlock > lastSpawnedBlock &&
-            link.formationBlock <= currentBlock
-          ) {
-            const a = bodies[link.a];
-            const b = bodies[link.b];
-            // Skip if either endpoint isn't yet visible
-            if (a.node.alpha === 0 || b.node.alpha === 0) continue;
-            pulses.push({ fromIdx: link.a, toIdx: link.b, progress: 0 });
-            spawned++;
-          }
-        }
-        lastSpawnedBlock = currentBlock;
-      }
-
       let draggedBody: Body | null = null;
       let dragOffsetX = 0;
       let dragOffsetY = 0;
@@ -417,10 +346,17 @@ export function GraphView() {
       }
 
       function nodeAlpha(body: Body): number {
+        // Focus mode = time-independent ego-network: the focused node + its
+        // neighbors render full, everything else is hidden — a click drills
+        // into a wallet's lifetime connections, regardless of the scrubber.
+        if (focusedAddress) {
+          return spotlightDistances.has(body.wallet.address) ? 1 : 0;
+        }
         const born = body.wallet.firstSeenBlock <= currentBlock;
         const active = born && body.wallet.lastActiveBlock >= currentBlock;
         const activityA = !born ? 0 : active ? 1 : 0.3;
-        if (!spotlightTarget()) return activityA;
+        // Hover preview: dim non-neighbors, don't hide them.
+        if (!hoveredAddress) return activityA;
         if (spotlightDistances.has(body.wallet.address)) return activityA;
         return activityA * SPOTLIGHT_DIM;
       }
@@ -513,7 +449,6 @@ export function GraphView() {
           setSelectedWallet(wallet.address);
           hoveredAddress = wallet.address;
           recomputeSpotlight();
-          spawnPulsesFromSeed(wallet.address);
           applyAlpha();
         });
         dot.on('pointerout', () => {
@@ -538,7 +473,6 @@ export function GraphView() {
             setSelectedWallet(wallet.address);
             setActiveDockPanel('wallet-inspector');
             setFocusActive(true);
-            spawnPulsesFromSeed(wallet.address);
           }
           recomputeSpotlight();
           applyAlpha();
@@ -750,15 +684,10 @@ export function GraphView() {
           PHYSICS.spring * (Math.log10(Number(bond.sats) + 1) * 0.1 + 0.6);
         const aWallet = bodies[a].wallet;
         const bWallet = bodies[b].wallet;
-        const bondLastActive = Math.max(
-          aWallet.lastActiveBlock,
-          bWallet.lastActiveBlock,
-        );
         // Formation block — the bond's TRUE first-appearance block, carried by
         // the parquet substrate (reduce computes MIN(formationBlock) across the
-        // chain). The synapse fade-in ramp + formation pulse fire as the scrubber
-        // crosses it, so playback from genesis replays each connection forming at
-        // its real on-chain birth. The 50-node fixture omits it, so fall back to a
+        // chain). Drives the transient edge: the bond flashes as the scrubber
+        // crosses it, then fades. The 50-node fixture omits it, so fall back to a
         // deterministic djb2 pick within the endpoints' overlap window.
         let formationBlock = bond.formationBlock;
         if (formationBlock === undefined) {
@@ -769,7 +698,7 @@ export function GraphView() {
               ? lo
               : lo + (djb2(`${bond.fromAddress}|${bond.toAddress}`) % (hi - lo));
         }
-        links.push({ a, b, strength, bondLastActive, formationBlock });
+        links.push({ a, b, strength, formationBlock });
       }
 
       // Build the neighbor map once — used by hover-spotlight to flag
@@ -838,70 +767,51 @@ export function GraphView() {
           if (body.halo) body.halo.position.set(cx + body.x, cy + body.y);
         }
 
-        // Spawn formation pulses for any bonds that crossed their
-        // formationBlock since the last frame — synapses "fire" as
-        // the brain learns them during playback.
-        spawnPulsesForNewBonds();
-
-        // Synapse-fire pulses — render before edges so edges underlay,
-        // dots overlay, pulses sit between. Iterate backwards so we
-        // can splice completed pulses without skipping.
-        pulseLayer.clear();
-        for (let i = pulses.length - 1; i >= 0; i--) {
-          const p = pulses[i];
-          p.progress += PULSE_SPEED;
-          if (p.progress >= 1) {
-            pulses.splice(i, 1);
-            continue;
-          }
-          const fromBody = bodies[p.fromIdx];
-          const toBody = bodies[p.toIdx];
-          // Skip pulses where either endpoint is invisible (pre-birth)
-          if (fromBody.node.alpha === 0 || toBody.node.alpha === 0) {
-            continue;
-          }
-          const t = p.progress;
-          const px = cx + fromBody.x + (toBody.x - fromBody.x) * t;
-          const py = cy + fromBody.y + (toBody.y - fromBody.y) * t;
-          // Pulse alpha eases out near the end of travel so completion
-          // is gentle rather than abrupt.
-          const pulseAlpha = Math.max(0.2, 1 - p.progress * 0.5);
-          pulseLayer
-            .circle(px, py, PULSE_RADIUS)
-            .fill({ color: PULSE_COLOR, alpha: pulseAlpha });
-        }
-
         edges.clear();
-        for (const link of links) {
-          const a = bodies[link.a];
-          const b = bodies[link.b];
-          // Skip edges where either endpoint is fully invisible (pre-birth)
-          if (a.node.alpha === 0 || b.node.alpha === 0) continue;
-          // Synapse formation ramp — 0 → 1 over the bond's first
-          // BOND_FORMATION_BLOCKS blocks. Pre-formation: edge invisible.
-          const formationAge = currentBlock - link.formationBlock;
-          if (formationAge < 0) continue;
-          const formationAlpha =
-            formationAge >= BOND_FORMATION_BLOCKS
-              ? 1
-              : formationAge / BOND_FORMATION_BLOCKS;
-          // Existing fade-out math past last activity.
-          const blocksAfter = Math.max(0, currentBlock - link.bondLastActive);
-          const fadeAlpha = Math.max(0, 1 - blocksAfter / EDGE_FADE_BLOCKS);
-          let alpha = formationAlpha * fadeAlpha * EDGE_BASE_ALPHA;
-          // Edge spotlight: hot iff both endpoints are inside the
-          // current spotlight set (BFS up to activeSpotlightDepth from
-          // the target). Outside-the-set edges dim by SPOTLIGHT_DIM.
-          if (spotlightTarget()) {
-            const aHot = spotlightDistances.has(a.wallet.address);
-            const bHot = spotlightDistances.has(b.wallet.address);
-            if (!(aHot && bHot)) alpha *= SPOTLIGHT_DIM;
+        if (focusedAddress) {
+          // Focus mode — the wallet's full lifetime ego-network: every edge
+          // whose endpoints are BOTH in the spotlight set (focused node + its
+          // neighbors out to the chosen hop depth), drawn full + time-
+          // independent. Everything else is hidden.
+          for (const link of links) {
+            const a = bodies[link.a];
+            const b = bodies[link.b];
+            if (
+              !spotlightDistances.has(a.wallet.address) ||
+              !spotlightDistances.has(b.wallet.address)
+            ) {
+              continue;
+            }
+            edges
+              .moveTo(cx + a.x, cy + a.y)
+              .lineTo(cx + b.x, cy + b.y)
+              .stroke({ width: 0.8, color: 0xc28840, alpha: 0.85 });
           }
-          if (alpha <= 0) continue;
-          edges
-            .moveTo(cx + a.x, cy + a.y)
-            .lineTo(cx + b.x, cy + b.y)
-            .stroke({ width: 0.6, color: 0xc28840, alpha });
+        } else {
+          // Default — transient per-block edges: a bond appears at its real
+          // formation block and fades out over EDGE_FADE_BLOCKS, then it's
+          // gone. Only bonds formed within the fade window of the scrubber
+          // render, so the frame is bounded — no persistent-hairball lag.
+          for (const link of links) {
+            const age = currentBlock - link.formationBlock;
+            if (age < 0 || age >= EDGE_FADE_BLOCKS) continue;
+            const a = bodies[link.a];
+            const b = bodies[link.b];
+            // Endpoints must be born/visible.
+            if (a.node.alpha === 0 || b.node.alpha === 0) continue;
+            let alpha = (1 - age / EDGE_FADE_BLOCKS) * EDGE_BASE_ALPHA;
+            // Hover preview dims edges outside the hovered neighborhood.
+            if (hoveredAddress) {
+              const aHot = spotlightDistances.has(a.wallet.address);
+              const bHot = spotlightDistances.has(b.wallet.address);
+              if (!(aHot && bHot)) alpha *= SPOTLIGHT_DIM;
+            }
+            if (alpha <= 0) continue;
+            edges
+              .moveTo(cx + a.x, cy + a.y)
+              .lineTo(cx + b.x, cy + b.y)
+              .stroke({ width: 0.6, color: 0xc28840, alpha });
+          }
         }
       }
 
