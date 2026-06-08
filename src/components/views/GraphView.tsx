@@ -355,6 +355,7 @@ export function GraphView() {
       let dragOffsetY = 0;
       let currentBlock = useTimegridStore.getState().currentBlock;
       let panning = false;
+      let panMoved = false;
       let panStart = { x: 0, y: 0 };
       let panStartCam = { x: 0, y: 0 };
       let hoveredAddress: string | null = null;
@@ -431,6 +432,18 @@ export function GraphView() {
           body.node.alpha = alpha;
           if (body.halo) body.halo.alpha = alpha === 0 ? 0 : 0.75 * alpha;
         }
+      }
+
+      // Clear any sticky focus/hover and return the lattice to its full,
+      // undimmed view. Shared by ESC and the click-empty-canvas gesture.
+      function clearFocus(): void {
+        if (!focusedAddress && !hoveredAddress) return;
+        focusedAddress = null;
+        hoveredAddress = null;
+        setSelectedWallet(null);
+        setFocusActive(false);
+        recomputeSpotlight();
+        applyAlpha();
       }
 
       // Convert screen-space cursor to viewport-local coords. Required
@@ -581,6 +594,7 @@ export function GraphView() {
         }) => {
           if (e.target !== app.stage) return; // a dot was hit
           panning = true;
+          panMoved = false;
           panStart = { x: e.global.x, y: e.global.y };
           panStartCam = { ...useTimegridStore.getState().camera.position };
           app.canvas.style.cursor = 'grabbing';
@@ -596,6 +610,11 @@ export function GraphView() {
             draggedBody.vx = 0;
             draggedBody.vy = 0;
           } else if (panning) {
+            // Flag a real drag once the pointer travels >5px, so a release
+            // with no movement reads as a click (→ deselect), not a pan.
+            const ddx = e.global.x - panStart.x;
+            const ddy = e.global.y - panStart.y;
+            if (ddx * ddx + ddy * ddy > 25) panMoved = true;
             const cam = useTimegridStore.getState().camera;
             setCamera({
               position: {
@@ -622,8 +641,12 @@ export function GraphView() {
         app.canvas.style.cursor = '';
       }
       app.stage.on('pointerup', () => {
+        // A press+release on empty canvas with no drag = click → clear focus
+        // (return the lattice to its full, undimmed view).
+        const emptyClick = panning && !panMoved;
         endDrag();
         endPan();
+        if (emptyClick) clearFocus();
       });
       app.stage.on('pointerupoutside', () => {
         endDrag();
@@ -635,12 +658,7 @@ export function GraphView() {
       const onKeyDown = (event: KeyboardEvent): void => {
         // ESC clears focus (existing behavior).
         if (event.key === 'Escape') {
-          if (!focusedAddress) return;
-          focusedAddress = null;
-          setSelectedWallet(null);
-          setFocusActive(false);
-          recomputeSpotlight();
-          applyAlpha();
+          clearFocus();
           return;
         }
         // Number keys 1/2/3/0 cycle spotlight depth — quick
