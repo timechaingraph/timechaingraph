@@ -122,27 +122,9 @@ const PHYSICS = {
 const EDGE_FADE_BLOCKS = 10000;
 const EDGE_BASE_ALPHA = 0.4;
 
-/** Hover-spotlight multiplier for non-neighbors — focus on the active branch. */
-const SPOTLIGHT_DIM = 0.15;
-
 /** Focus shows at most this many of a wallet's strongest bonds — keeps a hub's
  *  ego-network legible instead of a blob of hundreds of all-time links. */
 const FOCUS_MAX_BONDS = 24;
-
-/**
- * Spotlight depths the user can cycle through. Hop 1 = direct
- * neighbors only (default). Hop 2/3 = expanding lineage (matches
- * the empire BFS in the brain generator). 'all'
- * lifts the dim entirely so the full lattice reads as bright.
- */
-const SPOTLIGHT_DEPTHS = [1, 2, 3, Infinity] as const;
-type SpotlightDepth = (typeof SPOTLIGHT_DEPTHS)[number];
-const SPOTLIGHT_DEPTH_LABELS: Record<string, string> = {
-  '1': 'Hop 1',
-  '2': 'Hop 2',
-  '3': 'Hop 3',
-  Infinity: 'All',
-};
 
 const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 5;
@@ -224,6 +206,8 @@ type Body = {
   mass: number;
   /** Repulsion weight ∝ radius (∝ log-degree) — hubs push harder, spread more. */
   charge: number;
+  /** Spring-force scale 1/√(degree+1) — caps a hub's pull so it doesn't collapse. */
+  springScale: number;
   /** Pre-birth: excluded from the sim so invisible nodes don't warp the layout. */
   inactive: boolean;
   pinned: boolean;
@@ -263,14 +247,8 @@ export function GraphView() {
   // PIXI effect — used only by the HUD render path (conditional ESC
   // hint). The graphics pipeline never reads React state.
   const [focusActive, setFocusActive] = useState(false);
-  // Spotlight depth — controls how many BFS hops out from the focus
-  // target the lattice stays bright. 1 = direct neighbors only;
-  // Infinity = full empire (no dimming). React state for HUD render;
-  // mirrored to a closure variable inside the effect for the graphics
-  // pipeline.
-  const [spotlightDepth, setSpotlightDepth] = useState<SpotlightDepth>(1);
-  // Hover tooltip (identity peek). Hover does NOT dim the canvas any more —
-  // click is the real interaction (focus → ego-network).
+  // Hover tooltip (identity peek). Hover does NOT dim the canvas — click is the
+  // real interaction (focus → ego-network).
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
 
   useEffect(() => {
@@ -369,53 +347,14 @@ export function GraphView() {
       let camTween:
         | { fromX: number; fromY: number; fromZoom: number; toX: number; toY: number; toZoom: number; t: number }
         | null = null;
-      let hoveredAddress: string | null = null;
       let focusedAddress: string | null = null;
-      let activeSpotlightDepth: SpotlightDepth = 1;
       let spotlightDistances = new Map<string, number>();
-      const neighborsByAddr = new Map<string, Set<string>>();
 
       function shouldBePinned(body: Body): boolean {
         if (body === draggedBody) return true;
         if (body.wallet.role === 'satoshi') return true;
         if (body.wallet.firstSeenBlock > currentBlock) return true;
         return false;
-      }
-
-      // Three orthogonal alpha layers compose multiplicatively here:
-      //   activity (alive 1 / gone-dark 0.3 / pre-birth 0)
-      //   × spotlight (1 if within depth hops of target; else 0.15)
-      //   = final node alpha
-      // Spotlight target is `focusedAddress ?? hoveredAddress` — focus is
-      // a sticky hover. Depth comes from `activeSpotlightDepth` (1, 2, 3,
-      // or Infinity for full empire).
-      function spotlightTarget(): string | null {
-        return focusedAddress ?? hoveredAddress;
-      }
-
-      // BFS through neighborsByAddr from a seed up to maxDepth. Returns
-      // a Map<address, hopDistance>. Same algorithm the snapshot
-      // generator uses for empire emit; both surfaces compute
-      // identical distances by construction.
-      function bfsFrom(seed: string, maxDepth: number): Map<string, number> {
-        const distances = new Map<string, number>();
-        distances.set(seed, 0);
-        const queue: string[] = [seed];
-        while (queue.length > 0) {
-          const current = queue.shift();
-          if (current === undefined) break;
-          const currentDist = distances.get(current);
-          if (currentDist === undefined || currentDist >= maxDepth) continue;
-          const neighbors = neighborsByAddr.get(current);
-          if (!neighbors) continue;
-          for (const neighbor of neighbors) {
-            if (!distances.has(neighbor)) {
-              distances.set(neighbor, currentDist + 1);
-              queue.push(neighbor);
-            }
-          }
-        }
-        return distances;
       }
 
       // Focus ego-set: the focused wallet + its strongest bonds formed up to the
@@ -433,33 +372,23 @@ export function GraphView() {
       }
 
       function recomputeSpotlight(): void {
-        if (focusedAddress) {
-          // Focus = capped, time-filtered ego-network (see focusEgoSet).
-          spotlightDistances = focusEgoSet(focusedAddress);
-          return;
-        }
-        const target = spotlightTarget();
-        if (!target) {
-          spotlightDistances = new Map();
-          return;
-        }
-        spotlightDistances = bfsFrom(target, activeSpotlightDepth);
+        // Focus = capped, time-filtered ego-network (focusEgoSet); otherwise
+        // nothing is spotlit (hover no longer dims the canvas).
+        spotlightDistances = focusedAddress
+          ? focusEgoSet(focusedAddress)
+          : new Map();
       }
 
       function nodeAlpha(body: Body): number {
         // Focus mode = time-independent ego-network: the focused node + its
-        // neighbors render full, everything else is hidden — a click drills
-        // into a wallet's lifetime connections, regardless of the scrubber.
+        // neighbors render full, everything else hidden. Otherwise alpha is pure
+        // activity bloom (alive 1 / gone-dark 0.3 / pre-birth 0).
         if (focusedAddress) {
           return spotlightDistances.has(body.wallet.address) ? 1 : 0;
         }
         const born = body.wallet.firstSeenBlock <= currentBlock;
         const active = born && body.wallet.lastActiveBlock >= currentBlock;
-        const activityA = !born ? 0 : active ? 1 : 0.3;
-        // Hover preview: dim non-neighbors, don't hide them.
-        if (!hoveredAddress) return activityA;
-        if (spotlightDistances.has(body.wallet.address)) return activityA;
-        return activityA * SPOTLIGHT_DIM;
+        return !born ? 0 : active ? 1 : 0.3;
       }
 
       function applyAlpha(): void {
@@ -474,12 +403,11 @@ export function GraphView() {
         }
       }
 
-      // Clear any sticky focus/hover and return the lattice to its full,
-      // undimmed view. Shared by ESC and the click-empty-canvas gesture.
+      // Clear sticky focus and return the lattice to its full view. Shared by
+      // ESC and the click-empty-canvas gesture.
       function clearFocus(): void {
-        if (!focusedAddress && !hoveredAddress) return;
+        if (!focusedAddress) return;
         focusedAddress = null;
-        hoveredAddress = null;
         setSelectedWallet(null);
         setFocusActive(false);
         recomputeSpotlight();
@@ -541,6 +469,7 @@ export function GraphView() {
           vy: 0,
           mass: massOf(),
           charge: radius, // degree-weighted repulsion (radius ∝ log-degree)
+          springScale: 1 / Math.sqrt((degreeByAddr.get(wallet.address) ?? 0) + 1),
           inactive: wallet.firstSeenBlock > currentBlock, // pre-birth = out of sim
           pinned: false,
           node: dot,
@@ -574,7 +503,6 @@ export function GraphView() {
             setFocusActive(false);
           } else {
             focusedAddress = wallet.address;
-            hoveredAddress = null; // focus supersedes hover
             setSelectedWallet(wallet.address);
             setActiveDockPanel('wallet-inspector');
             setFocusActive(true);
@@ -697,31 +625,7 @@ export function GraphView() {
       // ESC clears focus mode. document-level so it works regardless of
       // canvas focus state. No-op when nothing is focused.
       const onKeyDown = (event: KeyboardEvent): void => {
-        // ESC clears focus (existing behavior).
-        if (event.key === 'Escape') {
-          clearFocus();
-          return;
-        }
-        // Number keys 1/2/3/0 cycle spotlight depth — quick
-        // brain-empire navigation. Press 2 to expand the spotlight
-        // from direct neighbors to 2-hop reach; 0 lifts the dim
-        // entirely (full empire visible). Only fires when focused
-        // OR hovered, so accidental keypresses don't churn the
-        // visual.
-        if (event.key === '1' || event.key === '2' || event.key === '3') {
-          const newDepth = parseInt(event.key, 10) as SpotlightDepth;
-          activeSpotlightDepth = newDepth;
-          setSpotlightDepth(newDepth);
-          recomputeSpotlight();
-          applyAlpha();
-          return;
-        }
-        if (event.key === '0') {
-          activeSpotlightDepth = Infinity;
-          setSpotlightDepth(Infinity);
-          recomputeSpotlight();
-          applyAlpha();
-        }
+        if (event.key === 'Escape') clearFocus();
       };
       document.addEventListener('keydown', onKeyDown);
       cleanupFns.push(() => {
@@ -809,20 +713,9 @@ export function GraphView() {
         links.push({ a, b, strength, formationBlock });
       }
 
-      // Build the neighbor map once — used by hover-spotlight to flag
-      // every wallet bonded to the hovered node.
-      for (const link of links) {
-        const aAddr = bodies[link.a].wallet.address;
-        const bAddr = bodies[link.b].wallet.address;
-        if (!neighborsByAddr.has(aAddr)) neighborsByAddr.set(aAddr, new Set());
-        if (!neighborsByAddr.has(bAddr)) neighborsByAddr.set(bAddr, new Set());
-        neighborsByAddr.get(aAddr)!.add(bAddr);
-        neighborsByAddr.get(bAddr)!.add(aAddr);
-      }
-
       function applyScrubberState(): void {
         // Pin/un-pin per current-block; alpha is computed downstream by
-        // applyAlpha() which composes activity-bloom with hover-spotlight.
+        // applyAlpha() (activity bloom + focus).
         for (const body of bodies) {
           const wasPinned = body.pinned;
           body.pinned = shouldBePinned(body);
@@ -845,20 +738,6 @@ export function GraphView() {
         }
       });
 
-      // Programmatic depth updates from the React HUD button row.
-      // Listening on the canvas so external code can dispatch a
-      // CustomEvent('graphview:spotlight-depth', { detail: depth }).
-      const onDepthChange = (event: Event): void => {
-        const e = event as CustomEvent<SpotlightDepth>;
-        if (typeof e.detail !== 'number') return;
-        activeSpotlightDepth = e.detail;
-        recomputeSpotlight();
-        applyAlpha();
-      };
-      document.addEventListener('graphview:spotlight-depth', onDepthChange);
-      cleanupFns.push(() => {
-        document.removeEventListener('graphview:spotlight-depth', onDepthChange);
-      });
       const unsubscribeCamera = useTimegridStore.subscribe((state, prev) => {
         if (state.camera !== prev.camera) applyCamera();
       });
@@ -965,13 +844,7 @@ export function GraphView() {
             const b = bodies[link.b];
             // Endpoints must be born/visible.
             if (a.node.alpha === 0 || b.node.alpha === 0) continue;
-            let alpha = (1 - age / EDGE_FADE_BLOCKS) * EDGE_BASE_ALPHA;
-            // Hover preview dims edges outside the hovered neighborhood.
-            if (hoveredAddress) {
-              const aHot = spotlightDistances.has(a.wallet.address);
-              const bHot = spotlightDistances.has(b.wallet.address);
-              if (!(aHot && bHot)) alpha *= SPOTLIGHT_DIM;
-            }
+            const alpha = (1 - age / EDGE_FADE_BLOCKS) * EDGE_BASE_ALPHA;
             if (alpha <= 0) continue;
             edges
               .moveTo(cx + a.x, cy + a.y)
@@ -999,17 +872,6 @@ export function GraphView() {
   const handleReset = (): void => {
     document.dispatchEvent(new Event('graphview:reset'));
   };
-
-  const handleSpotlightDepth = (depth: SpotlightDepth): void => {
-    setSpotlightDepth(depth);
-    document.dispatchEvent(
-      new CustomEvent('graphview:spotlight-depth', { detail: depth }),
-    );
-  };
-
-  function depthKey(d: SpotlightDepth): string {
-    return d === Infinity ? 'Infinity' : String(d);
-  }
 
   return (
     <div className="relative h-full w-full overflow-hidden">
@@ -1048,34 +910,6 @@ export function GraphView() {
       >
         ↺ Reset
       </button>
-      <div
-        className="text-mono absolute left-3 top-12 flex items-center gap-1 rounded-full border border-[color:var(--color-card-border)] bg-[color:var(--color-background)]/70 px-1.5 py-1 backdrop-blur-sm"
-        role="group"
-        aria-label="Spotlight depth"
-      >
-        <span className="px-1 text-[9px] uppercase tracking-[0.22em] text-[color:var(--color-text-muted)]">
-          Hops
-        </span>
-        {SPOTLIGHT_DEPTHS.map((d) => {
-          const active = depthKey(d) === depthKey(spotlightDepth);
-          return (
-            <button
-              key={depthKey(d)}
-              type="button"
-              onClick={() => handleSpotlightDepth(d)}
-              aria-pressed={active}
-              className={[
-                'rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.22em] transition-colors',
-                active
-                  ? 'bg-[color:var(--color-amber)]/15 text-[color:var(--color-amber)]'
-                  : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)]',
-              ].join(' ')}
-            >
-              {SPOTLIGHT_DEPTH_LABELS[depthKey(d)].replace('Hop ', '')}
-            </button>
-          );
-        })}
-      </div>
       <div
         aria-hidden
         className="text-mono pointer-events-none absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.28em] text-[color:var(--color-gold)] mix-blend-screen"

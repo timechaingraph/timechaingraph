@@ -31,6 +31,13 @@ export interface PhysicsBody {
    */
   charge?: number;
   /**
+   * Per-node spring-force scale (default 1). < 1 caps how hard this node is
+   * pulled by ITS springs — set to ~1/√(degree) so a mega-hub bonded to
+   * hundreds of wallets isn't dragged into their centroid (the central-clump
+   * fix). Applied per endpoint, so leaves still attach fully to their hub.
+   */
+  springScale?: number;
+  /**
    * When true the body is excluded from the simulation entirely — no gravity,
    * repulsion (as source or target), or springs. Used for pre-birth nodes so
    * invisible wallets don't distort the visible layout. Default false.
@@ -325,13 +332,17 @@ export function applySprings(
     const ux = dx / dist;
     const uy = dy / dist;
     const f = stretch * link.strength;
+    // Scale per endpoint by its springScale (default 1) so high-degree hubs
+    // aren't dragged into their many neighbors' centroid.
     if (!a.pinned) {
-      a.vx += ux * f * dt;
-      a.vy += uy * f * dt;
+      const fa = f * (a.springScale ?? 1);
+      a.vx += ux * fa * dt;
+      a.vy += uy * fa * dt;
     }
     if (!b.pinned) {
-      b.vx -= ux * f * dt;
-      b.vy -= uy * f * dt;
+      const fb = f * (b.springScale ?? 1);
+      b.vx -= ux * fb * dt;
+      b.vy -= uy * fb * dt;
     }
   }
 }
