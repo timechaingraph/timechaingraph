@@ -93,13 +93,19 @@ const PHYSICS = {
   // graph: weaker gravity + stronger repulsion so it spreads into a readable
   // network instead of a tight ball. step() auto-switches to Barnes-Hut above
   // BH_THRESHOLD; theta is its opening angle (0.8 = fast, fine for this view).
-  gravity: 0.025,
-  // Lower base than before because repulsion is now charge-weighted (per-node
-  // charge ∝ radius ∝ log-degree), so big hubs push proportionally harder and
-  // spread out instead of clumping centrally. Tune this together with charge.
-  repulsion: 600,
-  spring: 0.012,
-  springRest: 80,
+  // Tuned to break up the dense central cluster of cross-bonded whales (which
+  // booms after ~block 490k as the big wallets come online + transact with each
+  // other). Four knobs, all pushing toward spread:
+  //   gravity   ↓ — weaker pull to origin, so everything doesn't converge center
+  //   repulsion ↑ — stronger push (charge-weighted: hubs push hardest)
+  //   spring    ↓ — bonded nodes pull together less
+  //   springRest ↑ — and they settle farther apart
+  // If still too clumped: ↑repulsion / ↑springRest / ↓gravity. If it explodes or
+  // drifts apart: the reverse.
+  gravity: 0.014,
+  repulsion: 1100,
+  spring: 0.0075,
+  springRest: 140,
   damping: 0.86,
   maxStep: 1 / 30,
   theta: 0.8,
