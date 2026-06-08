@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Application, Container, Graphics, Sprite } from 'pixi.js';
 import { getActiveSubstrate } from '@/data/substrate';
-import { ROLE_COLOR, ROLE_RADIUS } from '@/lib/role-visuals';
+import { ROLE_COLOR } from '@/lib/role-visuals';
 import { useTimegridStore } from '@/store/timegridStore';
 import { BRAND_TAGLINE } from '@/lib/site-config';
 import { step as physicsStep, type PhysicsLink } from '@/lib/forceLayout';
@@ -58,6 +58,14 @@ if (_sub.wallets.length <= MAX_RENDER_NODES) {
   BONDS = keptB;
 }
 
+// Degree centrality per address (how many distinct bonds touch it), from the
+// rendered bond set. Drives node SIZE — the most-connected wallets read biggest.
+const degreeByAddr = new Map<string, number>();
+for (const b of BONDS) {
+  degreeByAddr.set(b.fromAddress, (degreeByAddr.get(b.fromAddress) ?? 0) + 1);
+  degreeByAddr.set(b.toAddress, (degreeByAddr.get(b.toAddress) ?? 0) + 1);
+}
+
 const RING_RADIUS: Record<WalletRole, number> = {
   satoshi: 0,
   whale: 90,
@@ -83,11 +91,12 @@ const PHYSICS = {
 /**
  * Transient edges: a bond is a per-block transaction event. It appears at its
  * real formation block and fades to alpha 0 over the next EDGE_FADE_BLOCKS,
- * then it's gone — so the canvas shows only what transacted near the scrubber's
- * block, not a persistent hairball. (Focus mode overrides this to show a
- * wallet's full lifetime ego-network.) Bump this to widen the visible window.
+ * then it's gone — so the canvas shows recent transaction activity around the
+ * scrubber's block, not a persistent all-time hairball. (Focus mode overrides
+ * this to show a wallet's full lifetime ego-network.) ~1000 blocks ≈ a week of
+ * activity — enough to read structure without the lag of the full set.
  */
-const EDGE_FADE_BLOCKS = 10;
+const EDGE_FADE_BLOCKS = 1000;
 const EDGE_BASE_ALPHA = 0.4;
 
 /** Hover-spotlight multiplier for non-neighbors — focus on the active branch. */
@@ -140,6 +149,22 @@ function seedPosition(wallet: WalletData): { x: number; y: number } {
 
 function massOf(wallet: WalletData): number {
   return Math.log10(Number(wallet.totalReceivedSats) + 1) * 0.3 + 0.5;
+}
+
+// Node radius by DEGREE CENTRALITY — the more bonds a wallet has, the bigger it
+// reads (the documented "radius = base + log(centrality)" model). Satoshi is the
+// genesis centerpiece: a fixed, largest radius, anchored at the origin.
+const SATOSHI_RADIUS = 9;
+const NODE_BASE_RADIUS = 1.2;
+const NODE_DEGREE_SCALE = 1.4;
+const NODE_MAX_RADIUS = 7;
+function radiusFor(wallet: WalletData): number {
+  if (wallet.role === 'satoshi') return SATOSHI_RADIUS;
+  const degree = degreeByAddr.get(wallet.address) ?? 0;
+  return Math.min(
+    NODE_MAX_RADIUS,
+    NODE_BASE_RADIUS + Math.log10(degree + 1) * NODE_DEGREE_SCALE,
+  );
 }
 
 type Body = {
@@ -366,6 +391,9 @@ export function GraphView() {
           if (body === draggedBody) continue;
           const alpha = nodeAlpha(body);
           body.node.alpha = alpha;
+          // Invisible nodes (pre-birth, or hidden in focus mode) must not be
+          // hoverable/clickable — otherwise you can select a node you can't see.
+          body.node.eventMode = alpha > 0 ? 'static' : 'none';
           if (body.halo) body.halo.alpha = alpha === 0 ? 0 : 0.75 * alpha;
         }
       }
@@ -409,7 +437,7 @@ export function GraphView() {
 
       const bodies: Body[] = WALLETS.map((wallet) => {
         const seed = seedPosition(wallet);
-        const radius = ROLE_RADIUS[wallet.role];
+        const radius = radiusFor(wallet);
         const scale = radius / NODE_TEX_RADIUS;
 
         // Shared-texture Sprite (batched) instead of a per-node Graphics. Sprite
@@ -504,7 +532,7 @@ export function GraphView() {
         if (wallet.role === 'satoshi') {
           const halo = new Graphics();
           halo
-            .circle(0, 0, ROLE_RADIUS.satoshi + 7)
+            .circle(0, 0, SATOSHI_RADIUS + 7)
             .stroke({ width: 1.4, color: ROLE_COLOR.satoshi, alpha: 0.75 });
           halo.position.set(cx + seed.x, cy + seed.y);
           viewport.addChild(halo);

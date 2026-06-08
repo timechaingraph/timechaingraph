@@ -79,9 +79,11 @@ export function GraphCanvas() {
         </div>
       </div>
 
-      {/* Bottom: scrubber + playback (block 0 → tip). */}
-      <div className="pointer-events-none absolute right-0 bottom-3 left-0 z-10 flex justify-center px-3">
-        <div className="pointer-events-auto w-full max-w-3xl">
+      {/* Bottom: scrubber + playback (block 0 → tip). The whole strip captures
+          pointer events so hovering near the scrubber never reaches — and
+          highlights — nodes on the canvas behind it. */}
+      <div className="pointer-events-auto absolute right-0 bottom-3 left-0 z-10 flex justify-center px-3">
+        <div className="w-full max-w-3xl">
           <GraphPlayBar />
         </div>
       </div>

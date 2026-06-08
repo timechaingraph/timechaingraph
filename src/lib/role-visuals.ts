@@ -16,7 +16,7 @@ import type { WalletRole } from '@/types/wallet';
  */
 
 export const ROLE_COLOR: Record<WalletRole, number> = {
-  satoshi: 0xc28840, // brass — anchor at origin
+  satoshi: 0xd2691e, // dark orange — the genesis centerpiece, biggest + at origin
   miner: 0xef4444, // red
   whale: 0xffd700, // gold
   significant: 0x00d4ff, // cyan
@@ -24,7 +24,7 @@ export const ROLE_COLOR: Record<WalletRole, number> = {
 };
 
 export const ROLE_CSS: Record<WalletRole, string> = {
-  satoshi: '#C28840',
+  satoshi: '#D2691E',
   miner: '#EF4444',
   whale: '#FFD700',
   significant: '#00D4FF',
