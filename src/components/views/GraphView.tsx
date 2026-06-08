@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Application, Container, Graphics, Sprite } from 'pixi.js';
 import { getActiveSubstrate } from '@/data/substrate';
-import { ROLE_COLOR } from '@/lib/role-visuals';
+import { ROLE_COLOR, ROLE_CSS, ROLE_LABEL } from '@/lib/role-visuals';
 import { useTimegridStore } from '@/store/timegridStore';
 import { BRAND_TAGLINE } from '@/lib/site-config';
 import { step as physicsStep, type PhysicsLink } from '@/lib/forceLayout';
@@ -197,6 +197,24 @@ function radiusFor(wallet: WalletData): number {
   );
 }
 
+/** Compact BTC label for the hover tooltip. */
+function btcShort(sats: bigint): string {
+  const btc = Number(sats) / 1e8;
+  if (btc >= 1000) return `${Math.round(btc).toLocaleString()} BTC`;
+  if (btc >= 1) return `${btc.toFixed(1)} BTC`;
+  return `${btc.toFixed(3)} BTC`;
+}
+
+/** What the hover tooltip shows about a node (screen pos + identity facts). */
+type HoverInfo = {
+  x: number;
+  y: number;
+  addr: string;
+  role: WalletRole;
+  degree: number;
+  btc: string;
+};
+
 type Body = {
   wallet: WalletData;
   x: number;
@@ -251,6 +269,9 @@ export function GraphView() {
   // mirrored to a closure variable inside the effect for the graphics
   // pipeline.
   const [spotlightDepth, setSpotlightDepth] = useState<SpotlightDepth>(1);
+  // Hover tooltip (identity peek). Hover does NOT dim the canvas any more —
+  // click is the real interaction (focus → ego-network).
+  const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -526,23 +547,22 @@ export function GraphView() {
           halo: null,
         };
 
-        dot.on('pointerover', () => {
+        dot.on('pointerover', (e: { global: { x: number; y: number } }) => {
           if (draggedBody || panning) return;
-          // While focused, hover does nothing — focus is locked and the
-          // user has already committed to a wallet via click.
-          if (focusedAddress) return;
-          setSelectedWallet(wallet.address);
-          hoveredAddress = wallet.address;
-          recomputeSpotlight();
-          applyAlpha();
+          // Hover = a lightweight identity tooltip ONLY — no canvas dimming.
+          // (Clicking is the real interaction: focus → ego-network + inspector.)
+          setHoverInfo({
+            x: e.global.x,
+            y: e.global.y,
+            addr: wallet.address,
+            role: wallet.role,
+            degree: degreeByAddr.get(wallet.address) ?? 0,
+            btc: btcShort(wallet.totalReceivedSats),
+          });
         });
         dot.on('pointerout', () => {
           if (draggedBody || panning) return;
-          if (focusedAddress) return;
-          setSelectedWallet(null);
-          hoveredAddress = null;
-          recomputeSpotlight();
-          applyAlpha();
+          setHoverInfo(null);
         });
         dot.on('pointertap', () => {
           // Click toggles local-graph focus on this wallet.
@@ -996,8 +1016,30 @@ export function GraphView() {
       <div
         ref={containerRef}
         className="absolute inset-0 cursor-grab active:cursor-grabbing"
-        aria-label="Timechain Graph — force-directed Bitcoin wallet network. Drag empty space to pan, scroll to zoom, drag any wallet to pull it through the layout, click a wallet to focus on its neighborhood, ESC to clear focus"
+        aria-label="Timechain Graph — force-directed Bitcoin wallet network. Drag empty space to pan, scroll to zoom, drag any wallet to pull it through the layout, hover a wallet to identify it, click a wallet to focus on its connections, ESC to clear focus"
       />
+      {hoverInfo && (
+        <div
+          className="text-mono pointer-events-none absolute z-20 rounded-md border border-[color:var(--color-card-border)] bg-[color:var(--color-background)]/90 px-2.5 py-1.5 text-[10px] leading-tight backdrop-blur-sm"
+          style={{ left: hoverInfo.x + 14, top: hoverInfo.y + 14, maxWidth: 240 }}
+        >
+          <div className="font-semibold text-[color:var(--color-text-primary)]">
+            {hoverInfo.addr.slice(0, 10)}…{hoverInfo.addr.slice(-6)}
+          </div>
+          <div
+            className="mt-0.5 uppercase tracking-wider"
+            style={{ color: ROLE_CSS[hoverInfo.role] }}
+          >
+            {ROLE_LABEL[hoverInfo.role]}
+          </div>
+          <div className="mt-0.5 text-[color:var(--color-text-muted)]">
+            {hoverInfo.degree.toLocaleString()} connections · {hoverInfo.btc} received
+          </div>
+          <div className="mt-1 text-[9px] uppercase tracking-wider text-[color:var(--color-text-faint)]">
+            click to focus
+          </div>
+        </div>
+      )}
       <button
         type="button"
         onClick={handleReset}
