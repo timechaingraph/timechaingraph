@@ -93,10 +93,10 @@ const PHYSICS = {
  * real formation block and fades to alpha 0 over the next EDGE_FADE_BLOCKS,
  * then it's gone — so the canvas shows recent transaction activity around the
  * scrubber's block, not a persistent all-time hairball. (Focus mode overrides
- * this to show a wallet's full lifetime ego-network.) ~1000 blocks ≈ a week of
- * activity — enough to read structure without the lag of the full set.
+ * this to show a wallet's full lifetime ego-network.) ~10000 blocks ≈ two months
+ * of activity — wide enough that edges persist visibly without the all-time set.
  */
-const EDGE_FADE_BLOCKS = 1000;
+const EDGE_FADE_BLOCKS = 10000;
 const EDGE_BASE_ALPHA = 0.4;
 
 /** Hover-spotlight multiplier for non-neighbors — focus on the active branch. */

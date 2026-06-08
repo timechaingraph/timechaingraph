@@ -91,10 +91,17 @@ def main() -> None:
 
     # ---- top-N cut (the renderable public set) ------------------------------
     if args.top_n and len(wallet_rows) > args.top_n:
-        wallet_rows.sort(key=lambda r: r['total_received_sats'], reverse=True)
-        wallet_rows = wallet_rows[:args.top_n]
+        # Always keep genesis-block wallets (Satoshi — the centerpiece, visible
+        # from block 0) regardless of lifetime-received rank, then fill the rest
+        # of the budget with the top receivers so the total stays == top_n.
+        genesis_rows = [r for r in wallet_rows if r['first_seen_block'] == 0]
+        other_rows = [r for r in wallet_rows if r['first_seen_block'] != 0]
+        other_rows.sort(key=lambda r: r['total_received_sats'], reverse=True)
+        keep_n = max(0, args.top_n - len(genesis_rows))
+        wallet_rows = genesis_rows + other_rows[:keep_n]
         addr_set = {r['address'] for r in wallet_rows}
-        print(f'  top-N cut: kept top {args.top_n:,} of {n_scanned:,} by lifetime received')
+        print(f'  top-N cut: kept {len(genesis_rows)} genesis + top {keep_n:,} '
+              f'of {n_scanned:,} by lifetime received')
 
     # ---- Pass 2: bonds where BOTH endpoints are in the public set -----------
     bond_rows: list[dict] = []
