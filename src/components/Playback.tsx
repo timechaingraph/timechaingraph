@@ -31,19 +31,17 @@ export interface PlaybackSpeed {
 }
 
 export const SPEED_OPTIONS: readonly PlaybackSpeed[] = [
-  // Narrate — the storytelling pace. Read each block as a stanza.
-  // 10 seconds per block lets the user follow the territory expanding
-  // around Satoshi without feeling rushed. This is the default.
-  { label: 'Narrate', blocksPerTick: 1, tickIntervalMs: 10_000 },
-  // Slow / Normal / Fast / Max — block-by-block at a steady human-
-  // readable cadence. All four advance ONE block per tick so the
-  // empire-border + block-narrative card update on every step;
-  // they only differ in the tick interval. Per user directive
-  // 2026-04-30: Slow=1bps, Normal=2bps, Fast=3bps, Max=10bps.
-  { label: 'Slow', blocksPerTick: 1, tickIntervalMs: 1000 },
-  { label: 'Normal', blocksPerTick: 1, tickIntervalMs: 500 },
-  { label: 'Fast', blocksPerTick: 1, tickIntervalMs: 333 },
-  { label: 'Max', blocksPerTick: 1, tickIntervalMs: 100 },
+  // Narrate — single-block study pace: read each block as a stanza as the
+  // territory expands around Satoshi. Not for traversing the whole chain.
+  { label: 'Narrate', blocksPerTick: 1, tickIntervalMs: 3000 },
+  // Slow → Max TRAVERSE the whole chain (~952k blocks) in a scaled budget, all
+  // at a steady 10 ticks/sec (smooth) by scaling blocks-per-tick:
+  //   Slow ≈ 8 min · Normal ≈ 4 min · Fast ≈ 2 min · Max ≈ 1 min (≈16k blk/s).
+  // Tuned to the current tip (~952k); rescale blocksPerTick on a bigger ingest.
+  { label: 'Slow', blocksPerTick: 200, tickIntervalMs: 100 },
+  { label: 'Normal', blocksPerTick: 400, tickIntervalMs: 100 },
+  { label: 'Fast', blocksPerTick: 800, tickIntervalMs: 100 },
+  { label: 'Max', blocksPerTick: 1600, tickIntervalMs: 100 },
 ] as const;
 
 interface PlaybackProps {

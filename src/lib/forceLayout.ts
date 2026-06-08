@@ -24,6 +24,18 @@ export interface PhysicsBody {
   vy: number;
   mass: number;
   pinned: boolean;
+  /**
+   * Repulsion weight (default 1). Higher = pushes others harder, so big hubs
+   * claim more space and spread apart instead of clumping. Consulted by both
+   * the O(n²) and Barnes-Hut repulsion as the per-body "charge".
+   */
+  charge?: number;
+  /**
+   * When true the body is excluded from the simulation entirely — no gravity,
+   * repulsion (as source or target), or springs. Used for pre-birth nodes so
+   * invisible wallets don't distort the visible layout. Default false.
+   */
+  inactive?: boolean;
 }
 
 export interface PhysicsLink {
@@ -83,7 +95,7 @@ export function applyGravity(
   k: number,
 ): void {
   for (const body of bodies) {
-    if (body.pinned) continue;
+    if (body.pinned || body.inactive) continue;
     body.vx += -body.x * k * body.mass * dt;
     body.vy += -body.y * k * body.mass * dt;
   }
@@ -100,21 +112,26 @@ export function applyRepulsion(
   k: number,
 ): void {
   for (let i = 0; i < bodies.length; i++) {
+    const bi = bodies[i];
+    if (bi.inactive) continue;
     for (let j = i + 1; j < bodies.length; j++) {
-      const bi = bodies[i];
       const bj = bodies[j];
+      if (bj.inactive) continue;
       const dx = bj.x - bi.x;
       const dy = bj.y - bi.y;
       const distSq = dx * dx + dy * dy + 1; // +1 prevents div-by-zero blow-up
       const dist = Math.sqrt(distSq);
-      const f = k / distSq;
       const ux = dx / dist;
       const uy = dy / dist;
+      // Force on each body scales by the OTHER body's charge (a big hub pushes
+      // its neighbors harder). charge defaults to 1 → identical to the old law.
       if (!bi.pinned) {
+        const f = (k * (bj.charge ?? 1)) / distSq;
         bi.vx -= ux * f * dt;
         bi.vy -= uy * f * dt;
       }
       if (!bj.pinned) {
+        const f = (k * (bi.charge ?? 1)) / distSq;
         bj.vx += ux * f * dt;
         bj.vy += uy * f * dt;
       }
@@ -137,9 +154,10 @@ interface QuadNode {
   x0: number;
   y0: number;
   size: number;
-  cx: number; // running centroid (= unweighted COM; per-body charge is 1)
+  cx: number; // running charge-weighted centroid
   cy: number;
-  count: number;
+  charge: number; // sum of body charges in this cell (the repulsion weight)
+  count: number; // body count (leaf detection + emptiness)
   body: number; // body index if this is a single-body leaf, else -1
   children: (QuadNode | null)[] | null; // [SW, SE, NW, NE] once subdivided
 }
@@ -148,7 +166,7 @@ const BH_MIN_CELL = 1e-3; // stop subdividing below this cell size
 const BH_MAX_DEPTH = 48; // hard recursion bound for near-coincident bodies
 
 function bhNode(x0: number, y0: number, size: number): QuadNode {
-  return { x0, y0, size, cx: 0, cy: 0, count: 0, body: -1, children: null };
+  return { x0, y0, size, cx: 0, cy: 0, charge: 0, count: 0, body: -1, children: null };
 }
 
 /** Build a quad-tree over all bodies. Returns null for empty input. */
@@ -159,11 +177,13 @@ export function buildQuadTree(bodies: readonly PhysicsBody[]): QuadNode | null {
   let maxX = -Infinity;
   let maxY = -Infinity;
   for (const b of bodies) {
+    if (b.inactive) continue;
     if (b.x < minX) minX = b.x;
     if (b.y < minY) minY = b.y;
     if (b.x > maxX) maxX = b.x;
     if (b.y > maxY) maxY = b.y;
   }
+  if (minX === Infinity) return null; // every body inactive — nothing to build
   // Square root cell covering all bodies (slight pad avoids exact edge ties).
   const size = Math.max(maxX - minX, maxY - minY, 1) * 1.0001;
   const root = bhNode(minX, minY, size);
@@ -194,9 +214,11 @@ export function buildQuadTree(bodies: readonly PhysicsBody[]): QuadNode | null {
     y: number,
     depth: number,
   ): void => {
-    // Fold body i into this cell's running centroid.
-    node.cx = (node.cx * node.count + x) / (node.count + 1);
-    node.cy = (node.cy * node.count + y) / (node.count + 1);
+    // Fold body i into this cell's running charge-weighted centroid.
+    const c = bodies[i].charge ?? 1;
+    node.cx = (node.cx * node.charge + x * c) / (node.charge + c);
+    node.cy = (node.cy * node.charge + y * c) / (node.charge + c);
+    node.charge += c;
     node.count += 1;
 
     if (node.count === 1) {
@@ -221,6 +243,7 @@ export function buildQuadTree(bodies: readonly PhysicsBody[]): QuadNode | null {
   };
 
   for (let i = 0; i < bodies.length; i++) {
+    if (bodies[i].inactive) continue;
     insert(root, i, bodies[i].x, bodies[i].y, 0);
   }
   return root;
@@ -247,7 +270,7 @@ export function applyRepulsionBarnesHut(
 
   for (let i = 0; i < bodies.length; i++) {
     const bi = bodies[i];
-    if (bi.pinned) continue;
+    if (bi.pinned || bi.inactive) continue;
     let fx = 0;
     let fy = 0;
     stack.length = 0;
@@ -269,9 +292,9 @@ export function applyRepulsionBarnesHut(
         continue;
       }
       if (isLeaf && node.body === i) continue; // don't repel self
-      // Aggregate push from this (pseudo-)body: count bodies at the centroid.
+      // Aggregate push from this (pseudo-)body: sum of charges at the centroid.
       const dist = Math.sqrt(distSq);
-      const f = (k * node.count) / distSq;
+      const f = (k * node.charge) / distSq;
       fx -= (dx / dist) * f;
       fy -= (dy / dist) * f;
     }
@@ -294,6 +317,7 @@ export function applySprings(
   for (const link of links) {
     const a = bodies[link.a];
     const b = bodies[link.b];
+    if (a.inactive || b.inactive) continue; // skip springs to pre-birth nodes
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const dist = Math.sqrt(dx * dx + dy * dy) + 0.01;
@@ -323,7 +347,7 @@ export function integrate(
   damping: number,
 ): void {
   for (const body of bodies) {
-    if (body.pinned) continue;
+    if (body.pinned || body.inactive) continue;
     body.vx *= damping;
     body.vy *= damping;
     body.x += body.vx * dt;

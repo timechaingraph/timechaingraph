@@ -66,6 +66,20 @@ for (const b of BONDS) {
   degreeByAddr.set(b.toAddress, (degreeByAddr.get(b.toAddress) ?? 0) + 1);
 }
 
+// Per-address bond list (counterparty + sats + formation block) — powers the
+// focus ego-network view (a wallet's strongest bonds formed so far).
+type BondEdge = { other: string; sats: bigint; formationBlock: number };
+const adjByAddr = new Map<string, BondEdge[]>();
+for (const b of BONDS) {
+  const fb = b.formationBlock ?? 0;
+  const a1 = adjByAddr.get(b.fromAddress);
+  if (a1) a1.push({ other: b.toAddress, sats: b.sats, formationBlock: fb });
+  else adjByAddr.set(b.fromAddress, [{ other: b.toAddress, sats: b.sats, formationBlock: fb }]);
+  const a2 = adjByAddr.get(b.toAddress);
+  if (a2) a2.push({ other: b.fromAddress, sats: b.sats, formationBlock: fb });
+  else adjByAddr.set(b.toAddress, [{ other: b.fromAddress, sats: b.sats, formationBlock: fb }]);
+}
+
 const RING_RADIUS: Record<WalletRole, number> = {
   satoshi: 0,
   whale: 90,
@@ -80,7 +94,10 @@ const PHYSICS = {
   // network instead of a tight ball. step() auto-switches to Barnes-Hut above
   // BH_THRESHOLD; theta is its opening angle (0.8 = fast, fine for this view).
   gravity: 0.025,
-  repulsion: 1200,
+  // Lower base than before because repulsion is now charge-weighted (per-node
+  // charge ∝ radius ∝ log-degree), so big hubs push proportionally harder and
+  // spread out instead of clumping centrally. Tune this together with charge.
+  repulsion: 600,
   spring: 0.012,
   springRest: 80,
   damping: 0.86,
@@ -101,6 +118,10 @@ const EDGE_BASE_ALPHA = 0.4;
 
 /** Hover-spotlight multiplier for non-neighbors — focus on the active branch. */
 const SPOTLIGHT_DIM = 0.15;
+
+/** Focus shows at most this many of a wallet's strongest bonds — keeps a hub's
+ *  ego-network legible instead of a blob of hundreds of all-time links. */
+const FOCUS_MAX_BONDS = 24;
 
 /**
  * Spotlight depths the user can cycle through. Hop 1 = direct
@@ -147,8 +168,11 @@ function seedPosition(wallet: WalletData): { x: number; y: number } {
   return { x: Math.cos(angle) * r, y: Math.sin(angle) * r };
 }
 
-function massOf(wallet: WalletData): number {
-  return Math.log10(Number(wallet.totalReceivedSats) + 1) * 0.3 + 0.5;
+// Uniform gravity: every wallet feels the same pull toward the origin. (Mass
+// used to be log(received), which sucked the biggest wallets into a central
+// clump; spreading is now handled by charge-weighted repulsion instead.)
+function massOf(): number {
+  return 1;
 }
 
 // Node radius by DEGREE CENTRALITY — the more bonds a wallet has, the bigger it
@@ -174,6 +198,10 @@ type Body = {
   vx: number;
   vy: number;
   mass: number;
+  /** Repulsion weight ∝ radius (∝ log-degree) — hubs push harder, spread more. */
+  charge: number;
+  /** Pre-birth: excluded from the sim so invisible nodes don't warp the layout. */
+  inactive: boolean;
   pinned: boolean;
   node: Sprite;
   halo: Graphics | null;
@@ -235,16 +263,14 @@ export function GraphView() {
       setCamera,
     } = useTimegridStore.getState();
 
-    // Open at the chain tip so the full network is visible immediately.
-    // With real data, genesis-start shows an empty canvas (Free-tier wallets
-    // first appear thousands of blocks in) and Narrate-speed playback would
-    // take days to populate it. The scrubber + playback stay available, so a
-    // visitor can rewind to genesis and watch the lattice form.
+    // Auto-play from genesis: the lattice weaves itself forward — Satoshi alone
+    // at block 0, then wallets + bonds appear at their real blocks. 'Fast' runs
+    // the full chain in ~2 min; the visitor can pause / scrub / change speed.
     setLatestBlock(FIXTURE_LATEST_BLOCK);
-    setCurrentBlock(FIXTURE_LATEST_BLOCK);
+    setCurrentBlock(0);
     const { setPlaybackSpeedIdx, setPlaybackPlaying } = useTimegridStore.getState();
-    setPlaybackSpeedIdx(0); // Narrate (1 block / 10s) once the visitor presses play
-    setPlaybackPlaying(false);
+    setPlaybackSpeedIdx(3); // 'Fast' (~2 min full chain) — see SPEED_OPTIONS
+    setPlaybackPlaying(true);
 
     function applyCamera(): void {
       const cam = useTimegridStore.getState().camera;
@@ -312,6 +338,10 @@ export function GraphView() {
       let panMoved = false;
       let panStart = { x: 0, y: 0 };
       let panStartCam = { x: 0, y: 0 };
+      // Active click-to-frame camera animation (null when idle).
+      let camTween:
+        | { fromX: number; fromY: number; fromZoom: number; toX: number; toY: number; toZoom: number; t: number }
+        | null = null;
       let hoveredAddress: string | null = null;
       let focusedAddress: string | null = null;
       let activeSpotlightDepth: SpotlightDepth = 1;
@@ -361,7 +391,26 @@ export function GraphView() {
         return distances;
       }
 
+      // Focus ego-set: the focused wallet + its strongest bonds formed up to the
+      // current block (capped to FOCUS_MAX_BONDS) — clicking a hub shows its
+      // biggest, most legible connections, not its entire all-time neighborhood.
+      function focusEgoSet(addr: string): Map<string, number> {
+        const set = new Map<string, number>();
+        set.set(addr, 0);
+        const bonds = (adjByAddr.get(addr) ?? [])
+          .filter((e) => e.formationBlock <= currentBlock)
+          .sort((a, b) => (b.sats > a.sats ? 1 : b.sats < a.sats ? -1 : 0))
+          .slice(0, FOCUS_MAX_BONDS);
+        for (const e of bonds) set.set(e.other, 1);
+        return set;
+      }
+
       function recomputeSpotlight(): void {
+        if (focusedAddress) {
+          // Focus = capped, time-filtered ego-network (see focusEgoSet).
+          spotlightDistances = focusEgoSet(focusedAddress);
+          return;
+        }
         const target = spotlightTarget();
         if (!target) {
           spotlightDistances = new Map();
@@ -463,7 +512,9 @@ export function GraphView() {
           y: seed.y,
           vx: 0,
           vy: 0,
-          mass: massOf(wallet),
+          mass: massOf(),
+          charge: radius, // degree-weighted repulsion (radius ∝ log-degree)
+          inactive: wallet.firstSeenBlock > currentBlock, // pre-birth = out of sim
           pinned: false,
           node: dot,
           halo: null,
@@ -504,6 +555,7 @@ export function GraphView() {
           }
           recomputeSpotlight();
           applyAlpha();
+          if (focusedAddress) frameEgo(); // click-to-frame the ego-network
         });
         dot.on(
           'pointerdown',
@@ -555,6 +607,7 @@ export function GraphView() {
           global: { x: number; y: number };
         }) => {
           if (e.target !== app.stage) return; // a dot was hit
+          camTween = null; // user grabbed the camera — cancel any click-to-frame
           panning = true;
           panMoved = false;
           panStart = { x: e.global.x, y: e.global.y };
@@ -676,6 +729,7 @@ export function GraphView() {
       // explores the lattice.
       const onWheel = (event: WheelEvent): void => {
         event.preventDefault();
+        camTween = null; // user grabbed the camera — cancel any click-to-frame
         const cam = useTimegridStore.getState().camera;
         const delta = -event.deltaY * ZOOM_STEP;
         const nextZoom = Math.max(
@@ -746,6 +800,9 @@ export function GraphView() {
         for (const body of bodies) {
           const wasPinned = body.pinned;
           body.pinned = shouldBePinned(body);
+          // Pre-birth wallets sit out of the sim (no repulsion/springs) so they
+          // don't warp the visible layout while invisible.
+          body.inactive = body.wallet.firstSeenBlock > currentBlock;
           if (!body.pinned && wasPinned && body !== draggedBody) {
             body.vx = 0;
             body.vy = 0;
@@ -757,6 +814,7 @@ export function GraphView() {
       const unsubscribeBlock = useTimegridStore.subscribe((state, prev) => {
         if (state.currentBlock !== prev.currentBlock) {
           currentBlock = state.currentBlock;
+          if (focusedAddress) recomputeSpotlight(); // re-filter ego-set by time
           applyScrubberState();
         }
       });
@@ -783,7 +841,60 @@ export function GraphView() {
       applyScrubberState();
       applyCamera();
 
+      // Click-to-frame: smoothly pan/zoom so the focused wallet's ego-network
+      // fills the viewport. Computes the spotlight bbox in viewport-local space
+      // and arms a camera tween the tick eases out.
+      function frameEgo(): void {
+        let lxMin = Infinity, lyMin = Infinity, lxMax = -Infinity, lyMax = -Infinity, n = 0;
+        for (const body of bodies) {
+          if (!spotlightDistances.has(body.wallet.address)) continue;
+          const lx = cx + body.x;
+          const ly = cy + body.y;
+          if (lx < lxMin) lxMin = lx;
+          if (ly < lyMin) lyMin = ly;
+          if (lx > lxMax) lxMax = lx;
+          if (ly > lyMax) lyMax = ly;
+          n++;
+        }
+        if (n === 0) return;
+        const pad = 140;
+        const bw = Math.max(lxMax - lxMin, 1);
+        const bh = Math.max(lyMax - lyMin, 1);
+        const sw = app.screen.width;
+        const sh = app.screen.height;
+        const zoom = Math.max(
+          ZOOM_MIN,
+          Math.min(ZOOM_MAX, Math.min((sw - pad * 2) / bw, (sh - pad * 2) / bh)),
+        );
+        const centerLx = (lxMin + lxMax) / 2;
+        const centerLy = (lyMin + lyMax) / 2;
+        const cam = useTimegridStore.getState().camera;
+        camTween = {
+          fromX: cam.position.x,
+          fromY: cam.position.y,
+          fromZoom: cam.zoom,
+          toX: sw / 2 - centerLx * zoom,
+          toY: sh / 2 - centerLy * zoom,
+          toZoom: zoom,
+          t: 0,
+        };
+      }
+
       function tick(): void {
+        // Click-to-frame camera animation (ease-out cubic over ~12 frames).
+        if (camTween) {
+          camTween.t = Math.min(1, camTween.t + 0.08);
+          const e = 1 - Math.pow(1 - camTween.t, 3);
+          setCamera({
+            position: {
+              x: camTween.fromX + (camTween.toX - camTween.fromX) * e,
+              y: camTween.fromY + (camTween.toY - camTween.fromY) * e,
+            },
+            zoom: camTween.fromZoom + (camTween.toZoom - camTween.fromZoom) * e,
+          });
+          if (camTween.t >= 1) camTween = null;
+        }
+
         // Physics is pure functions in src/lib/forceLayout — gravity +
         // repulsion + springs + damping/integrate, all mutating bodies
         // in place. The graphics resync below is the only PIXI-coupled
@@ -797,11 +908,12 @@ export function GraphView() {
 
         edges.clear();
         if (focusedAddress) {
-          // Focus mode — the wallet's full lifetime ego-network: every edge
-          // whose endpoints are BOTH in the spotlight set (focused node + its
-          // neighbors out to the chosen hop depth), drawn full + time-
-          // independent. Everything else is hidden.
+          // Focus — the focused wallet's own bonds (a clean star) to its capped
+          // top-N strongest neighbors (the time-filtered ego-set). Drawn full +
+          // time-independent: you clicked to study this wallet's connections.
+          const focusIdx = idxByAddr.get(focusedAddress);
           for (const link of links) {
+            if (link.a !== focusIdx && link.b !== focusIdx) continue;
             const a = bodies[link.a];
             const b = bodies[link.b];
             if (
