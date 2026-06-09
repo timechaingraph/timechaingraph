@@ -158,6 +158,36 @@ def main() -> None:
                     'bytes': tpath.stat().st_size}
         print(f'  timestamps: {len(ts_rows):>7,} blocks ({tpath.stat().st_size:>10,}B)')
 
+    # ---- block-miners: block -> coinbase recipient (Grid coin ownership) -----
+    # One row per block — the miner is the first owner of that block's issued
+    # coins. The Grid derives all ~19.9M coins from this + the deterministic
+    # subsidy/spiral, so this single ~952k-row column is the whole ownership
+    # dataset. Produced by chain-tools/ingest/walk_coinbases.mjs.
+    bm_entry = None
+    bm_src = sub / 'block-miners.jsonl'
+    if bm_src.exists():
+        seen: set[int] = set()
+        bm_rows: list[dict] = []
+        with bm_src.open() as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                r = json.loads(line)
+                b = int(r['block'])
+                if b in seen:  # dedup (crash-resume safety)
+                    continue
+                seen.add(b)
+                bm_rows.append({'block': b, 'miner': r['address'] or ''})
+        bm_rows.sort(key=lambda r: r['block'])
+        bm_schema = pa.schema([('block', pa.uint32()), ('miner', pa.string())])
+        bmt = pa.Table.from_pylist(bm_rows, schema=bm_schema)
+        bmpath = out / 'block-miners.parquet'
+        pq.write_table(bmt, bmpath, compression='zstd', use_dictionary=['miner'])
+        bm_entry = {'path': 'block-miners.parquet',
+                    'rows': len(bm_rows),
+                    'bytes': bmpath.stat().st_size}
+        print(f'  block-miners: {len(bm_rows):>7,} blocks ({bmpath.stat().st_size:>10,}B)')
+
     manifest = {
         'schema': 'bundle-manifest/v2',
         'bundleVersion': args.bundle_version,
@@ -170,6 +200,7 @@ def main() -> None:
                   'rows': len(bond_rows),
                   'bytes': bpath.stat().st_size},
         'timestamps': ts_entry,
+        'blockMiners': bm_entry,
         'nodeCount': len(wallet_rows),
     }
     (out / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
