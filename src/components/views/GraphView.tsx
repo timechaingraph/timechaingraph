@@ -122,6 +122,16 @@ const PHYSICS = {
 const EDGE_FADE_BLOCKS = 10000;
 const EDGE_BASE_ALPHA = 0.4;
 
+/**
+ * Node brightness recency-fade. A wallet stays fully bright through its active
+ * lifespan (first→last tx), then dims over ACTIVITY_FADE_BLOCKS past its last
+ * transaction down to ACTIVITY_DIM_FLOOR — so wallets that transacted RECENTLY
+ * (relative to the scrubber) stay bright and only long-dormant ones go dark.
+ * ~52,560 blocks ≈ a year; raise to keep more of the network bright at the tip.
+ */
+const ACTIVITY_FADE_BLOCKS = 52_560;
+const ACTIVITY_DIM_FLOOR = 0.25;
+
 /** Focus shows at most this many of a wallet's strongest bonds — keeps a hub's
  *  ego-network legible instead of a blob of hundreds of all-time links. */
 const FOCUS_MAX_BONDS = 24;
@@ -343,10 +353,6 @@ export function GraphView() {
       let panMoved = false;
       let panStart = { x: 0, y: 0 };
       let panStartCam = { x: 0, y: 0 };
-      // Active click-to-frame camera animation (null when idle).
-      let camTween:
-        | { fromX: number; fromY: number; fromZoom: number; toX: number; toY: number; toZoom: number; t: number }
-        | null = null;
       let focusedAddress: string | null = null;
       let spotlightDistances = new Map<string, number>();
 
@@ -380,15 +386,20 @@ export function GraphView() {
       }
 
       function nodeAlpha(body: Body): number {
-        // Focus mode = time-independent ego-network: the focused node + its
-        // neighbors render full, everything else hidden. Otherwise alpha is pure
-        // activity bloom (alive 1 / gone-dark 0.3 / pre-birth 0).
+        // Focus mode = time-independent ego-network: focused node + its
+        // neighbors full, everything else hidden.
         if (focusedAddress) {
           return spotlightDistances.has(body.wallet.address) ? 1 : 0;
         }
-        const born = body.wallet.firstSeenBlock <= currentBlock;
-        const active = born && body.wallet.lastActiveBlock >= currentBlock;
-        return !born ? 0 : active ? 1 : 0.3;
+        const w = body.wallet;
+        if (w.firstSeenBlock > currentBlock) return 0; // not born yet
+        // Recency fade: full through the active lifespan (current ≤ lastActive),
+        // then dim gradually with each block past the last transaction — so the
+        // most-recently-active wallets stay bright at the tip instead of all
+        // snapping dark at once.
+        const since = currentBlock - w.lastActiveBlock;
+        if (since <= 0) return 1;
+        return Math.max(ACTIVITY_DIM_FLOOR, 1 - since / ACTIVITY_FADE_BLOCKS);
       }
 
       function applyAlpha(): void {
@@ -509,7 +520,6 @@ export function GraphView() {
           }
           recomputeSpotlight();
           applyAlpha();
-          if (focusedAddress) frameEgo(); // click-to-frame the ego-network
         });
         dot.on(
           'pointerdown',
@@ -561,7 +571,6 @@ export function GraphView() {
           global: { x: number; y: number };
         }) => {
           if (e.target !== app.stage) return; // a dot was hit
-          camTween = null; // user grabbed the camera — cancel any click-to-frame
           panning = true;
           panMoved = false;
           panStart = { x: e.global.x, y: e.global.y };
@@ -659,7 +668,6 @@ export function GraphView() {
       // explores the lattice.
       const onWheel = (event: WheelEvent): void => {
         event.preventDefault();
-        camTween = null; // user grabbed the camera — cancel any click-to-frame
         const cam = useTimegridStore.getState().camera;
         const delta = -event.deltaY * ZOOM_STEP;
         const nextZoom = Math.max(
@@ -746,60 +754,7 @@ export function GraphView() {
       applyScrubberState();
       applyCamera();
 
-      // Click-to-frame: smoothly pan/zoom so the focused wallet's ego-network
-      // fills the viewport. Computes the spotlight bbox in viewport-local space
-      // and arms a camera tween the tick eases out.
-      function frameEgo(): void {
-        let lxMin = Infinity, lyMin = Infinity, lxMax = -Infinity, lyMax = -Infinity, n = 0;
-        for (const body of bodies) {
-          if (!spotlightDistances.has(body.wallet.address)) continue;
-          const lx = cx + body.x;
-          const ly = cy + body.y;
-          if (lx < lxMin) lxMin = lx;
-          if (ly < lyMin) lyMin = ly;
-          if (lx > lxMax) lxMax = lx;
-          if (ly > lyMax) lyMax = ly;
-          n++;
-        }
-        if (n === 0) return;
-        const pad = 140;
-        const bw = Math.max(lxMax - lxMin, 1);
-        const bh = Math.max(lyMax - lyMin, 1);
-        const sw = app.screen.width;
-        const sh = app.screen.height;
-        const zoom = Math.max(
-          ZOOM_MIN,
-          Math.min(ZOOM_MAX, Math.min((sw - pad * 2) / bw, (sh - pad * 2) / bh)),
-        );
-        const centerLx = (lxMin + lxMax) / 2;
-        const centerLy = (lyMin + lyMax) / 2;
-        const cam = useTimegridStore.getState().camera;
-        camTween = {
-          fromX: cam.position.x,
-          fromY: cam.position.y,
-          fromZoom: cam.zoom,
-          toX: sw / 2 - centerLx * zoom,
-          toY: sh / 2 - centerLy * zoom,
-          toZoom: zoom,
-          t: 0,
-        };
-      }
-
       function tick(): void {
-        // Click-to-frame camera animation (ease-out cubic over ~12 frames).
-        if (camTween) {
-          camTween.t = Math.min(1, camTween.t + 0.08);
-          const e = 1 - Math.pow(1 - camTween.t, 3);
-          setCamera({
-            position: {
-              x: camTween.fromX + (camTween.toX - camTween.fromX) * e,
-              y: camTween.fromY + (camTween.toY - camTween.fromY) * e,
-            },
-            zoom: camTween.fromZoom + (camTween.toZoom - camTween.fromZoom) * e,
-          });
-          if (camTween.t >= 1) camTween = null;
-        }
-
         // Physics is pure functions in src/lib/forceLayout — gravity +
         // repulsion + springs + damping/integrate, all mutating bodies
         // in place. The graphics resync below is the only PIXI-coupled
