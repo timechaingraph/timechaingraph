@@ -106,3 +106,4 @@ vault-graph/prolog/*
 !vault-graph/prolog/rules/
 !vault-graph/prolog/rules/**
 /x-banner.png
+/x-avatar.png
