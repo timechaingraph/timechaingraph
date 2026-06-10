@@ -21,7 +21,7 @@ jobs:
       NEXT_PUBLIC_BUILD_HASH: ${{ github.sha }}
       NEXT_PUBLIC_BUILD_VERSION: ${{ github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node
         uses: actions/setup-node@v4
