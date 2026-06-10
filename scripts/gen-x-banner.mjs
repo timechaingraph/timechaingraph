@@ -109,9 +109,9 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" 
   <rect width="${W}" height="${H}" fill="${BG}"/>
   <rect x="22" y="22" width="${W - 44}" height="${H - 44}" rx="20" fill="none" stroke="${BRASS}" stroke-opacity="0.34" stroke-width="1.5"/>
   <g transform="translate(${tx.toFixed(1)} ${ty.toFixed(1)}) scale(${SC})">${heroInner}</g>
-  <text x="96" y="158" font-family="Georgia, 'Times New Roman', serif" font-size="100" font-weight="700" fill="url(#title)">${BRAND}</text>
-  <text x="100" y="228" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-style="italic" fill="${AMBER}">${SUB}</text>
-  <text x="102" y="272" font-family="ui-monospace, Menlo, monospace" font-size="28" letter-spacing="2" fill="${GREY}">${DOMAIN}</text>
+  <text x="96" y="226" font-family="Georgia, 'Times New Roman', serif" font-size="100" font-weight="700" fill="url(#title)">${BRAND}</text>
+  <text x="100" y="298" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-style="italic" fill="${AMBER}">${SUB}</text>
+  <text x="690" y="400" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="28" letter-spacing="2" fill="${GREY}">${DOMAIN}</text>
 </svg>`;
 
 const png = new Resvg(svg, {
