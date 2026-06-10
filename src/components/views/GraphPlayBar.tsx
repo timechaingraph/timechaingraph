@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useTimegridStore } from '@/store/timegridStore';
-import { SPEED_OPTIONS } from '@/components/Playback';
+import { SPEED_OPTIONS, blocksPerTick } from '@/components/Playback';
 import { blockDate, formatBlockDate } from '@/lib/blockDate';
 
 /**
@@ -43,14 +43,14 @@ export function GraphPlayBar() {
     const id = setInterval(() => {
       const cur = useTimegridStore.getState().currentBlock;
       const tip = useTimegridStore.getState().latestBlock;
-      const next = Math.min(cur + speed.blocksPerTick, tip);
+      const next = Math.min(cur + blocksPerTick(speed, tip), tip);
       setCurrentBlock(next);
       if (next >= tip) {
         useTimegridStore.getState().setPlaybackPlaying(false);
       }
     }, speed.tickIntervalMs);
     return () => clearInterval(id);
-  }, [playing, speed.blocksPerTick, speed.tickIntervalMs, ready, setCurrentBlock]);
+  }, [playing, speed, ready, setCurrentBlock]);
 
   function togglePlay(): void {
     if (atTip) {

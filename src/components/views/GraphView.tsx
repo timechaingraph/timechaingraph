@@ -5,6 +5,7 @@ import { Application, Container, Graphics, Sprite } from 'pixi.js';
 import { getActiveSubstrate } from '@/data/substrate';
 import { ROLE_COLOR, ROLE_CSS, ROLE_LABEL } from '@/lib/role-visuals';
 import { useTimegridStore } from '@/store/timegridStore';
+import { AUTOSTART_SPEED_IDX } from '@/components/Playback';
 import { BRAND_TAGLINE } from '@/lib/site-config';
 import { step as physicsStep, type PhysicsLink } from '@/lib/forceLayout';
 import type { WalletBond, WalletData, WalletRole } from '@/types/wallet';
@@ -279,12 +280,12 @@ export function GraphView() {
     } = useTimegridStore.getState();
 
     // Auto-play from genesis: the lattice weaves itself forward — Satoshi alone
-    // at block 0, then wallets + bonds appear at their real blocks. 'Fast' runs
-    // the full chain in ~2 min; the visitor can pause / scrub / change speed.
+    // at block 0, then wallets + bonds appear at their real blocks. Max runs the
+    // full chain in ~3 min; the visitor can pause / scrub / change speed.
     setLatestBlock(FIXTURE_LATEST_BLOCK);
     setCurrentBlock(0);
     const { setPlaybackSpeedIdx, setPlaybackPlaying } = useTimegridStore.getState();
-    setPlaybackSpeedIdx(3); // 'Fast' (~2 min full chain) — see SPEED_OPTIONS
+    setPlaybackSpeedIdx(AUTOSTART_SPEED_IDX); // 'Max' (~3 min full chain)
     setPlaybackPlaying(true);
 
     function applyCamera(): void {
