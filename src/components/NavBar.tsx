@@ -70,6 +70,7 @@ export function NavBar() {
         {SECTIONS.map((link) => (
           <NavLinkItem key={link.href} link={link} pathname={pathname} />
         ))}
+        <DonateLink active={pathname.startsWith('/donate')} />
         <CrossDomainLink />
       </nav>
 
@@ -99,10 +100,18 @@ export function NavBar() {
               {link.inDev && <InDevBadge />}
             </Link>
           ))}
+          <Link
+            href="/donate"
+            onClick={() => setMobileOpen(false)}
+            className="mt-1 rounded px-3 py-2 text-mono text-base"
+            style={{ color: 'var(--color-gold)' }}
+          >
+            Donate
+          </Link>
           <a
             href={OTHER_VIEW_URL}
             onClick={() => setMobileOpen(false)}
-            className="mt-1 rounded px-3 py-2 text-mono text-base"
+            className="rounded px-3 py-2 text-mono text-base"
             style={{ color: 'var(--color-amber)' }}
           >
             {OTHER_VIEW_BRAND} View ⟶
@@ -127,6 +136,22 @@ function NavLinkItem({ link, pathname }: { link: NavLink; pathname: string }) {
     >
       <span>{link.label}</span>
       {link.inDev && <InDevBadge />}
+    </Link>
+  );
+}
+
+function DonateLink({ active }: { active: boolean }) {
+  return (
+    <Link
+      href="/donate"
+      className="shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-mono text-sm uppercase tracking-wider transition-opacity hover:opacity-85"
+      style={{
+        borderColor: 'rgba(255, 215, 0, 0.45)',
+        backgroundColor: active ? 'rgba(255, 215, 0, 0.16)' : 'rgba(255, 215, 0, 0.08)',
+        color: 'var(--color-gold)',
+      }}
+    >
+      Donate
     </Link>
   );
 }
