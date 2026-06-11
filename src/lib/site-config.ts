@@ -76,7 +76,7 @@ export const DONATION_LIVE =
  * Typed `: string` so the "is it set?" conditionals aren't constant-folded.
  */
 export const SUPPORT_EMAIL: string = 'support@timechaingraph.com';
-export const X_HANDLE: string = ''; // e.g. 'timechaingraph' (no @)
+export const X_HANDLE: string = 'TimechainGraph'; // x.com/TimechainGraph (no @)
 export const NOSTR_NPUB: string = ''; // e.g. 'npub1…'
 export const GITHUB_URL: string = ''; // e.g. 'https://github.com/<org>/timechaingraph' (repo must be public)
 
