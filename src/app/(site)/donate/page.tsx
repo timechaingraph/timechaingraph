@@ -56,7 +56,10 @@ export default function DonatePage() {
             no middleman. Just Bitcoin, peer to peer.
           </p>
           {DONATION_LIVE ? (
-            <DonateAddress address={DONATION_BTC_ADDRESS} />
+            <DonateAddress
+              address={DONATION_BTC_ADDRESS}
+              label={`Timechain ${VIEW_BRAND_NAME}`}
+            />
           ) : (
             <p className="mt-4 rounded-md border border-dashed border-[color:var(--color-card-border)] px-3 py-2 text-xs text-[color:var(--color-text-muted)]">
               The receive address goes live the moment our node is online —
