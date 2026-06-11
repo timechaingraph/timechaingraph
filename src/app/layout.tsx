@@ -48,13 +48,13 @@ export const metadata: Metadata = {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     siteName: SITE_TITLE,
-    images: [{ url: '/og.png', width: 1200, height: 630, alt: SITE_TITLE_FULL }],
+    images: [{ url: '/og.png?v=2', width: 1200, height: 630, alt: SITE_TITLE_FULL }],
   },
   twitter: {
     card: 'summary_large_image',
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: ['/og.png'],
+    images: ['/og.png?v=2'],
   },
   robots: {
     index: true,
