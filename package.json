@@ -43,12 +43,12 @@
   },
   "dependencies": {
     "@duckdb/duckdb-wasm": "^1.33.1-dev45.0",
-    "next": "^16.2.6",
-    "pixi.js": "^8.18.1",
+    "next": "^16.2.9",
+    "pixi.js": "^8.19.0",
     "qrcode": "^1.5.4",
-    "react": "19.2.6",
-    "react-dom": "19.2.6",
-    "zustand": "^5.0.13"
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
@@ -61,11 +61,11 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.2",
     "eslint": "^9",
-    "eslint-config-next": "^16.2.6",
+    "eslint-config-next": "^16.2.9",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4",
     "typescript": "^6",
-    "vitest": "^4.1.7",
+    "vitest": "^4.1.8",
     "wrangler": "^4"
   }
 }
