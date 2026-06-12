@@ -92,4 +92,7 @@ const png = new Resvg(svg, {
 
 const out = join(root, 'public', 'og.png');
 writeFileSync(out, png);
-console.log(`[gen-og-image] wrote ${out} (${(png.length / 1024).toFixed(0)} KB, ${W}x${H})`);
+// Same card at a clean versioned PATH — X's image fetcher caches failures
+// per-URL and mishandles query-stringed image URLs; a fresh path escapes both.
+writeFileSync(join(root, 'public', 'og2.png'), png);
+console.log(`[gen-og-image] wrote ${out} + og2.png (${(png.length / 1024).toFixed(0)} KB, ${W}x${H})`);
