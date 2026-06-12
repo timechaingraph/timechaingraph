@@ -156,7 +156,7 @@ function Promise() {
           {[
             'Self-hosted node · no third-party calls',
             'No analytics · no tracking · no sign-up',
-            'Lightning-funded · KYC-free',
+            'Bitcoin-funded · KYC-free',
             'Source open · audit any time',
           ].map((line) => (
             <li key={line} className="flex items-baseline gap-3">

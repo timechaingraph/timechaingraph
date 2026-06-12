@@ -46,7 +46,7 @@ export default function AboutPage() {
         <p>
           Data flows from Bitcoin&apos;s peer-to-peer protocol into a
           self-hosted full node. Extraction runs offline. Snapshots ship
-          from a CDN we control. Your viewer touches no third-party at
+          from a CDN we control. Your viewer touches no third party at
           runtime — verifiable in DevTools.
         </p>
         <p>

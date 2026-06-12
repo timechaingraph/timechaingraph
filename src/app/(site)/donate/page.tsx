@@ -25,7 +25,7 @@ export default function DonatePage() {
 
       <div className="mt-6 max-w-2xl space-y-4 text-lg leading-relaxed text-[color:var(--color-text-secondary)] md:text-xl">
         <p>
-          Timechain {VIEW_BRAND_NAME} is 100% free and 100% open source — every
+          Timechain {VIEW_BRAND_NAME}{' '}is 100% free and 100% open source — every
           view, every block. No paywall, no token, no funding round,
           no ads, no tracking. We don&apos;t sell your attention because we never
           collect it.
@@ -81,8 +81,8 @@ export default function DonatePage() {
             </span>
           </div>
           <p className="mt-3 text-sm leading-relaxed text-[color:var(--color-text-secondary)]">
-            Instant, low-fee sats for small tips — served from our own node
-            (BTCPay), never a custodial third party. Arrives with v0.1.
+            Instant, low-fee sats for small tips — served from our own
+            self-custodial node when it lands, never a custodial third party.
           </p>
         </div>
       </div>

@@ -22,7 +22,7 @@ import {
  */
 
 const BUILD_HASH = process.env.NEXT_PUBLIC_BUILD_HASH ?? 'dev';
-const BUILD_VERSION = process.env.NEXT_PUBLIC_BUILD_VERSION ?? '0.0.1';
+const BUILD_VERSION = process.env.NEXT_PUBLIC_BUILD_VERSION ?? '0.1.0';
 
 const SITEMAP: Array<{ heading: string; links: Array<{ href: string; label: string }> }> = [
   {
