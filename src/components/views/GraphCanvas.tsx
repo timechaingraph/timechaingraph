@@ -70,7 +70,7 @@ export function GraphCanvas() {
       </div>
 
       {/* Block stats — timeline position (date, epoch, halvings) top-left (lg+). */}
-      <div className="pointer-events-none absolute top-3 left-3 z-10 hidden w-[280px] max-w-[calc(100vw-1.5rem)] lg:block">
+      <div className="pointer-events-none absolute top-3 left-3 z-10 hidden w-[200px] max-w-[calc(100vw-1.5rem)] lg:block">
         <div className="pointer-events-auto">
           <BlockStats />
         </div>

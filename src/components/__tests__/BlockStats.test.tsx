@@ -27,21 +27,21 @@ describe('<BlockStats>', () => {
     expect(getByText('630,000')).toBeTruthy();
   });
 
-  it('reports the halving epoch and halvings crossed', () => {
+  it('reports the halving epoch and halvings', () => {
     useTimegridStore.getState().setLatestBlock(876_000);
     useTimegridStore.getState().setCurrentBlock(630_000);
     const { getByText } = render(<BlockStats />);
     // 630_000 / 2016 = epoch 312
     expect(getByText(/epoch 312/)).toBeTruthy();
-    // 630_000 / 210_000 = 3 halvings crossed
-    expect(getByText(/3 halvings crossed/)).toBeTruthy();
+    // 630_000 / 210_000 = 3 halvings
+    expect(getByText(/3 halvings/)).toBeTruthy();
   });
 
   it('singularises 1 halving', () => {
     useTimegridStore.getState().setLatestBlock(876_000);
     useTimegridStore.getState().setCurrentBlock(300_000);
     const { getByText } = render(<BlockStats />);
-    expect(getByText(/1 halving crossed/)).toBeTruthy();
+    expect(getByText(/1 halving$/m)).toBeTruthy();
   });
 
   it('badges halving blocks (210k multiples)', () => {
@@ -115,32 +115,3 @@ describe('<BlockStats>', () => {
   });
 });
 
-describe('<BlockStats> live tail', () => {
-  it('renders the live ticker when a tip is known', () => {
-    useTimegridStore.getState().setLatestBlock(876_000);
-    useTimegridStore.getState().setCurrentBlock(876_000);
-    useTimegridStore.getState().setLiveTip({
-      height: 953_400,
-      timestamp: Math.floor(Date.now() / 1000) - 250,
-    });
-    const { getByText } = render(<BlockStats />);
-    expect(getByText(/Live tip/i)).toBeTruthy();
-    expect(getByText('953,400')).toBeTruthy();
-    expect(getByText(/last block .* ago/i)).toBeTruthy();
-    expect(getByText(/next ~|any moment/i)).toBeTruthy();
-  });
-
-  it('shows the data-freshness honesty line when the tip outruns the bundle', () => {
-    useTimegridStore.getState().setLatestBlock(876_000);
-    useTimegridStore.getState().setCurrentBlock(876_000);
-    useTimegridStore.getState().setLiveTip({ height: 999_999, timestamp: null });
-    const { getByText } = render(<BlockStats />);
-    expect(getByText(/Graph data through block/i)).toBeTruthy();
-  });
-
-  it('renders no ticker before the first poll lands', () => {
-    useTimegridStore.getState().setLatestBlock(876_000);
-    const { queryByText } = render(<BlockStats />);
-    expect(queryByText(/Live tip/i)).toBeNull();
-  });
-});

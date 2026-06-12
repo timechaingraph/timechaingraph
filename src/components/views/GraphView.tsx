@@ -7,6 +7,7 @@ import { ROLE_COLOR, ROLE_CSS, ROLE_LABEL } from '@/lib/role-visuals';
 import { useTimegridStore } from '@/store/timegridStore';
 import { AUTOSTART_SPEED_IDX } from '@/components/Playback';
 import { BRAND_TAGLINE } from '@/lib/site-config';
+import { LiveTipPanel } from '@/components/LiveTipPanel';
 import { step as physicsStep, type PhysicsLink } from '@/lib/forceLayout';
 import type { WalletBond, WalletData, WalletRole } from '@/types/wallet';
 
@@ -253,7 +254,6 @@ type Link = PhysicsLink & {
  */
 export function GraphView() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const currentBlock = useTimegridStore((s) => s.currentBlock);
   // Mirrored from the imperative `focusedAddress` closure inside the
   // PIXI effect — used only by the HUD render path (conditional ESC
   // hint). The graphics pipeline never reads React state.
@@ -872,15 +872,7 @@ export function GraphView() {
       >
         {BRAND_TAGLINE}
       </div>
-      <div
-        aria-hidden
-        className="text-mono pointer-events-none absolute bottom-3 right-3 text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-text-muted)]"
-      >
-        Block{' '}
-        <span className="text-[color:var(--color-text-primary)]">
-          {currentBlock.toLocaleString()}
-        </span>
-      </div>
+      <LiveTipPanel />
       {focusActive && (
         <div
           aria-live="polite"
