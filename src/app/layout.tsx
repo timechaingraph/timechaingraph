@@ -40,7 +40,10 @@ export const metadata: Metadata = {
   authors: [{ name: SITE_TITLE }],
   creator: SITE_TITLE,
   alternates: {
-    canonical: '/',
+    // './' resolves PER-ROUTE (Next ≥14.2) — '/' made every page canonicalize
+    // to the homepage, deduping subpages out of search AND gluing social-card
+    // caches of every URL variant to the stale homepage entry.
+    canonical: './',
   },
   openGraph: {
     type: 'website',
