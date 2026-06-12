@@ -6,13 +6,11 @@ import { useTimegridStore } from '@/store/timegridStore';
 /**
  * Playback — auto-advance the scrubber so the lattice plays itself.
  *
- * "Narrate" is a single-block study pace (1 block / 3s — read each block as a
- * stanza). The rest TRAVERSE the whole chain (block 0 → tip) in a fixed
- * wall-clock budget, independent of chain length — `blocksPerTick` is derived
- * from the live tip:
- *   Slow 24 min · Normal 12 min · Fast 6 min · Max 3 min.
- * Both sister views (Graph + Grid) import this same SPEED_OPTIONS, so their
- * playback speeds stay identical.
+ * Every speed TRAVERSES the whole chain (block 0 → tip) in a fixed wall-clock
+ * budget, independent of chain length — `blocksPerTick` is derived from the
+ * data tip:  Slow 24 min · Normal 12 min · Fast 6 min.
+ * (Narrate and Max were removed per operator 2026-06-13; this file now
+ * diverges from the Grid sibling deliberately.)
  *
  * Play state + speed index live in the store (`playbackPlaying`,
  * `playbackSpeedIdx`), so any interaction that should pause playback (Scrubber
@@ -23,23 +21,21 @@ export interface PlaybackSpeed {
   label: string;
   /**
    * Wall-clock seconds to traverse the WHOLE chain (block 0 → tip) at this
-   * speed; `null` is the fixed single-block "Narrate" study pace. The per-tick
-   * step is derived from the live tip (see `blocksPerTick`) so the traversal
-   * lands on its target duration at any chain length.
+   * speed (`null` = fixed 1 block/tick). The per-tick step is derived from
+   * the data tip (see `blocksPerTick`) so the traversal lands on its target
+   * duration at any chain length.
    */
   fullScrubSeconds: number | null;
   tickIntervalMs: number;
 }
 
 export const SPEED_OPTIONS: readonly PlaybackSpeed[] = [
-  { label: 'Narrate', fullScrubSeconds: null, tickIntervalMs: 3000 }, // 1 block / 3s
   { label: 'Slow', fullScrubSeconds: 1440, tickIntervalMs: 100 }, // 24 min full chain
   { label: 'Normal', fullScrubSeconds: 720, tickIntervalMs: 100 }, // 12 min full chain
   { label: 'Fast', fullScrubSeconds: 360, tickIntervalMs: 100 }, //  6 min full chain
-  { label: 'Max', fullScrubSeconds: 180, tickIntervalMs: 100 }, //  3 min full chain
 ] as const;
 
-/** Auto-start speed: Max — the full chain plays out in ~3 min, the showcase pace. */
+/** Auto-start speed: the fastest remaining (Fast — full chain in ~6 min). */
 export const AUTOSTART_SPEED_IDX = SPEED_OPTIONS.length - 1;
 
 /**

@@ -7,6 +7,13 @@
  * third-party fetch server-side (see functions/api/tip.js). Poll cadence 30s
  * (the relay edge-caches ~30s, so polling faster buys nothing), paused while
  * the tab is hidden.
+ *
+ * IMPORTANT INVARIANT (operator bug-report 2026-06-13): the live tip is
+ * DISPLAY-ONLY. It must never extend `latestBlock` or move `currentBlock` —
+ * the scrubber, Block Stats, and playback are bounded by the DATA tip (the
+ * deployed bundle's last block, seeded from the substrate), because the graph
+ * has nothing to render past it. The gap between data tip and live tip is
+ * surfaced explicitly in LiveTipPanel as "data through N · +M pending".
  */
 import { useEffect } from 'react';
 import { useTimegridStore } from '@/store/timegridStore';
@@ -19,34 +26,20 @@ interface TipPayload {
 }
 
 /**
- * Apply a freshly polled tip to the store. Pure decision logic, exported for
- * tests:
- *  - latestBlock only ever EXTENDS (a lagging upstream never shrinks the range)
- *  - if the viewer is parked at the old tip and NOT mid-playback, follow the
- *    chain head so "now" stays now; a mid-history scrub or a running playback
- *    is never yanked.
+ * Record a freshly polled tip. Pure + exported for tests. Deliberately does
+ * NOTHING but `setLiveTip` — see the invariant above.
  */
 export function applyTip(
   store: {
-    latestBlock: number;
-    currentBlock: number;
-    playbackPlaying: boolean;
-    setLatestBlock(h: number): void;
-    setCurrentBlock(h: number): void;
     setLiveTip(t: { height: number; timestamp: number | null }): void;
   },
   tip: TipPayload,
 ): void {
   if (!tip.height) return;
   store.setLiveTip({ height: tip.height, timestamp: tip.timestamp });
-  if (tip.height > store.latestBlock) {
-    const wasAtTip = store.currentBlock >= store.latestBlock;
-    store.setLatestBlock(tip.height);
-    if (wasAtTip && !store.playbackPlaying) store.setCurrentBlock(tip.height);
-  }
 }
 
-/** Mount-once hook (GraphCanvas): polls the relay and applies each tip. */
+/** Mount-once hook (GraphCanvas): polls the relay and records each tip. */
 export function useLiveTip(): void {
   useEffect(() => {
     let stopped = false;

@@ -37,7 +37,7 @@ describe('<Playback>', () => {
     expect(getByText('Slow')).toBeTruthy();
     expect(getByText('Normal')).toBeTruthy();
     expect(getByText('Fast')).toBeTruthy();
-    expect(getByText('Max')).toBeTruthy();
+    expect(getByText('Fast')).toBeTruthy();
   });
 
   it('clicking a speed button switches the active speed', () => {

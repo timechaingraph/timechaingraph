@@ -78,7 +78,7 @@ export function BlockStats() {
               label={dateEstimated ? 'Est. date' : 'Date'}
               value={formatBlockDate(blockWhen)}
             />
-            <Field label="Latest tip" value={`block ${latestBlock.toLocaleString()}`} />
+            <Field label="Data through" value={`block ${latestBlock.toLocaleString()}`} />
           </dl>
         </>
       ) : (

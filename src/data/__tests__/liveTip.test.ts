@@ -1,57 +1,39 @@
 import { describe, it, expect, vi } from 'vitest';
 import { applyTip } from '../liveTip';
 
-/** Minimal store double capturing the calls applyTip makes. */
-function storeDouble(over: Partial<{ latestBlock: number; currentBlock: number; playbackPlaying: boolean }> = {}) {
+/**
+ * INVARIANT under test (operator bug-report 2026-06-13): the live tip is
+ * DISPLAY-ONLY. applyTip must record it via setLiveTip and must NEVER touch
+ * latestBlock / currentBlock — the scrubber and stats are bounded by the DATA
+ * tip, because the graph has nothing to render past the deployed bundle.
+ */
+function storeDouble() {
   return {
-    latestBlock: 952_351,
-    currentBlock: 952_351,
-    playbackPlaying: false,
+    setLiveTip: vi.fn(),
+    // present to catch any regression that starts calling them again:
     setLatestBlock: vi.fn(),
     setCurrentBlock: vi.fn(),
-    setLiveTip: vi.fn(),
-    ...over,
   };
 }
 
-describe('applyTip (live-tail follow rules)', () => {
+describe('applyTip (display-only invariant)', () => {
   it('ignores empty payloads entirely', () => {
     const s = storeDouble();
     applyTip(s, { height: null, timestamp: null });
     expect(s.setLiveTip).not.toHaveBeenCalled();
-    expect(s.setLatestBlock).not.toHaveBeenCalled();
   });
 
-  it('records the tip and extends latestBlock on a new block', () => {
+  it('records the tip', () => {
     const s = storeDouble();
-    applyTip(s, { height: 952_352, timestamp: 1_781_300_000 });
-    expect(s.setLiveTip).toHaveBeenCalledWith({ height: 952_352, timestamp: 1_781_300_000 });
-    expect(s.setLatestBlock).toHaveBeenCalledWith(952_352);
+    applyTip(s, { height: 953_420, timestamp: 1_781_300_000 });
+    expect(s.setLiveTip).toHaveBeenCalledWith({ height: 953_420, timestamp: 1_781_300_000 });
   });
 
-  it('follows the tip when the viewer was parked at the old tip', () => {
-    const s = storeDouble({ currentBlock: 952_351 });
-    applyTip(s, { height: 952_353, timestamp: 1 });
-    expect(s.setCurrentBlock).toHaveBeenCalledWith(952_353);
-  });
-
-  it('never yanks a viewer scrubbed into history', () => {
-    const s = storeDouble({ currentBlock: 480_000 });
-    applyTip(s, { height: 952_353, timestamp: 1 });
-    expect(s.setLatestBlock).toHaveBeenCalledWith(952_353);
-    expect(s.setCurrentBlock).not.toHaveBeenCalled();
-  });
-
-  it('never yanks a running playback, even at the tip', () => {
-    const s = storeDouble({ playbackPlaying: true });
-    applyTip(s, { height: 952_353, timestamp: 1 });
-    expect(s.setCurrentBlock).not.toHaveBeenCalled();
-  });
-
-  it('records but does not shrink on a lagging upstream height', () => {
+  it('NEVER extends latestBlock or moves currentBlock — for any payload', () => {
     const s = storeDouble();
-    applyTip(s, { height: 900_000, timestamp: 1 });
-    expect(s.setLiveTip).toHaveBeenCalled();
+    applyTip(s, { height: 999_999_999, timestamp: 1 });
+    applyTip(s, { height: 1, timestamp: null });
+    applyTip(s, { height: null, timestamp: null });
     expect(s.setLatestBlock).not.toHaveBeenCalled();
     expect(s.setCurrentBlock).not.toHaveBeenCalled();
   });
