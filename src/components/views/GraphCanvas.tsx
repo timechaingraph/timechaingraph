@@ -13,6 +13,7 @@
  */
 import { useEffect, useState, type ComponentType } from 'react';
 import { loadSubstrate } from '@/data/substrate';
+import { useLiveTip } from '@/data/liveTip';
 import { useTimegridStore } from '@/store/timegridStore';
 import { GraphPlayBar } from './GraphPlayBar';
 import { WalletInspector } from '@/components/WalletInspector';
@@ -21,6 +22,9 @@ import { BlockStats } from '@/components/BlockStats';
 export function GraphCanvas() {
   const [Graph, setGraph] = useState<ComponentType | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Live chain-tip polling (same-origin relay) — extends the scrubber range
+  // and drives the BlockStats live ticker as new blocks are mined.
+  useLiveTip();
 
   useEffect(() => {
     let cancelled = false;

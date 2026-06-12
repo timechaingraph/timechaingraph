@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useTimegridStore } from '@/store/timegridStore';
 import { getActiveSubstrate } from '@/data/substrate';
 import { ROLE_LABEL, ROLE_CSS } from '@/lib/role-visuals';
@@ -72,8 +73,23 @@ function topBondsFor(address: string): BondView[] {
 
 const MAX_BONDS_SHOWN = 6;
 
+/** ✕ — minimizes the panel to a small chip (screen real estate on the kiosk). */
+function MinimizeButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Minimize inspector"
+      className="text-mono -mr-1 -mt-1 rounded px-1.5 text-sm leading-none text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-gold)]"
+    >
+      ✕
+    </button>
+  );
+}
+
 export function WalletInspector() {
   const selectedAddress = useTimegridStore((s) => s.selectedWallet);
+  const [collapsed, setCollapsed] = useState(false);
   const wallet = selectedAddress
     ? getActiveSubstrate().walletByAddress(selectedAddress)
     : undefined;
@@ -85,12 +101,28 @@ export function WalletInspector() {
     ? getActiveSubstrate().coinsOwnedBy(wallet.address).length
     : 0;
 
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        onClick={() => setCollapsed(false)}
+        aria-label="Restore inspector"
+        className="brass-panel text-mono ml-auto block rounded-full px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-text-secondary)] transition-colors hover:text-[color:var(--color-gold)]"
+      >
+        ◧ Inspector
+      </button>
+    );
+  }
+
   if (!wallet) {
     return (
       <div className="brass-panel rounded-lg p-5">
-        <p className="text-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-text-muted)]">
-          Inspector
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-text-muted)]">
+            Inspector
+          </p>
+          <MinimizeButton onClick={() => setCollapsed(true)} />
+        </div>
         <p className="mt-3 text-sm leading-relaxed text-[color:var(--color-text-secondary)]">
           Hover or click a wallet on the lattice to inspect its
           metadata. The selection persists until you pick another.
@@ -108,11 +140,14 @@ export function WalletInspector() {
         >
           {ROLE_LABEL[wallet.role]}
         </span>
-        {wallet.isMiner && (
-          <span className="text-mono text-[10px] uppercase tracking-wider text-[color:var(--color-text-faint)]">
-            coinbase recipient
-          </span>
-        )}
+        <span className="flex items-center gap-2">
+          {wallet.isMiner && (
+            <span className="text-mono text-[10px] uppercase tracking-wider text-[color:var(--color-text-faint)]">
+              coinbase recipient
+            </span>
+          )}
+          <MinimizeButton onClick={() => setCollapsed(true)} />
+        </span>
       </div>
       <p
         className="mt-3 text-mono text-sm font-medium text-[color:var(--color-text-primary)] break-all"

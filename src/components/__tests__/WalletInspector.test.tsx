@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import { WalletInspector } from '../WalletInspector';
 import { useTimegridStore } from '@/store/timegridStore';
 import { FREE_TIER_50 } from '@/data/__fixtures__/free-tier-50';
@@ -52,6 +52,17 @@ describe('<WalletInspector>', () => {
   it('falls back to empty-state if selectedWallet is unknown', () => {
     useTimegridStore.getState().setSelectedWallet('1NotInTheFixture');
     const { getByText } = render(<WalletInspector />);
+    expect(getByText(/Hover or click a wallet/i)).toBeTruthy();
+  });
+});
+
+describe('<WalletInspector> minimize', () => {
+  it('collapses to a chip via the X and restores on click', () => {
+    const { getByLabelText, getByText, queryByText } = render(<WalletInspector />);
+    expect(getByText(/Hover or click a wallet/i)).toBeTruthy();
+    fireEvent.click(getByLabelText(/Minimize inspector/i));
+    expect(queryByText(/Hover or click a wallet/i)).toBeNull();
+    fireEvent.click(getByLabelText(/Restore inspector/i));
     expect(getByText(/Hover or click a wallet/i)).toBeTruthy();
   });
 });

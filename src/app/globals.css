@@ -119,6 +119,13 @@ body::after {
 
 /* ── Animations ──────────────────────────────────────────── */
 
+/* New-block pop for the BlockStats live ticker — the tip height remounts
+   (React key) on each block and flares briefly. */
+@keyframes tip-pop {
+  0%   { transform: scale(1.15); color: #ffe680; }
+  100% { transform: scale(1); }
+}
+
 @keyframes pulse-soft {
   0%, 100% { opacity: 0.4; transform: scale(1); }
   50%      { opacity: 1.0; transform: scale(1.5); }

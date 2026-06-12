@@ -33,6 +33,14 @@ interface TimegridState {
   /** Index into the SPEED_OPTIONS array in Playback.tsx. */
   playbackSpeedIdx: number;
   setPlaybackSpeedIdx(idx: number): void;
+
+  /**
+   * Live chain tip from our same-origin /api/tip relay (height + the tip
+   * block's mined timestamp, unix seconds). null until the first poll lands.
+   * Written by useLiveTip (mounted on /graph); read by BlockStats' ticker.
+   */
+  liveTip: { height: number; timestamp: number | null } | null;
+  setLiveTip(tip: { height: number; timestamp: number | null }): void;
 }
 
 const INITIAL_BLOCK = 0;
@@ -83,5 +91,10 @@ export const useTimegridStore = create<TimegridState>((set, get) => ({
   playbackSpeedIdx: 0,
   setPlaybackSpeedIdx(idx) {
     set({ playbackSpeedIdx: Math.max(0, idx) });
+  },
+
+  liveTip: null,
+  setLiveTip(tip) {
+    set({ liveTip: tip });
   },
 }));
