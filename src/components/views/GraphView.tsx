@@ -876,7 +876,7 @@ export function GraphView() {
       {focusActive && (
         <div
           aria-live="polite"
-          className="text-mono pointer-events-none absolute right-3 top-3 rounded-full border border-[color:var(--color-amber)]/40 bg-[color:var(--color-background)]/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-amber)] backdrop-blur-sm"
+          className="text-mono pointer-events-none absolute bottom-9 left-3 rounded-full border border-[color:var(--color-amber)]/40 bg-[color:var(--color-background)]/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-amber)] backdrop-blur-sm"
         >
           Focus locked ·{' '}
           <span className="text-[color:var(--color-text-secondary)]">
