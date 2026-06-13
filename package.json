@@ -50,6 +50,9 @@
     "react-dom": "19.2.6",
     "zustand": "^5.0.13"
   },
+  "overrides": {
+    "brace-expansion": "^5.0.6"
+  },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/postcss": "^4",

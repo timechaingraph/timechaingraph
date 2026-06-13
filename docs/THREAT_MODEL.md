@@ -71,6 +71,27 @@ origin. No third-party block explorer or indexer is involved at any stage.
 - The data shown is public blockchain information; it contains no private or
   personal data beyond what is already on the public ledger.
 
+## Known dependency advisories (accepted, not exploitable)
+
+The following npm security advisories are present in the dependency tree but
+are **not exploitable** in this deployment and cannot be resolved without
+catastrophic breaking changes:
+
+| Advisory | Package | Why not exploitable here |
+|----------|---------|--------------------------|
+| GHSA-gv7w-rqvm-qjhr | esbuild (via wrangler) | Deno-specific attack vector; we use Node.js |
+| GHSA-g7r4-m6w7-qqqr | esbuild (via wrangler) | Requires exposing esbuild's dev server on Windows; we build on macOS and serve a static site |
+| GHSA-qx2v-qp2m-jg93 | postcss (inside Next.js) | XSS in server-side CSS stringify; `output: 'export'` means CSS is stringified at build time on the operator's machine, never in a browser or server context |
+
+The "fix" npm suggests for the esbuild pair would downgrade wrangler to v3
+(breaking our deploy pipeline); the postcss fix would downgrade Next.js to
+v9.3.3 (catastrophic). Both are dev/build-tool vulnerabilities with no
+reachable attack surface in a static export site hosted on Cloudflare Pages.
+
+Wrangler itself is upgraded to the latest 4.x to minimise the esbuild exposure
+window. We will upgrade Next.js as soon as a patched stable release is
+available that falls outside the advisory range.
+
 ## Out of scope
 
 - Network-level adversaries who can observe that you connected to this site at
