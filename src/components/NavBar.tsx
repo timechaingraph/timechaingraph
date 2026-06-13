@@ -86,7 +86,7 @@ export function NavBar() {
 
       {mobileOpen && (
         <div
-          className="brass-panel absolute right-0 top-full z-20 mt-2 flex w-56 flex-col gap-1 rounded-lg p-3 lg:hidden"
+          className="brass-panel absolute right-0 top-full z-20 mt-2 flex w-56 max-w-[calc(100vw-1rem)] flex-col gap-1 rounded-lg p-3 lg:hidden"
           role="menu"
         >
           {SECTIONS.map((link) => (

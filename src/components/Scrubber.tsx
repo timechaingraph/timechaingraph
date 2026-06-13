@@ -23,14 +23,17 @@ export function Scrubber() {
 
   return (
     <div
-      className="flex items-center gap-3 px-2"
+      className="flex items-center gap-2 px-2 sm:gap-3"
       aria-disabled={!ready}
       role="group"
       aria-label="Block scrubber"
     >
-      <span className="text-mono w-12 shrink-0 text-right text-[10px] tabular-nums text-[color:var(--color-text-primary)]">
+      <span className="text-mono w-14 shrink-0 text-right text-xs tabular-nums text-[color:var(--color-text-primary)] sm:w-12 sm:text-[10px]">
         {ready ? currentBlock.toLocaleString() : '—'}
       </span>
+      {/* h-8 on mobile gives a 32px touch target while keeping the visual
+          track thin (browser centres the 4px track within the taller element).
+          sm:h-1 restores the slim desktop appearance. */}
       <input
         type="range"
         min={0}
@@ -42,10 +45,10 @@ export function Scrubber() {
           setPlaybackPlaying(false);
           setCurrentBlock(Number(e.target.value));
         }}
-        className="h-1 w-full accent-[color:var(--color-amber)] disabled:opacity-30"
+        className="h-8 w-full cursor-pointer touch-none accent-[color:var(--color-amber)] disabled:opacity-30 sm:h-1"
         aria-label={`Block ${currentBlock.toLocaleString()} of ${latestBlock.toLocaleString()}`}
       />
-      <span className="text-mono w-12 shrink-0 text-[10px] tabular-nums text-[color:var(--color-text-muted)]">
+      <span className="text-mono w-14 shrink-0 text-xs tabular-nums text-[color:var(--color-text-muted)] sm:w-12 sm:text-[10px]">
         {ready ? latestBlock.toLocaleString() : '—'}
       </span>
     </div>

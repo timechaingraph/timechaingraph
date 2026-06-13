@@ -44,7 +44,7 @@ export function LiveTipPanel() {
   return (
     <div
       aria-hidden
-      className="text-mono pointer-events-none absolute bottom-3 right-3 z-10 w-[210px] rounded-md border border-[color:var(--color-card-border)] bg-[color:var(--color-background)]/85 px-3 py-2 text-[10px] uppercase tracking-[0.18em] backdrop-blur-sm"
+      className="text-mono pointer-events-none absolute bottom-28 right-3 z-10 w-[210px] max-w-[calc(100vw-1.5rem)] rounded-md border border-[color:var(--color-card-border)] bg-[color:var(--color-background)]/85 px-3 py-2 text-[10px] uppercase tracking-[0.18em] backdrop-blur-sm sm:bottom-3"
     >
       {liveTip ? (
         <>

@@ -254,13 +254,14 @@ type Link = PhysicsLink & {
  */
 export function GraphView() {
   const containerRef = useRef<HTMLDivElement>(null);
-  // Mirrored from the imperative `focusedAddress` closure inside the
-  // PIXI effect — used only by the HUD render path (conditional ESC
-  // hint). The graphics pipeline never reads React state.
   const [focusActive, setFocusActive] = useState(false);
-  // Hover tooltip (identity peek). Hover does NOT dim the canvas — click is the
-  // real interaction (focus → ego-network).
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
+  // Touch device detection — suppresses hover tooltip (inspector handles it)
+  // and swaps "ESC to clear" for "tap to clear" in the focus pill.
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  useEffect(() => {
+    setIsTouchDevice(navigator.maxTouchPoints > 0);
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -354,6 +355,11 @@ export function GraphView() {
       let panMoved = false;
       let panStart = { x: 0, y: 0 };
       let panStartCam = { x: 0, y: 0 };
+      // Pinch-to-zoom state — two-finger spread. Managed by canvas-level
+      // Touch event handlers so multi-touch is tracked independently of
+      // PixiJS pointer events. `isPinching` gates the PixiJS pan handler.
+      let isPinching = false;
+      let lastPinchDist = 0;
       let focusedAddress: string | null = null;
       let spotlightDistances = new Map<string, number>();
 
@@ -467,8 +473,14 @@ export function GraphView() {
         dot.eventMode = 'static';
         dot.cursor = 'grab';
         // hitArea is tested in the sprite's LOCAL (unscaled) space; divide the
-        // desired world hit radius (≥6px — generous for tiny dots) by the scale.
-        const hitR = Math.max(radius, 6) / scale;
+        // desired world hit radius by the scale. 16px minimum on touch devices
+        // (44px recommended touch target is too large for dense graphs, 16 is
+        // the practical sweet spot).
+        const minHit =
+          typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0
+            ? 16
+            : 6;
+        const hitR = Math.max(radius, minHit) / scale;
         dot.hitArea = {
           contains: (mx: number, my: number) => mx * mx + my * my <= hitR * hitR,
         };
@@ -571,6 +583,7 @@ export function GraphView() {
           target: unknown;
           global: { x: number; y: number };
         }) => {
+          if (isPinching) return; // two-finger pinch in progress — ignore single pointer
           if (e.target !== app.stage) return; // a dot was hit
           panning = true;
           panMoved = false;
@@ -582,6 +595,7 @@ export function GraphView() {
       app.stage.on(
         'pointermove',
         (e: { global: { x: number; y: number } }) => {
+          if (isPinching) return; // pinch zoom owns the canvas — skip drag/pan
           if (draggedBody) {
             const v = cursorInViewport(e.global);
             draggedBody.x = v.x - dragOffsetX - cx;
@@ -693,6 +707,76 @@ export function GraphView() {
       app.canvas.addEventListener('wheel', onWheel, { passive: false });
       cleanupFns.push(() => {
         app.canvas.removeEventListener('wheel', onWheel);
+      });
+
+      // Pinch-to-zoom — two-finger spread/squish on touch screens.
+      // Uses the Touch API (separate from PixiJS pointer events) so the
+      // second finger's pointermove never reaches the PixiJS pan handler.
+      // preventDefault on touchmove also blocks the browser's native
+      // pinch-to-zoom so only our camera logic fires.
+      function getTouchDist(t: TouchList): number {
+        const dx = t[0].clientX - t[1].clientX;
+        const dy = t[0].clientY - t[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+      function getTouchMid(
+        t: TouchList,
+        rect: DOMRect,
+      ): { x: number; y: number } {
+        return {
+          x: (t[0].clientX + t[1].clientX) / 2 - rect.left,
+          y: (t[0].clientY + t[1].clientY) / 2 - rect.top,
+        };
+      }
+      const onTouchStart = (e: TouchEvent): void => {
+        if (e.touches.length < 2) return;
+        e.preventDefault();
+        isPinching = true;
+        panning = false; // cancel any in-progress single-finger pan
+        app.canvas.style.cursor = '';
+        lastPinchDist = getTouchDist(e.touches);
+      };
+      const onTouchMove = (e: TouchEvent): void => {
+        if (!isPinching || e.touches.length < 2) return;
+        e.preventDefault();
+        const newDist = getTouchDist(e.touches);
+        if (lastPinchDist <= 0) {
+          lastPinchDist = newDist;
+          return;
+        }
+        const scale = newDist / lastPinchDist;
+        lastPinchDist = newDist;
+        const cam = useTimegridStore.getState().camera;
+        const nextZoom = Math.max(
+          ZOOM_MIN,
+          Math.min(ZOOM_MAX, cam.zoom * scale),
+        );
+        const rect = app.canvas.getBoundingClientRect();
+        const mid = getTouchMid(e.touches, rect);
+        const wx = (mid.x - cam.position.x) / cam.zoom;
+        const wy = (mid.y - cam.position.y) / cam.zoom;
+        setCamera({
+          position: { x: mid.x - wx * nextZoom, y: mid.y - wy * nextZoom },
+          zoom: nextZoom,
+        });
+      };
+      const onTouchEnd = (e: TouchEvent): void => {
+        if (e.touches.length < 2) {
+          isPinching = false;
+          lastPinchDist = 0;
+        }
+      };
+      app.canvas.addEventListener('touchstart', onTouchStart, {
+        passive: false,
+      });
+      app.canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+      app.canvas.addEventListener('touchend', onTouchEnd);
+      app.canvas.addEventListener('touchcancel', onTouchEnd);
+      cleanupFns.push(() => {
+        app.canvas.removeEventListener('touchstart', onTouchStart);
+        app.canvas.removeEventListener('touchmove', onTouchMove);
+        app.canvas.removeEventListener('touchend', onTouchEnd);
+        app.canvas.removeEventListener('touchcancel', onTouchEnd);
       });
 
       const idxByAddr = new Map(bodies.map((b, i) => [b.wallet.address, i]));
@@ -831,12 +915,16 @@ export function GraphView() {
 
   return (
     <div className="relative h-full w-full overflow-hidden">
+      {/* touch-action:none lets us own all touch gestures (pan + pinch-zoom)
+          without the browser intercepting scroll or native pinch. */}
       <div
         ref={containerRef}
         className="absolute inset-0 cursor-grab active:cursor-grabbing"
-        aria-label="Timechain Graph — force-directed Bitcoin wallet network. Drag empty space to pan, scroll to zoom, drag any wallet to pull it through the layout, hover a wallet to identify it, click a wallet to focus on its connections, ESC to clear focus"
+        style={{ touchAction: 'none' }}
+        aria-label="Timechain Graph — force-directed Bitcoin wallet network. Drag to pan, pinch to zoom, tap a wallet to focus on its connections"
       />
-      {hoverInfo && (
+      {/* Hover tooltip — desktop only. Touch users tap to open the inspector. */}
+      {hoverInfo && !isTouchDevice && (
         <div
           className="text-mono pointer-events-none absolute z-20 rounded-md border border-[color:var(--color-card-border)] bg-[color:var(--color-background)]/90 px-2.5 py-1.5 text-[10px] leading-tight backdrop-blur-sm"
           style={{ left: hoverInfo.x + 14, top: hoverInfo.y + 14, maxWidth: 240 }}
@@ -861,7 +949,7 @@ export function GraphView() {
       <button
         type="button"
         onClick={handleReset}
-        className="text-mono absolute left-3 top-3 rounded-full border border-[color:var(--color-card-border)] bg-[color:var(--color-background)]/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-text-muted)] backdrop-blur-sm transition-colors hover:border-[color:var(--color-gold)]/60 hover:text-[color:var(--color-gold)]"
+        className="text-mono absolute left-3 top-3 rounded-full border border-[color:var(--color-card-border)] bg-[color:var(--color-background)]/70 px-2.5 py-1.5 text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-text-muted)] backdrop-blur-sm transition-colors hover:border-[color:var(--color-gold)]/60 hover:text-[color:var(--color-gold)]"
         aria-label="Reset lattice positions"
       >
         ↺ Reset
@@ -880,7 +968,7 @@ export function GraphView() {
         >
           Focus locked ·{' '}
           <span className="text-[color:var(--color-text-secondary)]">
-            ESC to clear
+            {isTouchDevice ? 'tap canvas to clear' : 'ESC to clear'}
           </span>
         </div>
       )}

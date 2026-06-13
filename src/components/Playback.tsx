@@ -120,18 +120,18 @@ export function Playback({ autoStart = false }: PlaybackProps) {
         : '▶ Play';
 
   return (
-    <div className="flex items-center gap-1.5 px-2">
+    <div className="flex items-center gap-2 px-2 sm:gap-1.5">
       <button
         type="button"
         onClick={togglePlay}
         disabled={!ready}
         aria-label={playing ? 'Pause playback' : 'Start playback'}
-        className="text-mono shrink-0 rounded-md border border-[color:var(--color-card-border)] bg-[color:var(--color-background-light)] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[color:var(--color-text-primary)] transition-colors hover:border-[color:var(--color-amber)] hover:text-[color:var(--color-amber)] disabled:opacity-40"
+        className="text-mono shrink-0 rounded-md border border-[color:var(--color-card-border)] bg-[color:var(--color-background-light)] px-4 py-2.5 text-xs uppercase tracking-[0.16em] text-[color:var(--color-text-primary)] transition-colors hover:border-[color:var(--color-amber)] hover:text-[color:var(--color-amber)] disabled:opacity-40 sm:px-2.5 sm:py-1 sm:text-[10px]"
       >
         {buttonLabel}
       </button>
       <div
-        className="flex items-center gap-0.5"
+        className="flex items-center gap-1 sm:gap-0.5"
         role="group"
         aria-label="Playback speed"
       >
@@ -145,7 +145,7 @@ export function Playback({ autoStart = false }: PlaybackProps) {
               disabled={!ready}
               aria-pressed={active}
               className={[
-                'text-mono rounded px-1.5 py-0.5 text-[9px] uppercase tracking-[0.14em] transition-colors',
+                'text-mono rounded px-2.5 py-2 text-xs uppercase tracking-[0.14em] transition-colors sm:px-1.5 sm:py-0.5 sm:text-[9px]',
                 active
                   ? 'bg-[color:var(--color-amber)]/20 text-[color:var(--color-amber)]'
                   : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)]',
