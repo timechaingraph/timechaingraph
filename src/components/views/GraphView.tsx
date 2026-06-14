@@ -1,0 +1,977 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { Application, Container, Graphics, Sprite } from 'pixi.js';
+import { getActiveSubstrate } from '@/data/substrate';
+import { ROLE_COLOR, ROLE_CSS, ROLE_LABEL } from '@/lib/role-visuals';
+import { useTimegridStore } from '@/store/timegridStore';
+import { AUTOSTART_SPEED_IDX } from '@/components/Playback';
+import { BRAND_TAGLINE } from '@/lib/site-config';
+import { LiveTipPanel } from '@/components/LiveTipPanel';
+import { step as physicsStep, type PhysicsLink } from '@/lib/forceLayout';
+import type { WalletBond, WalletData, WalletRole } from '@/types/wallet';
+
+// GraphView reads its chain digest through the ChainSubstrate
+// contract rather than direct fixture imports. v0.1 substrate is
+// fixture-backed; v0.2+ swaps in an R2/parquet implementation
+// without touching this file.
+// Read at module-evaluation time from the ACTIVE substrate — GraphCanvas
+// calls loadSubstrate() before it dynamic-imports this module, so these
+// capture real chain data (static importers like tests get the fixture).
+//
+// Barnes-Hut (src/lib/forceLayout) makes physics O(n log n), and nodes now render
+// as batched, shared-texture Sprites (one draw call for the whole set) instead of
+// a Graphics-per-node — so this cap can sit at the free-tier scale. The remaining
+// per-tick cost is the single `edges` Graphics redraw; lifting the cap much higher
+// would make THAT the bottleneck (next steps: edge batching / viewport culling +
+// LOD for the Max tier's millions).
+// EDGE-FIRST selection: greedily take the strongest bonds + their endpoints
+// up to MAX_RENDER_NODES, then keep further bonds that join two already-kept
+// wallets. Every node ends up with ≥1 connection, so the layout shows real
+// hubs + spokes — picking top wallets by *value* instead leaves them
+// disconnected (their bonds point outside the set) and it collapses to a blob.
+const MAX_RENDER_NODES = 12000;
+const _sub = getActiveSubstrate();
+let WALLETS: readonly WalletData[];
+let BONDS: readonly WalletBond[];
+if (_sub.wallets.length <= MAX_RENDER_NODES) {
+  WALLETS = _sub.wallets;
+  BONDS = _sub.bonds;
+} else {
+  const byAddr = new Map(_sub.wallets.map((w) => [w.address, w] as const));
+  const rankedBonds = [..._sub.bonds].sort((a, b) => (b.sats > a.sats ? 1 : -1));
+  const keptW = new Map<string, WalletData>();
+  const keptB: WalletBond[] = [];
+  for (const b of rankedBonds) {
+    const hasF = keptW.has(b.fromAddress);
+    const hasT = keptW.has(b.toAddress);
+    if (keptW.size + (hasF ? 0 : 1) + (hasT ? 0 : 1) > MAX_RENDER_NODES) {
+      if (hasF && hasT) keptB.push(b); // densify within the kept set
+      continue;
+    }
+    const wf = byAddr.get(b.fromAddress);
+    const wt = byAddr.get(b.toAddress);
+    if (!wf || !wt) continue;
+    keptW.set(wf.address, wf);
+    keptW.set(wt.address, wt);
+    keptB.push(b);
+  }
+  WALLETS = [...keptW.values()];
+  BONDS = keptB;
+}
+
+// Degree centrality per address (how many distinct bonds touch it), from the
+// rendered bond set. Drives node SIZE — the most-connected wallets read biggest.
+const degreeByAddr = new Map<string, number>();
+for (const b of BONDS) {
+  degreeByAddr.set(b.fromAddress, (degreeByAddr.get(b.fromAddress) ?? 0) + 1);
+  degreeByAddr.set(b.toAddress, (degreeByAddr.get(b.toAddress) ?? 0) + 1);
+}
+
+// Per-address bond list (counterparty + sats + formation block) — powers the
+// focus ego-network view (a wallet's strongest bonds formed so far).
+type BondEdge = { other: string; sats: bigint; formationBlock: number };
+const adjByAddr = new Map<string, BondEdge[]>();
+for (const b of BONDS) {
+  const fb = b.formationBlock ?? 0;
+  const a1 = adjByAddr.get(b.fromAddress);
+  if (a1) a1.push({ other: b.toAddress, sats: b.sats, formationBlock: fb });
+  else adjByAddr.set(b.fromAddress, [{ other: b.toAddress, sats: b.sats, formationBlock: fb }]);
+  const a2 = adjByAddr.get(b.toAddress);
+  if (a2) a2.push({ other: b.fromAddress, sats: b.sats, formationBlock: fb });
+  else adjByAddr.set(b.toAddress, [{ other: b.fromAddress, sats: b.sats, formationBlock: fb }]);
+}
+
+const RING_RADIUS: Record<WalletRole, number> = {
+  satoshi: 0,
+  whale: 90,
+  miner: 140,
+  significant: 210,
+  dust: 290,
+};
+
+const PHYSICS = {
+  // Tuned up from the 50-node fixture defaults for the multi-thousand-node real
+  // graph: weaker gravity + stronger repulsion so it spreads into a readable
+  // network instead of a tight ball. step() auto-switches to Barnes-Hut above
+  // BH_THRESHOLD; theta is its opening angle (0.8 = fast, fine for this view).
+  // Tuned to break up the dense central cluster of cross-bonded whales (which
+  // booms after ~block 490k as the big wallets come online + transact with each
+  // other). Four knobs, all pushing toward spread:
+  //   gravity   ↓ — weaker pull to origin, so everything doesn't converge center
+  //   repulsion ↑ — stronger push (charge-weighted: hubs push hardest)
+  //   spring    ↓ — bonded nodes pull together less
+  //   springRest ↑ — and they settle farther apart
+  // If still too clumped: ↑repulsion / ↑springRest / ↓gravity. If it explodes or
+  // drifts apart: the reverse.
+  gravity: 0.014,
+  repulsion: 1100,
+  spring: 0.0075,
+  springRest: 140,
+  damping: 0.86,
+  maxStep: 1 / 30,
+  theta: 0.8,
+};
+
+/**
+ * Transient edges: a bond is a per-block transaction event. It appears at its
+ * real formation block and fades to alpha 0 over the next EDGE_FADE_BLOCKS,
+ * then it's gone — so the canvas shows recent transaction activity around the
+ * scrubber's block, not a persistent all-time hairball. (Focus mode overrides
+ * this to show a wallet's full lifetime ego-network.) ~10000 blocks ≈ two months
+ * of activity — wide enough that edges persist visibly without the all-time set.
+ */
+const EDGE_FADE_BLOCKS = 10000;
+const EDGE_BASE_ALPHA = 0.4;
+
+/**
+ * Node brightness recency-fade. A wallet stays fully bright through its active
+ * lifespan (first→last tx), then dims over ACTIVITY_FADE_BLOCKS past its last
+ * transaction down to ACTIVITY_DIM_FLOOR — so wallets that transacted RECENTLY
+ * (relative to the scrubber) stay bright and only long-dormant ones go dark.
+ * ~52,560 blocks ≈ a year; raise to keep more of the network bright at the tip.
+ */
+const ACTIVITY_FADE_BLOCKS = 52_560;
+const ACTIVITY_DIM_FLOOR = 0.25;
+
+/** Focus shows at most this many of a wallet's strongest bonds — keeps a hub's
+ *  ego-network legible instead of a blob of hundreds of all-time links. */
+const FOCUS_MAX_BONDS = 24;
+
+const ZOOM_MIN = 0.3;
+const ZOOM_MAX = 5;
+const ZOOM_STEP = 0.0015;
+
+// Demo timeline upper bound. Aligns with the chain-tools snapshot
+// generator's SNAPSHOT_THROUGH_BLOCK (= chain-tools TIP_BLOCK) so
+// the scrubber range == the snapshot range == the playback timeline.
+// Snapped to a recent live chain tip — bump on each ingest run.
+// As the user scrubs through, FREE_TIER_50's wallets spawn at their
+// firstSeenBlock — Satoshi at 0, miners by ~44k, whales from ~50k,
+// significant from ~150k, then the lattice plays forward through
+// epochs 1-4 with existing wallets active as edges fade in/out
+// across blocks.
+const FIXTURE_LATEST_BLOCK = getActiveSubstrate().tipBlock || 947_630;
+
+function djb2(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+function seedPosition(wallet: WalletData): { x: number; y: number } {
+  if (wallet.role === 'satoshi') return { x: 0, y: 0 };
+  const angle = (djb2(wallet.address) / 0xffffffff) * Math.PI * 2;
+  const r = RING_RADIUS[wallet.role];
+  return { x: Math.cos(angle) * r, y: Math.sin(angle) * r };
+}
+
+// Uniform gravity: every wallet feels the same pull toward the origin. (Mass
+// used to be log(received), which sucked the biggest wallets into a central
+// clump; spreading is now handled by charge-weighted repulsion instead.)
+function massOf(): number {
+  return 1;
+}
+
+// Node radius by DEGREE CENTRALITY — the more bonds a wallet has, the bigger it
+// reads (the documented "radius = base + log(centrality)" model). Satoshi is the
+// genesis centerpiece: a fixed, largest radius, anchored at the origin.
+const SATOSHI_RADIUS = 9;
+const NODE_BASE_RADIUS = 1.2;
+const NODE_DEGREE_SCALE = 1.4;
+const NODE_MAX_RADIUS = 7;
+function radiusFor(wallet: WalletData): number {
+  if (wallet.role === 'satoshi') return SATOSHI_RADIUS;
+  const degree = degreeByAddr.get(wallet.address) ?? 0;
+  return Math.min(
+    NODE_MAX_RADIUS,
+    NODE_BASE_RADIUS + Math.log10(degree + 1) * NODE_DEGREE_SCALE,
+  );
+}
+
+/** Compact BTC label for the hover tooltip. */
+function btcShort(sats: bigint): string {
+  const btc = Number(sats) / 1e8;
+  if (btc >= 1000) return `${Math.round(btc).toLocaleString()} BTC`;
+  if (btc >= 1) return `${btc.toFixed(1)} BTC`;
+  return `${btc.toFixed(3)} BTC`;
+}
+
+/** What the hover tooltip shows about a node (screen pos + identity facts). */
+type HoverInfo = {
+  x: number;
+  y: number;
+  addr: string;
+  role: WalletRole;
+  degree: number;
+  btc: string;
+};
+
+type Body = {
+  wallet: WalletData;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  mass: number;
+  /** Repulsion weight ∝ radius (∝ log-degree) — hubs push harder, spread more. */
+  charge: number;
+  /** Spring-force scale 1/√(degree+1) — caps a hub's pull so it doesn't collapse. */
+  springScale: number;
+  /** Pre-birth: excluded from the sim so invisible nodes don't warp the layout. */
+  inactive: boolean;
+  pinned: boolean;
+  node: Sprite;
+  halo: Graphics | null;
+};
+
+type Link = PhysicsLink & {
+  /** The bond's real first-appearance block — drives the transient edge fade. */
+  formationBlock: number;
+};
+
+/**
+ * GraphView — force-directed renderer for timechaingraph.com.
+ *
+ * The full living-network experience:
+ *   - Velocity-Verlet physics (gravity + Coulomb repulsion + Hooke springs)
+ *   - Drag-to-pin per node (the "game feel")
+ *   - Pan empty space, scroll to zoom
+ *   - Scrubber-driven node fade (alpha=0 + pinned for pre-birth) and
+ *     edge fade per spec (alpha decays 10 blocks past last activity)
+ *   - Satoshi permanent-anchored at world origin
+ *
+ * Phase-C v0.1 progress:
+ *   ✓ skeleton                                      (0f0a161)
+ *   ✓ render fixture + hover/click + Inspector      (983a0b9)
+ *   ✓ force simulation + bonds                      (20b58ab)
+ *   ✓ drag-to-pin                                   (ce5feef)
+ *   ✓ scrubber fade + edge fade                     (d9102f0)
+ *   ✓ pan + zoom viewport                           (this commit)
+ *   · real BitcoinChainAdapter                      (later)
+ */
+export function GraphView() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [focusActive, setFocusActive] = useState(false);
+  const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
+  // Touch device detection — suppresses hover tooltip (inspector handles it)
+  // and swaps "ESC to clear" for "tap to clear" in the focus pill.
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  useEffect(() => {
+    setIsTouchDevice(navigator.maxTouchPoints > 0);
+  }, []);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const app = new Application();
+    let cancelled = false;
+    const cleanupFns: Array<() => void> = [];
+    const viewport = new Container();
+
+    const {
+      setSelectedWallet,
+      setActiveDockPanel,
+      setLatestBlock,
+      setCurrentBlock,
+      setCamera,
+    } = useTimegridStore.getState();
+
+    // Auto-play from genesis: the lattice weaves itself forward — Satoshi alone
+    // at block 0, then wallets + bonds appear at their real blocks. Max runs the
+    // full chain in ~3 min; the visitor can pause / scrub / change speed.
+    setLatestBlock(FIXTURE_LATEST_BLOCK);
+    setCurrentBlock(0);
+    const { setPlaybackSpeedIdx, setPlaybackPlaying } = useTimegridStore.getState();
+    setPlaybackSpeedIdx(AUTOSTART_SPEED_IDX); // 'Max' (~3 min full chain)
+    setPlaybackPlaying(true);
+
+    function applyCamera(): void {
+      const cam = useTimegridStore.getState().camera;
+      viewport.position.set(cam.position.x, cam.position.y);
+      viewport.scale.set(cam.zoom);
+    }
+
+    void (async () => {
+      // Engine tuning per user directive 2026-04-30 ("better engine"):
+      // - resolution = devicePixelRatio so retina/HiDPI screens render
+      //   crisp circle edges + sharp synapse strokes (default is 1).
+      // - autoDensity true so the canvas's CSS size stays at logical
+      //   pixels while the backing store scales to physical pixels.
+      // - antialias true (kept) for smooth organic-shape circles.
+      // - hello false to silence Pixi's banner in production logs.
+      await app.init({
+        resizeTo: container,
+        background: 0x08080c,
+        antialias: true,
+        resolution:
+          typeof window !== 'undefined' && window.devicePixelRatio
+            ? window.devicePixelRatio
+            : 1,
+        autoDensity: true,
+        hello: false,
+      });
+      if (cancelled) {
+        app.destroy(true, { children: true });
+        return;
+      }
+      container.appendChild(app.canvas);
+
+      const cx = app.screen.width / 2;
+      const cy = app.screen.height / 2;
+
+      // Viewport holds the lattice; pan/zoom transforms the viewport,
+      // not the stage. Backdrop guide rings live inside the viewport so
+      // they pan/zoom with the role-radius encoding they represent —
+      // unlike Grid where the backdrop is a fixed frame.
+      app.stage.addChild(viewport);
+
+      const backdrop = new Graphics();
+      for (const r of [
+        RING_RADIUS.whale,
+        RING_RADIUS.miner,
+        RING_RADIUS.significant,
+        RING_RADIUS.dust,
+      ]) {
+        backdrop.circle(cx, cy, r).stroke({
+          width: 1,
+          color: 0xffffff,
+          alpha: 0.04,
+        });
+      }
+      viewport.addChild(backdrop);
+
+      const edges = new Graphics();
+      viewport.addChild(edges);
+
+      let draggedBody: Body | null = null;
+      let dragOffsetX = 0;
+      let dragOffsetY = 0;
+      let currentBlock = useTimegridStore.getState().currentBlock;
+      let panning = false;
+      let panMoved = false;
+      let panStart = { x: 0, y: 0 };
+      let panStartCam = { x: 0, y: 0 };
+      // Pinch-to-zoom state — two-finger spread. Managed by canvas-level
+      // Touch event handlers so multi-touch is tracked independently of
+      // PixiJS pointer events. `isPinching` gates the PixiJS pan handler.
+      let isPinching = false;
+      let lastPinchDist = 0;
+      let focusedAddress: string | null = null;
+      let spotlightDistances = new Map<string, number>();
+
+      function shouldBePinned(body: Body): boolean {
+        if (body === draggedBody) return true;
+        if (body.wallet.role === 'satoshi') return true;
+        if (body.wallet.firstSeenBlock > currentBlock) return true;
+        return false;
+      }
+
+      // Focus ego-set: the focused wallet + its strongest bonds formed up to the
+      // current block (capped to FOCUS_MAX_BONDS) — clicking a hub shows its
+      // biggest, most legible connections, not its entire all-time neighborhood.
+      function focusEgoSet(addr: string): Map<string, number> {
+        const set = new Map<string, number>();
+        set.set(addr, 0);
+        const bonds = (adjByAddr.get(addr) ?? [])
+          .filter((e) => e.formationBlock <= currentBlock)
+          .sort((a, b) => (b.sats > a.sats ? 1 : b.sats < a.sats ? -1 : 0))
+          .slice(0, FOCUS_MAX_BONDS);
+        for (const e of bonds) set.set(e.other, 1);
+        return set;
+      }
+
+      function recomputeSpotlight(): void {
+        // Focus = capped, time-filtered ego-network (focusEgoSet); otherwise
+        // nothing is spotlit (hover no longer dims the canvas).
+        spotlightDistances = focusedAddress
+          ? focusEgoSet(focusedAddress)
+          : new Map();
+      }
+
+      function nodeAlpha(body: Body): number {
+        // Focus mode = time-independent ego-network: focused node + its
+        // neighbors full, everything else hidden.
+        if (focusedAddress) {
+          return spotlightDistances.has(body.wallet.address) ? 1 : 0;
+        }
+        const w = body.wallet;
+        if (w.firstSeenBlock > currentBlock) return 0; // not born yet
+        // Recency fade: full through the active lifespan (current ≤ lastActive),
+        // then dim gradually with each block past the last transaction — so the
+        // most-recently-active wallets stay bright at the tip instead of all
+        // snapping dark at once.
+        const since = currentBlock - w.lastActiveBlock;
+        if (since <= 0) return 1;
+        return Math.max(ACTIVITY_DIM_FLOOR, 1 - since / ACTIVITY_FADE_BLOCKS);
+      }
+
+      function applyAlpha(): void {
+        for (const body of bodies) {
+          if (body === draggedBody) continue;
+          const alpha = nodeAlpha(body);
+          body.node.alpha = alpha;
+          // Invisible nodes (pre-birth, or hidden in focus mode) must not be
+          // hoverable/clickable — otherwise you can select a node you can't see.
+          body.node.eventMode = alpha > 0 ? 'static' : 'none';
+          if (body.halo) body.halo.alpha = alpha === 0 ? 0 : 0.75 * alpha;
+        }
+      }
+
+      // Clear sticky focus and return the lattice to its full view. Shared by
+      // ESC and the click-empty-canvas gesture.
+      function clearFocus(): void {
+        if (!focusedAddress) return;
+        focusedAddress = null;
+        setSelectedWallet(null);
+        setFocusActive(false);
+        recomputeSpotlight();
+        applyAlpha();
+      }
+
+      // Convert screen-space cursor to viewport-local coords. Required
+      // because the viewport may be panned/zoomed when drag happens.
+      function cursorInViewport(global: { x: number; y: number }): {
+        x: number;
+        y: number;
+      } {
+        return {
+          x: (global.x - viewport.position.x) / viewport.scale.x,
+          y: (global.y - viewport.position.y) / viewport.scale.y,
+        };
+      }
+
+      // One shared, high-res white circle texture for every node. Sprites that
+      // share a texture batch into ~one draw call (vs a Graphics-per-node) — the
+      // key to scaling the node count. Generated big + hi-res then scaled DOWN
+      // per role, so dots stay crisp at any zoom.
+      const NODE_TEX_RADIUS = 32;
+      const circleTex = new Graphics().circle(0, 0, NODE_TEX_RADIUS).fill(0xffffff);
+      const nodeTexture = app.renderer.generateTexture({
+        target: circleTex,
+        resolution: Math.max(2, (window.devicePixelRatio || 1) * 2),
+        antialias: true,
+      });
+      circleTex.destroy();
+
+      const bodies: Body[] = WALLETS.map((wallet) => {
+        const seed = seedPosition(wallet);
+        const radius = radiusFor(wallet);
+        const scale = radius / NODE_TEX_RADIUS;
+
+        // Shared-texture Sprite (batched) instead of a per-node Graphics. Sprite
+        // and Graphics share the interaction API, so every handler below is
+        // unchanged — only the visual + hit-area math differ.
+        const dot = new Sprite(nodeTexture);
+        dot.anchor.set(0.5);
+        dot.tint = ROLE_COLOR[wallet.role];
+        dot.scale.set(scale);
+        dot.position.set(cx + seed.x, cy + seed.y);
+        dot.eventMode = 'static';
+        dot.cursor = 'grab';
+        // hitArea is tested in the sprite's LOCAL (unscaled) space; divide the
+        // desired world hit radius by the scale. 16px minimum on touch devices
+        // (44px recommended touch target is too large for dense graphs, 16 is
+        // the practical sweet spot).
+        const minHit =
+          typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0
+            ? 16
+            : 6;
+        const hitR = Math.max(radius, minHit) / scale;
+        dot.hitArea = {
+          contains: (mx: number, my: number) => mx * mx + my * my <= hitR * hitR,
+        };
+
+        const body: Body = {
+          wallet,
+          x: seed.x,
+          y: seed.y,
+          vx: 0,
+          vy: 0,
+          mass: massOf(),
+          charge: radius, // degree-weighted repulsion (radius ∝ log-degree)
+          springScale: 1 / Math.sqrt((degreeByAddr.get(wallet.address) ?? 0) + 1),
+          inactive: wallet.firstSeenBlock > currentBlock, // pre-birth = out of sim
+          pinned: false,
+          node: dot,
+          halo: null,
+        };
+
+        dot.on('pointerover', (e: { global: { x: number; y: number } }) => {
+          if (draggedBody || panning) return;
+          // Hover = a lightweight identity tooltip ONLY — no canvas dimming.
+          // (Clicking is the real interaction: focus → ego-network + inspector.)
+          setHoverInfo({
+            x: e.global.x,
+            y: e.global.y,
+            addr: wallet.address,
+            role: wallet.role,
+            degree: degreeByAddr.get(wallet.address) ?? 0,
+            btc: btcShort(wallet.totalReceivedSats),
+          });
+        });
+        dot.on('pointerout', () => {
+          if (draggedBody || panning) return;
+          setHoverInfo(null);
+        });
+        dot.on('pointertap', () => {
+          // Click toggles local-graph focus on this wallet.
+          // Click same wallet again → unlock. Click different wallet →
+          // switch focus. ESC also unlocks (handler below).
+          if (focusedAddress === wallet.address) {
+            focusedAddress = null;
+            setSelectedWallet(null);
+            setFocusActive(false);
+          } else {
+            focusedAddress = wallet.address;
+            setSelectedWallet(wallet.address);
+            setActiveDockPanel('wallet-inspector');
+            setFocusActive(true);
+          }
+          recomputeSpotlight();
+          applyAlpha();
+        });
+        dot.on(
+          'pointerdown',
+          (e: {
+            global: { x: number; y: number };
+            stopPropagation: () => void;
+          }) => {
+            if (body.wallet.firstSeenBlock > currentBlock) return;
+            // Stop propagation so the stage doesn't also start a pan.
+            e.stopPropagation();
+            draggedBody = body;
+            body.pinned = true;
+            body.vx = 0;
+            body.vy = 0;
+            const v = cursorInViewport(e.global);
+            dragOffsetX = v.x - (cx + body.x);
+            dragOffsetY = v.y - (cy + body.y);
+            dot.cursor = 'grabbing';
+            dot.alpha = 0.85;
+            setSelectedWallet(wallet.address);
+          },
+        );
+
+        viewport.addChild(dot);
+
+        if (wallet.role === 'satoshi') {
+          const halo = new Graphics();
+          halo
+            .circle(0, 0, SATOSHI_RADIUS + 7)
+            .stroke({ width: 1.4, color: ROLE_COLOR.satoshi, alpha: 0.75 });
+          halo.position.set(cx + seed.x, cy + seed.y);
+          viewport.addChild(halo);
+          body.halo = halo;
+        }
+
+        body.pinned = shouldBePinned(body);
+        return body;
+      });
+
+      // Stage-level event handling: pan when empty space is hit;
+      // pointermove handles either drag or pan depending on which is
+      // active; pointerup ends whichever is active.
+      app.stage.eventMode = 'static';
+      app.stage.hitArea = { contains: () => true };
+      app.stage.on(
+        'pointerdown',
+        (e: {
+          target: unknown;
+          global: { x: number; y: number };
+        }) => {
+          if (isPinching) return; // two-finger pinch in progress — ignore single pointer
+          if (e.target !== app.stage) return; // a dot was hit
+          panning = true;
+          panMoved = false;
+          panStart = { x: e.global.x, y: e.global.y };
+          panStartCam = { ...useTimegridStore.getState().camera.position };
+          app.canvas.style.cursor = 'grabbing';
+        },
+      );
+      app.stage.on(
+        'pointermove',
+        (e: { global: { x: number; y: number } }) => {
+          if (isPinching) return; // pinch zoom owns the canvas — skip drag/pan
+          if (draggedBody) {
+            const v = cursorInViewport(e.global);
+            draggedBody.x = v.x - dragOffsetX - cx;
+            draggedBody.y = v.y - dragOffsetY - cy;
+            draggedBody.vx = 0;
+            draggedBody.vy = 0;
+          } else if (panning) {
+            // Flag a real drag once the pointer travels >5px, so a release
+            // with no movement reads as a click (→ deselect), not a pan.
+            const ddx = e.global.x - panStart.x;
+            const ddy = e.global.y - panStart.y;
+            if (ddx * ddx + ddy * ddy > 25) panMoved = true;
+            const cam = useTimegridStore.getState().camera;
+            setCamera({
+              position: {
+                x: panStartCam.x + (e.global.x - panStart.x),
+                y: panStartCam.y + (e.global.y - panStart.y),
+              },
+              zoom: cam.zoom,
+            });
+          }
+        },
+      );
+
+      function endDrag(): void {
+        if (!draggedBody) return;
+        const body = draggedBody;
+        draggedBody = null;
+        body.node.cursor = 'grab';
+        body.node.alpha =
+          body.wallet.firstSeenBlock <= currentBlock ? 1 : 0;
+        body.pinned = shouldBePinned(body);
+      }
+      function endPan(): void {
+        panning = false;
+        app.canvas.style.cursor = '';
+      }
+      app.stage.on('pointerup', () => {
+        // A press+release on empty canvas with no drag = click → clear focus
+        // (return the lattice to its full, undimmed view).
+        const emptyClick = panning && !panMoved;
+        endDrag();
+        endPan();
+        if (emptyClick) clearFocus();
+      });
+      app.stage.on('pointerupoutside', () => {
+        endDrag();
+        endPan();
+      });
+
+      // ESC clears focus mode. document-level so it works regardless of
+      // canvas focus state. No-op when nothing is focused.
+      const onKeyDown = (event: KeyboardEvent): void => {
+        if (event.key === 'Escape') clearFocus();
+      };
+      document.addEventListener('keydown', onKeyDown);
+      cleanupFns.push(() => {
+        document.removeEventListener('keydown', onKeyDown);
+      });
+
+      // Reset Layout — re-seed every non-satoshi position to its ring
+      // origin and zero velocities. Triggered by the React reset button
+      // via a custom DOM event so the React tree doesn't have to hold a
+      // ref into PIXI internals.
+      const onReset = (): void => {
+        for (const body of bodies) {
+          if (body.wallet.role === 'satoshi') continue;
+          const seed = seedPosition(body.wallet);
+          body.x = seed.x;
+          body.y = seed.y;
+          body.vx = 0;
+          body.vy = 0;
+        }
+      };
+      document.addEventListener('graphview:reset', onReset);
+      cleanupFns.push(() => {
+        document.removeEventListener('graphview:reset', onReset);
+      });
+
+      // Wheel zoom on the canvas DOM element. Cursor-anchored: the
+      // world point under the mouse stays under the mouse after the
+      // zoom — the lattice grows or shrinks around wherever the user
+      // is looking, instead of always pivoting on world-origin.
+      // preventDefault stops the page from scrolling while the user
+      // explores the lattice.
+      const onWheel = (event: WheelEvent): void => {
+        event.preventDefault();
+        const cam = useTimegridStore.getState().camera;
+        const delta = -event.deltaY * ZOOM_STEP;
+        const nextZoom = Math.max(
+          ZOOM_MIN,
+          Math.min(ZOOM_MAX, cam.zoom * (1 + delta)),
+        );
+        if (nextZoom === cam.zoom) return;
+
+        // Mouse position in stage coords (canvas-local, top-left = 0,0).
+        const rect = app.canvas.getBoundingClientRect();
+        const mx = event.clientX - rect.left;
+        const my = event.clientY - rect.top;
+        // World point currently under the mouse, before the zoom.
+        const wx = (mx - cam.position.x) / cam.zoom;
+        const wy = (my - cam.position.y) / cam.zoom;
+        // Camera position needed so that (wx, wy) lands at (mx, my)
+        // after applying nextZoom.
+        const nextX = mx - wx * nextZoom;
+        const nextY = my - wy * nextZoom;
+        setCamera({ position: { x: nextX, y: nextY }, zoom: nextZoom });
+      };
+      app.canvas.addEventListener('wheel', onWheel, { passive: false });
+      cleanupFns.push(() => {
+        app.canvas.removeEventListener('wheel', onWheel);
+      });
+
+      // Pinch-to-zoom — two-finger spread/squish on touch screens.
+      // Uses the Touch API (separate from PixiJS pointer events) so the
+      // second finger's pointermove never reaches the PixiJS pan handler.
+      // preventDefault on touchmove also blocks the browser's native
+      // pinch-to-zoom so only our camera logic fires.
+      function getTouchDist(t: TouchList): number {
+        const dx = t[0].clientX - t[1].clientX;
+        const dy = t[0].clientY - t[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+      function getTouchMid(
+        t: TouchList,
+        rect: DOMRect,
+      ): { x: number; y: number } {
+        return {
+          x: (t[0].clientX + t[1].clientX) / 2 - rect.left,
+          y: (t[0].clientY + t[1].clientY) / 2 - rect.top,
+        };
+      }
+      const onTouchStart = (e: TouchEvent): void => {
+        if (e.touches.length < 2) return;
+        e.preventDefault();
+        isPinching = true;
+        panning = false; // cancel any in-progress single-finger pan
+        app.canvas.style.cursor = '';
+        lastPinchDist = getTouchDist(e.touches);
+      };
+      const onTouchMove = (e: TouchEvent): void => {
+        if (!isPinching || e.touches.length < 2) return;
+        e.preventDefault();
+        const newDist = getTouchDist(e.touches);
+        if (lastPinchDist <= 0) {
+          lastPinchDist = newDist;
+          return;
+        }
+        const scale = newDist / lastPinchDist;
+        lastPinchDist = newDist;
+        const cam = useTimegridStore.getState().camera;
+        const nextZoom = Math.max(
+          ZOOM_MIN,
+          Math.min(ZOOM_MAX, cam.zoom * scale),
+        );
+        const rect = app.canvas.getBoundingClientRect();
+        const mid = getTouchMid(e.touches, rect);
+        const wx = (mid.x - cam.position.x) / cam.zoom;
+        const wy = (mid.y - cam.position.y) / cam.zoom;
+        setCamera({
+          position: { x: mid.x - wx * nextZoom, y: mid.y - wy * nextZoom },
+          zoom: nextZoom,
+        });
+      };
+      const onTouchEnd = (e: TouchEvent): void => {
+        if (e.touches.length < 2) {
+          isPinching = false;
+          lastPinchDist = 0;
+        }
+      };
+      app.canvas.addEventListener('touchstart', onTouchStart, {
+        passive: false,
+      });
+      app.canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+      app.canvas.addEventListener('touchend', onTouchEnd);
+      app.canvas.addEventListener('touchcancel', onTouchEnd);
+      cleanupFns.push(() => {
+        app.canvas.removeEventListener('touchstart', onTouchStart);
+        app.canvas.removeEventListener('touchmove', onTouchMove);
+        app.canvas.removeEventListener('touchend', onTouchEnd);
+        app.canvas.removeEventListener('touchcancel', onTouchEnd);
+      });
+
+      const idxByAddr = new Map(bodies.map((b, i) => [b.wallet.address, i]));
+      const links: Link[] = [];
+      for (const bond of BONDS) {
+        const a = idxByAddr.get(bond.fromAddress);
+        const b = idxByAddr.get(bond.toAddress);
+        if (a === undefined || b === undefined) continue;
+        const strength =
+          PHYSICS.spring * (Math.log10(Number(bond.sats) + 1) * 0.1 + 0.6);
+        const aWallet = bodies[a].wallet;
+        const bWallet = bodies[b].wallet;
+        // Formation block — the bond's TRUE first-appearance block, carried by
+        // the parquet substrate (reduce computes MIN(formationBlock) across the
+        // chain). Drives the transient edge: the bond flashes as the scrubber
+        // crosses it, then fades. The 50-node fixture omits it, so fall back to a
+        // deterministic djb2 pick within the endpoints' overlap window.
+        let formationBlock = bond.formationBlock;
+        if (formationBlock === undefined) {
+          const lo = Math.max(aWallet.firstSeenBlock, bWallet.firstSeenBlock);
+          const hi = Math.min(aWallet.lastActiveBlock, bWallet.lastActiveBlock);
+          formationBlock =
+            hi <= lo
+              ? lo
+              : lo + (djb2(`${bond.fromAddress}|${bond.toAddress}`) % (hi - lo));
+        }
+        links.push({ a, b, strength, formationBlock });
+      }
+
+      function applyScrubberState(): void {
+        // Pin/un-pin per current-block; alpha is computed downstream by
+        // applyAlpha() (activity bloom + focus).
+        for (const body of bodies) {
+          const wasPinned = body.pinned;
+          body.pinned = shouldBePinned(body);
+          // Pre-birth wallets sit out of the sim (no repulsion/springs) so they
+          // don't warp the visible layout while invisible.
+          body.inactive = body.wallet.firstSeenBlock > currentBlock;
+          if (!body.pinned && wasPinned && body !== draggedBody) {
+            body.vx = 0;
+            body.vy = 0;
+          }
+        }
+        applyAlpha();
+      }
+
+      const unsubscribeBlock = useTimegridStore.subscribe((state, prev) => {
+        if (state.currentBlock !== prev.currentBlock) {
+          currentBlock = state.currentBlock;
+          if (focusedAddress) recomputeSpotlight(); // re-filter ego-set by time
+          applyScrubberState();
+        }
+      });
+
+      const unsubscribeCamera = useTimegridStore.subscribe((state, prev) => {
+        if (state.camera !== prev.camera) applyCamera();
+      });
+      cleanupFns.push(unsubscribeBlock, unsubscribeCamera);
+
+      applyScrubberState();
+      applyCamera();
+
+      function tick(): void {
+        // Physics is pure functions in src/lib/forceLayout — gravity +
+        // repulsion + springs + damping/integrate, all mutating bodies
+        // in place. The graphics resync below is the only PIXI-coupled
+        // part of the tick.
+        physicsStep(bodies, links, app.ticker.deltaMS / 1000, PHYSICS);
+
+        for (const body of bodies) {
+          body.node.position.set(cx + body.x, cy + body.y);
+          if (body.halo) body.halo.position.set(cx + body.x, cy + body.y);
+        }
+
+        edges.clear();
+        if (focusedAddress) {
+          // Focus — the focused wallet's own bonds (a clean star) to its capped
+          // top-N strongest neighbors (the time-filtered ego-set). Drawn full +
+          // time-independent: you clicked to study this wallet's connections.
+          const focusIdx = idxByAddr.get(focusedAddress);
+          for (const link of links) {
+            if (link.a !== focusIdx && link.b !== focusIdx) continue;
+            const a = bodies[link.a];
+            const b = bodies[link.b];
+            if (
+              !spotlightDistances.has(a.wallet.address) ||
+              !spotlightDistances.has(b.wallet.address)
+            ) {
+              continue;
+            }
+            edges
+              .moveTo(cx + a.x, cy + a.y)
+              .lineTo(cx + b.x, cy + b.y)
+              .stroke({ width: 0.8, color: 0xc28840, alpha: 0.85 });
+          }
+        } else {
+          // Default — transient per-block edges: a bond appears at its real
+          // formation block and fades out over EDGE_FADE_BLOCKS, then it's
+          // gone. Only bonds formed within the fade window of the scrubber
+          // render, so the frame is bounded — no persistent-hairball lag.
+          for (const link of links) {
+            const age = currentBlock - link.formationBlock;
+            if (age < 0 || age >= EDGE_FADE_BLOCKS) continue;
+            const a = bodies[link.a];
+            const b = bodies[link.b];
+            // Endpoints must be born/visible.
+            if (a.node.alpha === 0 || b.node.alpha === 0) continue;
+            const alpha = (1 - age / EDGE_FADE_BLOCKS) * EDGE_BASE_ALPHA;
+            if (alpha <= 0) continue;
+            edges
+              .moveTo(cx + a.x, cy + a.y)
+              .lineTo(cx + b.x, cy + b.y)
+              .stroke({ width: 0.6, color: 0xc28840, alpha });
+          }
+        }
+      }
+
+      app.ticker.add(tick);
+    })();
+
+    return () => {
+      cancelled = true;
+      for (const fn of cleanupFns) fn();
+      // Only destroy once PixiJS has finished its async init(). React
+      // StrictMode runs this cleanup before init() resolves on the first
+      // mount, and destroy() on an uninitialized app throws
+      // ("_cancelResize is not a function"); the async init's own
+      // `if (cancelled)` guard handles teardown in that case.
+      if (app.renderer) app.destroy(true, { children: true });
+    };
+  }, []);
+
+  const handleReset = (): void => {
+    document.dispatchEvent(new Event('graphview:reset'));
+  };
+
+  return (
+    <div className="relative h-full w-full overflow-hidden">
+      {/* touch-action:none lets us own all touch gestures (pan + pinch-zoom)
+          without the browser intercepting scroll or native pinch. */}
+      <div
+        ref={containerRef}
+        className="absolute inset-0 cursor-grab active:cursor-grabbing"
+        style={{ touchAction: 'none' }}
+        aria-label="Timechain Graph — force-directed Bitcoin wallet network. Drag to pan, pinch to zoom, tap a wallet to focus on its connections"
+      />
+      {/* Hover tooltip — desktop only. Touch users tap to open the inspector. */}
+      {hoverInfo && !isTouchDevice && (
+        <div
+          className="text-mono pointer-events-none absolute z-20 rounded-md border border-[color:var(--color-card-border)] bg-[color:var(--color-background)]/90 px-2.5 py-1.5 text-[10px] leading-tight backdrop-blur-sm"
+          style={{ left: hoverInfo.x + 14, top: hoverInfo.y + 14, maxWidth: 240 }}
+        >
+          <div className="font-semibold text-[color:var(--color-text-primary)]">
+            {hoverInfo.addr.slice(0, 10)}…{hoverInfo.addr.slice(-6)}
+          </div>
+          <div
+            className="mt-0.5 uppercase tracking-wider"
+            style={{ color: ROLE_CSS[hoverInfo.role] }}
+          >
+            {ROLE_LABEL[hoverInfo.role]}
+          </div>
+          <div className="mt-0.5 text-[color:var(--color-text-muted)]">
+            {hoverInfo.degree.toLocaleString()} connections · {hoverInfo.btc} received
+          </div>
+          <div className="mt-1 text-[9px] uppercase tracking-wider text-[color:var(--color-text-faint)]">
+            click to focus
+          </div>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={handleReset}
+        className="text-mono absolute left-3 top-3 rounded-full border border-[color:var(--color-card-border)] bg-[color:var(--color-background)]/70 px-2.5 py-1.5 text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-text-muted)] backdrop-blur-sm transition-colors hover:border-[color:var(--color-gold)]/60 hover:text-[color:var(--color-gold)]"
+        aria-label="Reset lattice positions"
+      >
+        ↺ Reset
+      </button>
+      <div
+        aria-hidden
+        className="text-mono pointer-events-none absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.28em] text-[color:var(--color-gold)] mix-blend-screen"
+      >
+        {BRAND_TAGLINE}
+      </div>
+      <LiveTipPanel />
+      {focusActive && (
+        <div
+          aria-live="polite"
+          className="text-mono pointer-events-none absolute bottom-9 left-3 rounded-full border border-[color:var(--color-amber)]/40 bg-[color:var(--color-background)]/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-amber)] backdrop-blur-sm"
+        >
+          Focus locked ·{' '}
+          <span className="text-[color:var(--color-text-secondary)]">
+            {isTouchDevice ? 'tap canvas to clear' : 'ESC to clear'}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}

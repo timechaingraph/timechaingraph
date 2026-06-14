@@ -1,0 +1,17 @@
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": [
+          "https://timechaingraph.com",
+          "https://timechaingrid.com",
+          "http://localhost:3000"
+        ],
+        "methods": ["GET", "HEAD"],
+        "headers": ["range", "content-type"]
+      },
+      "exposeHeaders": ["content-range", "content-length", "accept-ranges"],
+      "maxAgeSeconds": 86400
+    }
+  ]
+}

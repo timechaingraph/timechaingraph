@@ -1,0 +1,324 @@
+@import "tailwindcss";
+
+/*
+ * Timechain Grid — cyber-steampunk landing CSS.
+ * Brass + cyan palette. No third-party fonts. Mechanical motifs.
+ */
+
+@theme inline {
+  /* Surfaces */
+  --color-background: #08080C;
+  --color-background-light: #11111A;
+  --color-background-lighter: #1A1A28;
+  --color-surface: rgba(255, 255, 255, 0.025);
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+
+  /* Cyber palette (electric tech) */
+  --color-accent-cyan: #00D4FF;
+  --color-accent-cyan-dim: #00A8CC;
+  --color-accent-cyan-deep: #006080;
+
+  /* Brand chrome accent = the view accent (gold). Use this for UI accents:
+     eyebrow labels, links, focus rings, the status dot. The cyan tokens above
+     stay a SEMANTIC data color (significant wallets / halving), never chrome. */
+  --color-accent: #FFD700;
+  --color-accent-dim: #E0A656;
+  --color-accent-deep: #B8950E;
+
+  /* Steampunk palette (warm metallics) */
+  --color-brass: #C28840;
+  --color-brass-bright: #E0A656;
+  --color-brass-deep: #8C5E29;
+  --color-copper: #B87333;
+  --color-gold: #FFD700;
+  --color-gold-deep: #B8950E;
+  --color-amber: #F5A623;
+  --color-rust: #B5481E;
+
+  /* Text */
+  --color-text-primary: #F4F6FA;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted: #64748B;
+  --color-text-faint: #475569;
+  --color-text-rivet: rgba(245, 246, 250, 0.4);
+
+  /* Borders */
+  --color-card-border: rgba(255, 255, 255, 0.06);
+  --color-card-border-hover: rgba(255, 255, 255, 0.12);
+  --color-brass-border: rgba(194, 136, 64, 0.3);
+  --color-brass-border-bright: rgba(194, 136, 64, 0.6);
+
+  /* Status */
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+
+  /* Fonts (no third-party imports) */
+  --font-sans: system-ui, -apple-system, "Segoe UI", "Roboto", sans-serif;
+  --font-display: "Georgia", "Hoefler Text", "Big Caslon", "Times New Roman", serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", "Menlo", monospace;
+
+  /* Shadows */
+  --shadow-glow-amber: 0 0 24px rgba(245, 166, 35, 0.25);
+  --shadow-glow-cyan: 0 0 24px rgba(0, 212, 255, 0.3);
+  --shadow-glow-cyan-lg: 0 0 48px rgba(0, 212, 255, 0.4);
+  --shadow-glow-gold: 0 0 32px rgba(255, 215, 0, 0.45);
+  --shadow-glow-brass: 0 0 18px rgba(194, 136, 64, 0.35);
+  --shadow-inset-brass: inset 0 1px 0 rgba(224, 166, 86, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+}
+
+html, body {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-height: 100dvh;
+  /* Ambient glows moved to the fixed body::after layer (below) so they stay
+     pinned to the viewport WITHOUT background-attachment: fixed, which jitters
+     on mobile as the URL bar collapses. */
+}
+
+/* Constellation backdrop — thin brass dots + connecting lines.
+   Gives the black bg quiet graph-paper texture without competing
+   with content. Pure SVG-as-data-URI, no external requests. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2400 1600' preserveAspectRatio='xMidYMid slice'><g stroke='%23C28840' stroke-width='1.0' fill='none'><line x1='134' y1='40' x2='309' y2='81' opacity='0.16'/><line x1='309' y1='81' x2='494' y2='77' opacity='0.16'/><line x1='494' y1='77' x2='668' y2='162' opacity='0.16'/><line x1='668' y1='162' x2='689' y2='364' opacity='0.16'/><line x1='945' y1='105' x2='1135' y2='110' opacity='0.16'/><line x1='1135' y1='110' x2='1301' y2='109' opacity='0.17'/><line x1='1301' y1='109' x2='1329' y2='300' opacity='0.16'/><line x1='1503' y1='110' x2='1551' y2='303' opacity='0.16'/><line x1='1703' y1='110' x2='1833' y2='83' opacity='0.18'/><line x1='1703' y1='110' x2='1836' y2='244' opacity='0.16'/><line x1='2113' y1='158' x2='2118' y2='242' opacity='0.19'/><line x1='2113' y1='158' x2='2316' y2='144' opacity='0.16'/><line x1='2316' y1='144' x2='2361' y2='288' opacity='0.17'/><line x1='86' y1='258' x2='349' y2='335' opacity='0.13'/><line x1='349' y1='335' x2='478' y2='323' opacity='0.18'/><line x1='349' y1='335' x2='452' y2='451' opacity='0.17'/><line x1='478' y1='323' x2='452' y2='451' opacity='0.18'/><line x1='689' y1='364' x2='758' y2='506' opacity='0.17'/><line x1='1168' y1='360' x2='1078' y2='432' opacity='0.18'/><line x1='1168' y1='360' x2='1329' y2='300' opacity='0.17'/><line x1='1551' y1='303' x2='1481' y2='435' opacity='0.17'/><line x1='1551' y1='303' x2='1749' y2='300' opacity='0.16'/><line x1='1749' y1='300' x2='1836' y2='244' opacity='0.19'/><line x1='1749' y1='300' x2='1687' y2='485' opacity='0.16'/><line x1='2361' y1='288' x2='2320' y2='531' opacity='0.14'/><line x1='62' y1='553' x2='164' y2='744' opacity='0.15'/><line x1='62' y1='553' x2='265' y2='695' opacity='0.14'/><line x1='337' y1='511' x2='452' y2='451' opacity='0.18'/><line x1='758' y1='506' x2='855' y2='538' opacity='0.19'/><line x1='855' y1='538' x2='950' y2='689' opacity='0.16'/><line x1='1078' y1='432' x2='1120' y2='644' opacity='0.15'/><line x1='1309' y1='518' x2='1481' y2='435' opacity='0.16'/><line x1='1309' y1='518' x2='1241' y2='700' opacity='0.16'/><line x1='1910' y1='457' x2='2046' y2='532' opacity='0.17'/><line x1='1910' y1='457' x2='1933' y2='663' opacity='0.16'/><line x1='2320' y1='531' x2='2291' y2='721' opacity='0.16'/><line x1='164' y1='744' x2='265' y2='695' opacity='0.18'/><line x1='164' y1='744' x2='168' y2='935' opacity='0.16'/><line x1='467' y1='691' x2='497' y2='886' opacity='0.16'/><line x1='950' y1='689' x2='899' y2='848' opacity='0.17'/><line x1='1120' y1='644' x2='1241' y2='700' opacity='0.18'/><line x1='1500' y1='698' x2='1743' y2='763' opacity='0.14'/><line x1='1743' y1='763' x2='1678' y2='919' opacity='0.17'/><line x1='1743' y1='763' x2='1916' y2='859' opacity='0.16'/><line x1='1933' y1='663' x2='2042' y2='767' opacity='0.17'/><line x1='2042' y1='767' x2='1916' y2='859' opacity='0.17'/><line x1='2291' y1='721' x2='2302' y2='955' opacity='0.15'/><line x1='168' y1='935' x2='357' y2='919' opacity='0.16'/><line x1='357' y1='919' x2='497' y2='886' opacity='0.18'/><line x1='899' y1='848' x2='1041' y2='883' opacity='0.17'/><line x1='1357' y1='921' x2='1471' y2='957' opacity='0.18'/><line x1='1357' y1='921' x2='1368' y2='1069' opacity='0.17'/><line x1='1471' y1='957' x2='1368' y2='1069' opacity='0.17'/><line x1='2113' y1='956' x2='2093' y2='1124' opacity='0.17'/><line x1='2113' y1='956' x2='2302' y2='955' opacity='0.16'/><line x1='2302' y1='955' x2='2295' y2='1141' opacity='0.16'/><line x1='70' y1='1153' x2='31' y2='1357' opacity='0.16'/><line x1='362' y1='1098' x2='332' y2='1272' opacity='0.16'/><line x1='564' y1='1069' x2='650' y2='1142' opacity='0.18'/><line x1='650' y1='1142' x2='663' y2='1323' opacity='0.16'/><line x1='928' y1='1126' x2='1041' y2='1102' opacity='0.18'/><line x1='1368' y1='1069' x2='1504' y2='1131' opacity='0.17'/><line x1='1504' y1='1131' x2='1442' y2='1264' opacity='0.17'/><line x1='1914' y1='1116' x2='1883' y2='1256' opacity='0.18'/><line x1='2093' y1='1124' x2='2126' y2='1234' opacity='0.18'/><line x1='31' y1='1357' x2='117' y2='1542' opacity='0.16'/><line x1='332' y1='1272' x2='477' y2='1359' opacity='0.17'/><line x1='477' y1='1359' x2='448' y2='1522' opacity='0.17'/><line x1='1167' y1='1313' x2='1268' y2='1353' opacity='0.19'/><line x1='1268' y1='1353' x2='1268' y2='1539' opacity='0.16'/><line x1='1704' y1='1352' x2='1717' y2='1522' opacity='0.17'/><line x1='1704' y1='1352' x2='1561' y2='1450' opacity='0.17'/><line x1='2337' y1='1367' x2='2280' y2='1433' opacity='0.19'/><line x1='117' y1='1542' x2='316' y2='1501' opacity='0.16'/><line x1='316' y1='1501' x2='448' y2='1522' opacity='0.18'/><line x1='694' y1='1565' x2='911' y2='1475' opacity='0.15'/><line x1='911' y1='1475' x2='1054' y2='1537' opacity='0.17'/><line x1='1054' y1='1537' x2='1268' y2='1539' opacity='0.15'/><line x1='1561' y1='1450' x2='1717' y2='1522' opacity='0.17'/><line x1='1923' y1='1492' x2='2148' y2='1517' opacity='0.15'/><line x1='2148' y1='1517' x2='2280' y2='1433' opacity='0.17'/></g><g fill='%23C28840'><circle cx='134' cy='40' r='3.2' opacity='0.43'/><circle cx='309' cy='81' r='3.0' opacity='0.38'/><circle cx='494' cy='77' r='3.9' opacity='0.29'/><circle cx='668' cy='162' r='3.5' opacity='0.30'/><circle cx='945' cy='105' r='3.9' opacity='0.33'/><circle cx='1135' cy='110' r='3.6' opacity='0.46'/><circle cx='1301' cy='109' r='2.8' opacity='0.36'/><circle cx='1503' cy='110' r='3.8' opacity='0.28'/><circle cx='1703' cy='110' r='2.7' opacity='0.37'/><circle cx='1833' cy='83' r='3.0' opacity='0.38'/><circle cx='2113' cy='158' r='3.6' opacity='0.41'/><circle cx='2316' cy='144' r='3.5' opacity='0.39'/><circle cx='86' cy='258' r='2.8' opacity='0.28'/><circle cx='349' cy='335' r='2.7' opacity='0.36'/><circle cx='478' cy='323' r='2.9' opacity='0.34'/><circle cx='689' cy='364' r='3.3' opacity='0.32'/><circle cx='863' cy='294' r='3.2' opacity='0.36'/><circle cx='1168' cy='360' r='2.8' opacity='0.34'/><circle cx='1329' cy='300' r='2.6' opacity='0.44'/><circle cx='1551' cy='303' r='2.8' opacity='0.43'/><circle cx='1749' cy='300' r='3.5' opacity='0.36'/><circle cx='1836' cy='244' r='3.7' opacity='0.45'/><circle cx='2118' cy='242' r='2.9' opacity='0.36'/><circle cx='2361' cy='288' r='2.8' opacity='0.42'/><circle cx='62' cy='553' r='2.7' opacity='0.36'/><circle cx='337' cy='511' r='4.0' opacity='0.46'/><circle cx='452' cy='451' r='2.7' opacity='0.35'/><circle cx='758' cy='506' r='3.7' opacity='0.38'/><circle cx='855' cy='538' r='3.1' opacity='0.38'/><circle cx='1078' cy='432' r='3.7' opacity='0.32'/><circle cx='1309' cy='518' r='3.8' opacity='0.35'/><circle cx='1481' cy='435' r='3.3' opacity='0.46'/><circle cx='1687' cy='485' r='2.8' opacity='0.28'/><circle cx='1910' cy='457' r='3.1' opacity='0.43'/><circle cx='2046' cy='532' r='3.6' opacity='0.40'/><circle cx='2320' cy='531' r='3.9' opacity='0.41'/><circle cx='164' cy='744' r='2.8' opacity='0.33'/><circle cx='265' cy='695' r='3.5' opacity='0.38'/><circle cx='467' cy='691' r='3.1' opacity='0.32'/><circle cx='740' cy='690' r='3.1' opacity='0.43'/><circle cx='950' cy='689' r='3.5' opacity='0.36'/><circle cx='1120' cy='644' r='2.7' opacity='0.38'/><circle cx='1241' cy='700' r='2.7' opacity='0.33'/><circle cx='1500' cy='698' r='2.9' opacity='0.31'/><circle cx='1743' cy='763' r='3.2' opacity='0.44'/><circle cx='1933' cy='663' r='3.0' opacity='0.40'/><circle cx='2042' cy='767' r='3.1' opacity='0.41'/><circle cx='2291' cy='721' r='3.2' opacity='0.33'/><circle cx='168' cy='935' r='3.5' opacity='0.32'/><circle cx='357' cy='919' r='3.0' opacity='0.31'/><circle cx='497' cy='886' r='3.3' opacity='0.42'/><circle cx='679' cy='890' r='3.4' opacity='0.29'/><circle cx='899' cy='848' r='3.4' opacity='0.33'/><circle cx='1041' cy='883' r='3.8' opacity='0.33'/><circle cx='1357' cy='921' r='3.6' opacity='0.38'/><circle cx='1471' cy='957' r='2.8' opacity='0.28'/><circle cx='1678' cy='919' r='3.5' opacity='0.40'/><circle cx='1916' cy='859' r='3.3' opacity='0.43'/><circle cx='2113' cy='956' r='4.0' opacity='0.45'/><circle cx='2302' cy='955' r='3.1' opacity='0.36'/><circle cx='70' cy='1153' r='2.7' opacity='0.44'/><circle cx='362' cy='1098' r='3.9' opacity='0.29'/><circle cx='564' cy='1069' r='3.9' opacity='0.38'/><circle cx='650' cy='1142' r='3.8' opacity='0.43'/><circle cx='928' cy='1126' r='3.7' opacity='0.38'/><circle cx='1041' cy='1102' r='3.1' opacity='0.33'/><circle cx='1368' cy='1069' r='3.8' opacity='0.44'/><circle cx='1504' cy='1131' r='3.7' opacity='0.32'/><circle cx='1686' cy='1141' r='3.7' opacity='0.43'/><circle cx='1914' cy='1116' r='2.7' opacity='0.39'/><circle cx='2093' cy='1124' r='3.0' opacity='0.31'/><circle cx='2295' cy='1141' r='3.3' opacity='0.38'/><circle cx='31' cy='1357' r='3.7' opacity='0.42'/><circle cx='332' cy='1272' r='3.9' opacity='0.41'/><circle cx='477' cy='1359' r='3.2' opacity='0.32'/><circle cx='663' cy='1323' r='3.4' opacity='0.32'/><circle cx='945' cy='1256' r='3.7' opacity='0.32'/><circle cx='1167' cy='1313' r='3.2' opacity='0.38'/><circle cx='1268' cy='1353' r='3.3' opacity='0.31'/><circle cx='1442' cy='1264' r='2.6' opacity='0.44'/><circle cx='1704' cy='1352' r='3.2' opacity='0.28'/><circle cx='1883' cy='1256' r='3.7' opacity='0.32'/><circle cx='2126' cy='1234' r='3.4' opacity='0.37'/><circle cx='2337' cy='1367' r='3.0' opacity='0.30'/><circle cx='117' cy='1542' r='3.4' opacity='0.43'/><circle cx='316' cy='1501' r='3.9' opacity='0.43'/><circle cx='448' cy='1522' r='3.3' opacity='0.33'/><circle cx='694' cy='1565' r='3.2' opacity='0.42'/><circle cx='911' cy='1475' r='2.7' opacity='0.35'/><circle cx='1054' cy='1537' r='3.9' opacity='0.44'/><circle cx='1268' cy='1539' r='3.2' opacity='0.37'/><circle cx='1561' cy='1450' r='3.4' opacity='0.34'/><circle cx='1717' cy='1522' r='3.6' opacity='0.30'/><circle cx='1923' cy='1492' r='2.7' opacity='0.32'/><circle cx='2148' cy='1517' r='3.9' opacity='0.29'/><circle cx='2280' cy='1433' r='4.0' opacity='0.41'/></g></svg>");
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center center;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.9;
+}
+
+/* Subtle scanline texture overlay (above constellation, below content) */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(255, 215, 0, 0.045) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(194, 136, 64, 0.045) 0%, transparent 60%),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 3px,
+      rgba(255, 255, 255, 0.012) 3px,
+      rgba(255, 255, 255, 0.012) 4px
+    );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Animations ──────────────────────────────────────────── */
+
+/* New-block pop for the BlockStats live ticker — the tip height remounts
+   (React key) on each block and flares briefly. */
+@keyframes tip-pop {
+  0%   { transform: scale(1.15); color: #ffe680; }
+  100% { transform: scale(1); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%      { opacity: 1.0; transform: scale(1.5); }
+}
+
+@keyframes pulse-satoshi {
+  0%, 100% { opacity: 0.85; filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.7)); }
+  50%      { opacity: 1.0;  filter: drop-shadow(0 0 18px rgba(255, 215, 0, 1.0)); }
+}
+
+/* Hero graph "scrub": leaf wallets + their edges fade in, hold, fade out —
+   staggered so the network reshapes continuously, like scrubbing the live
+   graph across chain time. Nodes scale only UP TO 1 (their baked radius), so
+   the no-overlap spacing is never violated mid-animation. */
+@keyframes node-scrub {
+  0%   { opacity: 0; transform: scale(0.25); }
+  9%   { opacity: 1; transform: scale(1); }
+  46%  { opacity: 1; transform: scale(1); }
+  60%  { opacity: 0; transform: scale(0.25); }
+  100% { opacity: 0; transform: scale(0.25); }
+}
+
+@keyframes edge-scrub {
+  0%   { opacity: 0; }
+  11%  { opacity: 1; }
+  46%  { opacity: 1; }
+  60%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* Persistent (backbone) nodes — a gentle opacity flicker, no scale, so they
+   stay alive without ever crowding their neighbours. */
+@keyframes pulse-node {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+@keyframes drift-up {
+  0%   { opacity: 0; transform: translateY(14px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes drift-fade {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes status-blink {
+  0%, 49%   { opacity: 1; }
+  50%, 100% { opacity: 0.3; }
+}
+
+@keyframes gear-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes gear-rotate-rev {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+@keyframes scanline-sweep {
+  0%   { transform: translateY(-100%); opacity: 0.8; }
+  90%  { opacity: 0.3; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+@keyframes ticker {
+  0%   { opacity: 0.3; }
+  10%, 90% { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Utility classes ─────────────────────────────────────── */
+
+.text-mono { font-family: var(--font-mono); }
+.text-display { font-family: var(--font-display); letter-spacing: -0.01em; }
+
+.glass-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-card-border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 200ms, border-color 200ms;
+}
+
+.glass-panel:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-card-border-hover);
+}
+
+.brass-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%), var(--color-background-light);
+  border: 1px solid var(--color-brass-border);
+  box-shadow: var(--shadow-inset-brass);
+  position: relative;
+}
+
+.brass-panel::before {
+  /* Top-left and top-right rivet dots */
+  content: "";
+  position: absolute;
+  top: 6px; left: 6px;
+  width: 3px; height: 3px;
+  background: var(--color-brass);
+  border-radius: 999px;
+  box-shadow:
+    calc(100% + 0px) 0 0 0 var(--color-brass),
+    0 calc(100% + 0px) 0 0 var(--color-brass),
+    calc(100% + 0px) calc(100% + 0px) 0 0 var(--color-brass);
+}
+
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
+  animation: status-blink 2.2s ease-in-out infinite;
+}
+
+.section-grid-bg {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: center;
+}
+
+.gear-spin {
+  animation: gear-rotate 32s linear infinite;
+  transform-origin: center;
+}
+
+.gear-spin-rev {
+  animation: gear-rotate-rev 24s linear infinite;
+  transform-origin: center;
+}
+
+.scanline-overlay {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanline-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 212, 255, 0.06) 50%, transparent 100%);
+  height: 30%;
+  animation: scanline-sweep 7s linear infinite;
+  pointer-events: none;
+}
+
+.brass-shimmer {
+  /* Shared theme ramp — same dimmed brass → gold → amber as .hero-gradient
+     and the emblem's #hero-brass-grad, so the wordmark, footer, and every
+     page heading read as one palette with the hero. Animated (slides 200%). */
+  background: linear-gradient(
+    90deg,
+    #D89A4E 0%,
+    #E8C028 30%,
+    #D88E1C 50%,
+    #E8C028 70%,
+    #D89A4E 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 6s linear infinite;
+}
+
+/* Home-hero headline — a vivid gold gradient (punchier than brass-shimmer,
+   which the smaller page heroes keep). Static for a bold, clean read; the
+   animated HeroVisual beside it carries the motion. */
+.hero-gradient {
+  background: linear-gradient(
+    115deg,
+    #D89A4E 0%,
+    #E8C028 35%,
+    #D88E1C 58%,
+    #E8C028 80%,
+    #D89A4E 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

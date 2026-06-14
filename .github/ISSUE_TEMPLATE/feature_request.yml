@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest a new feature or improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What's the idea?
+      description: What does it do? Who is it for?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why does it matter?
+      description: What problem does it solve?
+    validations:
+      required: true
+  - type: textarea
+    id: how
+    attributes:
+      label: How might it work?
+      description: A rough sketch — wireframe, pseudocode, or prior art — is welcome.
+  - type: dropdown
+    id: roadmap
+    attributes:
+      label: Roadmap fit
+      options:
+        - Not sure
+        - v0.1
+        - v0.2
+        - v0.3
+        - Later
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy implications
+      options:
+        - label: This feature needs no third-party network call, font, library, or service reachable from the viewer's browser (or I have noted a self-hosted alternative below)
+          required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context

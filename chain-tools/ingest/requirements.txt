@@ -1,0 +1,4 @@
+pyarrow>=15.0.0
+requests>=2.31.0
+python-bitcoinrpc>=1.0
+tqdm>=4.66.0

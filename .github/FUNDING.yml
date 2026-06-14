@@ -1,0 +1,11 @@
+# Funding configuration for Timechain Graph.
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+#
+# Primary donation channel is Lightning, listed at /donate on the
+# live site. GitHub Sponsors will be added once a Sponsors profile
+# is set up. OpenSats application planned post-launch.
+
+# Bitcoin-native donations only — no GitHub Sponsors (no fiat/KYC rail, by
+# design). The repo's Sponsor button links to the on-chain donate page.
+custom:
+  - 'https://timechaingraph.com/donate'

@@ -1,0 +1,74 @@
+{
+  "name": "timechaingraph",
+  "version": "0.0.1",
+  "private": true,
+  "engines": {
+    "node": ">=26"
+  },
+  "description": "The Graph of Bitcoin — privacy-first force-directed graph of every economically meaningful Bitcoin wallet at timechaingraph.com. Sister project: timechaingrid.com.",
+  "license": "MIT",
+  "author": "Timechaingraph team",
+  "homepage": "https://timechaingraph.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/timechaingraph/timechaingraph.git"
+  },
+  "bugs": {
+    "url": "https://github.com/timechaingraph/timechaingraph/issues"
+  },
+  "keywords": [
+    "bitcoin",
+    "blockchain",
+    "visualization",
+    "force-directed-graph",
+    "pixijs",
+    "nextjs",
+    "privacy-first",
+    "self-hosted",
+    "wallet-graph"
+  ],
+  "scripts": {
+    "predev": "node scripts/copy-duckdb-assets.mjs",
+    "dev": "next dev",
+    "prebuild": "node scripts/copy-duckdb-assets.mjs && node scripts/gen-og-image.mjs",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "privacy-audit": "bash scripts/privacy-audit.sh out",
+    "vault:generate": "node chain-tools/vault/generate.mjs",
+    "deploy": "bash scripts/deploy.sh"
+  },
+  "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.33.1-dev45.0",
+    "next": "^16.2.6",
+    "pixi.js": "^8.19.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "zustand": "^5.0.14"
+  },
+  "overrides": {
+    "brace-expansion": "^5.0.6"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@tailwindcss/postcss": "^4.3.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.2",
+    "eslint": "^9",
+    "eslint-config-next": "^16.2.9",
+    "jsdom": "^29.1.1",
+    "tailwindcss": "^4",
+    "typescript": "^6",
+    "vitest": "^4.1.8",
+    "wrangler": "^4"
+  }
+}
