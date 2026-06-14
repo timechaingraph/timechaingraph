@@ -78,15 +78,17 @@ export const DONATION_LIVE =
 export const SUPPORT_EMAIL: string = 'support@timechaingraph.com';
 export const X_HANDLE: string = 'TimechainGraph'; // x.com/TimechainGraph (no @)
 export const NOSTR_NPUB: string = ''; // e.g. 'npub1…'
-export const GITHUB_URL: string = ''; // e.g. 'https://github.com/<org>/timechaingraph' (repo must be public)
+export const GITHUB_URL: string = 'https://github.com/timechaingraph/timechaingraph'; // set once repo is public
 
 export interface SocialLink {
   label: string;
   href: string;
+  icon: 'mail' | 'github' | 'x' | 'nostr';
 }
-/** Configured socials only, in display order. Empty handles are skipped. */
+/** Configured socials only, in display order (mail → github → X → nostr). */
 export const SOCIAL_LINKS: SocialLink[] = [
-  ...(X_HANDLE ? [{ label: 'X', href: `https://x.com/${X_HANDLE}` }] : []),
-  ...(NOSTR_NPUB ? [{ label: 'Nostr', href: `https://njump.me/${NOSTR_NPUB}` }] : []),
-  ...(GITHUB_URL ? [{ label: 'GitHub', href: GITHUB_URL }] : []),
+  ...(SUPPORT_EMAIL ? [{ label: 'Email', href: `mailto:${SUPPORT_EMAIL}`, icon: 'mail' as const }] : []),
+  ...(GITHUB_URL ? [{ label: 'GitHub', href: GITHUB_URL, icon: 'github' as const }] : []),
+  ...(X_HANDLE ? [{ label: 'X', href: `https://x.com/${X_HANDLE}`, icon: 'x' as const }] : []),
+  ...(NOSTR_NPUB ? [{ label: 'Nostr', href: `https://njump.me/${NOSTR_NPUB}`, icon: 'nostr' as const }] : []),
 ];

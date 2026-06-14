@@ -11,6 +11,7 @@ import {
   SUPPORT_EMAIL,
   SOCIAL_LINKS,
 } from '@/lib/site-config';
+import { SocialIcon } from '@/components/SocialIcons';
 
 /**
  * SiteFooter — shared footer. Identical in both Grid and Graph repos.
@@ -145,16 +146,18 @@ export function SiteFooter() {
       <div className="mt-10 flex flex-col gap-3 border-t border-[color:var(--color-card-border)] pt-6 md:flex-row md:items-center md:justify-between">
         <p>Built on the open Bitcoin protocol. No coin, no token, no funding round.</p>
         {SOCIAL_LINKS.length > 0 && (
-          <ul className="flex items-center gap-4">
+          <ul className="flex items-center gap-5">
             {SOCIAL_LINKS.map((s) => (
               <li key={s.label}>
                 <a
                   href={s.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="uppercase tracking-[0.18em] transition-colors hover:text-[color:var(--color-text-primary)]"
+                  {...(s.href.startsWith('mailto:')
+                    ? {}
+                    : { target: '_blank', rel: 'noopener noreferrer' })}
+                  aria-label={s.label}
+                  className="block text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text-primary)]"
                 >
-                  {s.label}
+                  <SocialIcon icon={s.icon} className="h-5 w-5" />
                 </a>
               </li>
             ))}
