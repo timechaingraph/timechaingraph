@@ -77,7 +77,7 @@ export const DONATION_LIVE =
  */
 export const SUPPORT_EMAIL: string = 'support@timechaingraph.com';
 export const X_HANDLE: string = 'TimechainGraph'; // x.com/TimechainGraph (no @)
-export const NOSTR_NPUB: string = ''; // e.g. 'npub1…'
+export const NOSTR_NPUB: string = 'npub12ynwkvuxjxv5qjqpzn3gsrvvfaydafjwfhsved2y6du6u3462pgs6sp0au'; // @TimechainGraph; footer → njump.me/<npub>; verifies as timechaingraph.com via /.well-known/nostr.json
 export const GITHUB_URL: string = 'https://github.com/timechaingraph/timechaingraph'; // set once repo is public
 
 export interface SocialLink {

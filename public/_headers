@@ -1,0 +1,9 @@
+# Cloudflare Pages headers (https://developers.cloudflare.com/pages/configuration/headers/)
+#
+# NIP-05 Nostr verification: web Nostr clients fetch this file from the
+# browser to confirm the "timechaingraph.com" identifier maps to our npub,
+# so it must be CORS-readable. It is a static JSON file served from our own
+# origin — no third-party call, consistent with the privacy posture.
+/.well-known/nostr.json
+  Access-Control-Allow-Origin: *
+  Content-Type: application/json
