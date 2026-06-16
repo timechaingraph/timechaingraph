@@ -260,6 +260,7 @@ export function GraphView() {
   // and swaps "ESC to clear" for "tap to clear" in the focus pill.
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot post-hydration touch probe; navigator is unavailable during static export, and a lazy initializer would cause a hydration mismatch
     setIsTouchDevice(navigator.maxTouchPoints > 0);
   }, []);
 
