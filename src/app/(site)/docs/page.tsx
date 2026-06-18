@@ -9,7 +9,10 @@ export const metadata: Metadata = {
 };
 
 const REPO_THREAT_MODEL = `${GITHUB_URL}/blob/main/docs/THREAT_MODEL.md`;
-const REPO_INFRA = `${GITHUB_URL}/blob/main/docs/INFRA_storage_and_serving.md`;
+// Whole docs/ folder, not a single file: the two sibling repos document
+// infrastructure differently (Graph: one INFRA doc; Grid: split across
+// several), so linking the folder resolves on both and stays byte-identical.
+const REPO_DOCS = `${GITHUB_URL}/tree/main/docs`;
 
 // View-agnostic on purpose: prose avoids "wallets/bonds" (Graph) vs
 // "coins/tiles" (Grid) so this file stays byte-identical between siblings.
@@ -185,12 +188,12 @@ export default function DocsPage() {
           </li>
           <li>
             <a
-              href={REPO_INFRA}
+              href={REPO_DOCS}
               target="_blank"
               rel="noopener noreferrer"
               className="text-[color:var(--color-gold)] underline-offset-4 hover:underline"
             >
-              Storage &amp; serving infrastructure
+              Infrastructure &amp; operations docs
             </a>{' '}
             — how the bundle is built and served without touching your privacy.
           </li>
