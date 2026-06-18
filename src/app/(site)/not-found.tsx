@@ -55,8 +55,8 @@ const ROUTES: Array<{ href: string; label: string; blurb: string; tone: 'amber' 
   {
     href: '/docs',
     label: '/docs',
-    blurb: 'OpenAPI spec + getting-started',
-    tone: 'amber',
+    blurb: 'How it works — the privacy pipeline, verified',
+    tone: 'gold',
   },
 ];
 

@@ -12,9 +12,9 @@ export const dynamic = 'force-static';
  * promptly.
  *
  * The graph view (`/graph`) is the most important route — primary
- * priority. Document pages get medium priority. The /api and /docs
- * routes are placeholders (in-development); marked low priority
- * until they ship real content in v0.4.
+ * priority. Document pages get medium priority. The /api route is a
+ * placeholder (in-development), marked low priority until it ships
+ * real content in v0.4; /docs is live (How it works / privacy).
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
@@ -59,7 +59,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${SITE_URL}/docs`,
       lastModified: now,
       changeFrequency: 'monthly',
-      priority: 0.4,
+      priority: 0.7,
     },
   ];
 }
