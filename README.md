@@ -156,6 +156,10 @@ unpkg.com              cdnjs.cloudflare.com polyfill.io
 See [`scripts/privacy-audit.sh`](scripts/privacy-audit.sh) for the full block
 list and audit logic.
 
+For the complete threat model — what a viewer reveals, how the boundary is
+enforced in CI, the trust assumptions, and what is explicitly out of scope —
+see [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
+
 ---
 
 ## Access
