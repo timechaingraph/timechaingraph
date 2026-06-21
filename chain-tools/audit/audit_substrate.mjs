@@ -38,11 +38,12 @@ for (let i = 2; i < process.argv.length; i += 2) {
 const SAMPLE_BONDS = parseInt(args.get('--sample-bonds') ?? '0', 10) || 0;
 
 const REQUIRED_WALLET_FIELDS = [
-  'address', 'role', 'firstSeenBlock', 'lastActiveBlock',
+  'address', 'isMiner', 'firstSeenBlock', 'lastActiveBlock',
   'totalReceivedSats', 'txCount',
 ];
 const REQUIRED_BOND_FIELDS = ['fromAddress', 'toAddress', 'sats', 'formationBlock'];
-const VALID_ROLES = new Set(['satoshi', 'miner', 'whale', 'significant', 'dust']);
+// v5 stores isMiner (boolean); the client derives the display role
+// (satoshi/miner/whale/significant/dust) from the columns, so no role field here.
 
 const failures = [];
 const fail = (msg) => failures.push(msg);
@@ -70,7 +71,7 @@ try {
 console.log(`[meta]    schema: ${meta.schema}`);
 console.log(`[meta]    tipBlock: ${fmt(meta.tipBlock)}`);
 console.log(`[meta]    generatedAt: ${meta.generatedAt}`);
-if (meta.schema !== 'real-substrate/v2') fail(`meta.schema is not v2: ${meta.schema}`);
+if (meta.schema !== 'real-substrate/v5') fail(`meta.schema is not v5: ${meta.schema}`);
 if (!Number.isInteger(meta.tipBlock) || meta.tipBlock < 0) fail(`meta.tipBlock not a non-negative integer: ${meta.tipBlock}`);
 const tipBlock = meta.tipBlock;
 
@@ -80,11 +81,11 @@ const walletAddresses = new Set();
 let walletCount = 0;
 let walletBadJson = 0;
 let walletMissingFields = 0;
-let walletBadRole = 0;
+let walletBadMiner = 0;
 let walletInvariantViolations = 0;
 let maxWalletLastActive = -1;
 let minWalletFirstSeen = Number.MAX_SAFE_INTEGER;
-const roleHistogram = Object.create(null);
+let minerCount = 0;
 
 {
   const rl = await streamLines(WALLETS_PATH);
@@ -97,7 +98,7 @@ const roleHistogram = Object.create(null);
     for (const f of REQUIRED_WALLET_FIELDS) {
       if (!(f in w)) { walletMissingFields += 1; break; }
     }
-    if (!VALID_ROLES.has(w.role)) walletBadRole += 1;
+    if (typeof w.isMiner !== 'boolean') walletBadMiner += 1;
     if (w.firstSeenBlock > w.lastActiveBlock) walletInvariantViolations += 1;
     if (typeof w.lastActiveBlock === 'number' && w.lastActiveBlock > maxWalletLastActive) {
       maxWalletLastActive = w.lastActiveBlock;
@@ -105,17 +106,17 @@ const roleHistogram = Object.create(null);
     if (typeof w.firstSeenBlock === 'number' && w.firstSeenBlock < minWalletFirstSeen) {
       minWalletFirstSeen = w.firstSeenBlock;
     }
-    roleHistogram[w.role] = (roleHistogram[w.role] ?? 0) + 1;
+    if (w.isMiner === true) minerCount += 1;
     walletAddresses.add(w.address);
   }
 }
 
 console.log(`[wallets] count: ${fmt(walletCount)}`);
-console.log(`[wallets] roles: ${Object.entries(roleHistogram).map(([k, v]) => `${k}=${fmt(v)}`).join(' | ')}`);
+console.log(`[wallets] miners: ${fmt(minerCount)} of ${fmt(walletCount)}`);
 console.log(`[wallets] firstSeen range: [${fmt(minWalletFirstSeen)}, ${fmt(maxWalletLastActive)}]`);
 if (walletBadJson) fail(`wallets: ${walletBadJson} bad-JSON lines`);
 if (walletMissingFields) fail(`wallets: ${walletMissingFields} records missing required fields`);
-if (walletBadRole) fail(`wallets: ${walletBadRole} records with invalid role`);
+if (walletBadMiner) fail(`wallets: ${walletBadMiner} records with non-boolean isMiner`);
 if (walletInvariantViolations) fail(`wallets: ${walletInvariantViolations} records with firstSeen > lastActive`);
 if (maxWalletLastActive > tipBlock) fail(`wallets: max lastActiveBlock=${maxWalletLastActive} > meta.tipBlock=${tipBlock}`);
 
