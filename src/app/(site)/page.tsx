@@ -57,8 +57,8 @@ function Hero() {
         >
           <Link
             href="/graph"
-            className="brass-panel rounded-full px-7 py-3.5 text-mono text-base uppercase tracking-[0.2em] transition-all hover:border-[color:var(--color-amber)] hover:shadow-[0_0_24px_rgba(255,215,0,0.18)]"
-            style={{ color: 'var(--color-gold)' }}
+            className="rounded-full px-7 py-3.5 text-mono text-base font-semibold uppercase tracking-[0.2em] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_30px_rgba(255,215,0,0.5)]"
+            style={{ background: 'var(--color-accent)', color: 'var(--color-background)' }}
           >
             Open the graph ⟶
           </Link>
