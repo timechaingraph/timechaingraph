@@ -132,7 +132,7 @@ function Pillars() {
             <p className="text-mono text-base uppercase tracking-[0.28em] text-[color:var(--color-brass-bright)]">
               {it.label}
             </p>
-            <p className="mt-5 leading-relaxed text-[color:var(--color-text-secondary)]">
+            <p className="mt-5 leading-relaxed text-[rgba(244,246,250,0.72)]">
               {it.body}
             </p>
           </div>
@@ -152,7 +152,7 @@ function Promise() {
           Free. Forever. Funded by the people who see Bitcoin clearer
           because of it.
         </p>
-        <ul className="space-y-3 text-base text-[color:var(--color-text-secondary)]">
+        <ul className="space-y-3 text-base text-[rgba(244,246,250,0.72)]">
           {[
             'Self-hosted node · no third-party calls',
             'No analytics · no tracking · no sign-up',
