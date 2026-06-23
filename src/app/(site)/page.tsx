@@ -62,7 +62,7 @@ function Hero() {
           >
             Open the graph ⟶
           </Link>
-          <span className="flex items-center gap-2 whitespace-nowrap text-mono text-base uppercase tracking-[0.24em] text-[color:var(--color-text-muted)]">
+          <span className="flex items-center gap-2 whitespace-nowrap text-mono text-base uppercase tracking-[0.24em] text-[rgba(244,246,250,0.58)]">
             <span
               aria-hidden
               className="inline-block h-1.5 w-1.5 rounded-full"
@@ -129,7 +129,7 @@ function Pillars() {
             key={it.label}
             className="bg-[color:var(--color-background)] p-7 md:p-9"
           >
-            <p className="text-mono text-base uppercase tracking-[0.28em] text-[color:var(--color-brass-bright)]">
+            <p className="text-mono text-base uppercase tracking-[0.28em] text-[color:var(--color-accent)]">
               {it.label}
             </p>
             <p className="mt-5 leading-relaxed text-[rgba(244,246,250,0.72)]">
