@@ -208,6 +208,15 @@ export default function DocsPage() {
             </a>{' '}
             — read it, audit it, run it yourself.
           </li>
+          <li>
+            <a
+              href="/faq"
+              className="text-[color:var(--color-gold)] underline-offset-4 hover:underline"
+            >
+              FAQ
+            </a>{' '}
+            — common questions about the data pipeline, privacy guarantees, and Bitcoin basics.
+          </li>
         </ul>
       </section>
 

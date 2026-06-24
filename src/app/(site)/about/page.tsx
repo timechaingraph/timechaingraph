@@ -85,6 +85,17 @@ export default function AboutPage() {
           </li>
         </ul>
       </section>
+
+      <p className="mt-12 max-w-2xl text-sm leading-relaxed text-[color:var(--color-text-muted)]">
+        New to Bitcoin, or have questions about the data and privacy model?{' '}
+        <Link
+          href="/faq"
+          className="text-[color:var(--color-gold)] underline-offset-4 hover:underline"
+        >
+          See the FAQ
+        </Link>
+        .
+      </p>
     </div>
   );
 }
