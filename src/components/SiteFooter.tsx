@@ -56,7 +56,7 @@ const ACCENT_VAR: Record<'cyan' | 'gold', string> = {
 
 export function SiteFooter() {
   return (
-    <footer className="mt-24 border-t border-[color:var(--color-card-border)] pt-10 pb-6 text-mono text-xs text-[color:var(--color-text-muted)]">
+    <footer className="mt-16 border-t border-[color:var(--color-card-border)] pt-10 pb-6 text-mono text-xs text-[color:var(--color-text-muted)]">
       <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)_1fr]">
         <div>
           <p
