@@ -30,6 +30,7 @@ const SITEMAP: Array<{ heading: string; links: Array<{ href: string; label: stri
     heading: 'Project',
     links: [
       { href: '/about', label: 'About' },
+      { href: '/faq', label: 'FAQ' },
       { href: '/status', label: 'Status' },
     ],
   },
@@ -49,14 +50,15 @@ const SITEMAP: Array<{ heading: string; links: Array<{ href: string; label: stri
   },
 ];
 
-const ACCENT_VAR: Record<'cyan' | 'gold', string> = {
+const ACCENT_VAR: Record<'cyan' | 'gold' | 'amber', string> = {
   cyan: 'var(--color-accent-cyan)',
   gold: 'var(--color-gold)',
+  amber: 'var(--color-amber)',
 };
 
 export function SiteFooter() {
   return (
-    <footer className="mt-24 border-t border-[color:var(--color-card-border)] pt-10 pb-6 text-mono text-xs text-[color:var(--color-text-muted)]">
+    <footer className="mt-16 border-t border-[color:var(--color-card-border)] pt-10 pb-6 text-mono text-xs text-[color:var(--color-text-muted)]">
       <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)_1fr]">
         <div>
           <p

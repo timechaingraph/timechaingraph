@@ -43,7 +43,7 @@ export function NavBar() {
   const accent = ACCENT_VAR[VIEW_ACCENT];
 
   return (
-    <header className="relative z-10 flex items-center justify-between gap-4 pb-1">
+    <header className="relative z-10 flex items-center justify-between gap-2 pb-1 md:gap-4">
       <Link
         href="/"
         className="flex items-center gap-4 text-mono text-base transition-opacity hover:opacity-80 md:gap-8"
@@ -70,8 +70,8 @@ export function NavBar() {
         {SECTIONS.map((link) => (
           <NavLinkItem key={link.href} link={link} pathname={pathname} />
         ))}
-        <DonateLink active={pathname.startsWith('/donate')} />
-        <CrossDomainLink />
+        <DonateLink active={pathname.startsWith('/donate')} accent={accent} />
+        <CrossDomainLink accent={accent} />
       </nav>
 
       <button
@@ -104,7 +104,7 @@ export function NavBar() {
             href="/donate"
             onClick={() => setMobileOpen(false)}
             className="mt-1 rounded px-3 py-2 text-mono text-base"
-            style={{ color: 'var(--color-gold)' }}
+            style={{ color: accent }}
           >
             Donate
           </Link>
@@ -112,7 +112,7 @@ export function NavBar() {
             href={OTHER_VIEW_URL}
             onClick={() => setMobileOpen(false)}
             className="rounded px-3 py-2 text-mono text-base"
-            style={{ color: 'var(--color-amber)' }}
+            style={{ color: accent }}
           >
             {OTHER_VIEW_BRAND} View ⟶
           </a>
@@ -140,15 +140,15 @@ function NavLinkItem({ link, pathname }: { link: NavLink; pathname: string }) {
   );
 }
 
-function DonateLink({ active }: { active: boolean }) {
+function DonateLink({ active, accent }: { active: boolean; accent: string }) {
   return (
     <Link
       href="/donate"
       className="shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-mono text-sm uppercase tracking-wider transition-opacity hover:opacity-85"
       style={{
-        borderColor: 'rgba(255, 215, 0, 0.45)',
-        backgroundColor: active ? 'rgba(255, 215, 0, 0.16)' : 'rgba(255, 215, 0, 0.08)',
-        color: 'var(--color-gold)',
+        borderColor: `color-mix(in srgb, ${accent} 45%, transparent)`,
+        backgroundColor: `color-mix(in srgb, ${accent} ${active ? 16 : 8}%, transparent)`,
+        color: accent,
       }}
     >
       Donate
@@ -156,14 +156,14 @@ function DonateLink({ active }: { active: boolean }) {
   );
 }
 
-function CrossDomainLink() {
+function CrossDomainLink({ accent }: { accent: string }) {
   return (
     <a
       href={OTHER_VIEW_URL}
-      className="shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-mono text-sm uppercase tracking-wider transition-colors"
+      className="shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-mono text-sm uppercase tracking-wider transition-colors hover:opacity-85"
       style={{
         borderColor: 'var(--color-brass-border)',
-        color: 'var(--color-amber)',
+        color: accent,
       }}
     >
       {OTHER_VIEW_BRAND} View ⟶

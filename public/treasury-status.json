@@ -1,0 +1,9 @@
+{
+  "generated_at": "2026-06-24T15:00:00.000Z",
+  "balance_sat": 100000,
+  "balance_btc": "0.00100000",
+  "address_truncated": "bc1qexamp…le0000",
+  "source": "SAMPLE — run: torsocks node scripts/bake-treasury.mjs (requires TREASURY_ADDRESS env var)",
+  "stale_after_days": 7,
+  "btc_price_usd": 60000
+}

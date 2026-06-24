@@ -2,10 +2,22 @@ import type { Metadata } from 'next';
 import { UnderDevelopment } from '@/components/UnderDevelopment';
 import { VIEW_BRAND_NAME, VIEW_DOMAIN, GITHUB_URL } from '@/lib/site-config';
 
+const DOCS_DESCRIPTION = `How Timechain ${VIEW_BRAND_NAME} works: a self-hosted Bitcoin pipeline (bitcoind → DuckDB → Parquet → in-browser DuckDB-Wasm), the honest same-origin residual, and how to verify the privacy claim yourself in your browser.`;
+
 export const metadata: Metadata = {
   title: 'Documentation',
-  description:
-    'How Timechain works: a self-hosted Bitcoin pipeline (bitcoind → DuckDB → Parquet → in-browser DuckDB-Wasm), the honest same-origin residual, and how to verify the privacy claim yourself in your browser.',
+  description: DOCS_DESCRIPTION,
+  openGraph: {
+    title: `Docs · Timechain ${VIEW_BRAND_NAME}`,
+    description: DOCS_DESCRIPTION,
+    images: [{ url: '/og2.png', width: 1200, height: 630, alt: `Timechain ${VIEW_BRAND_NAME}` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `Docs · Timechain ${VIEW_BRAND_NAME}`,
+    description: DOCS_DESCRIPTION,
+    images: ['/og2.png'],
+  },
 };
 
 const REPO_THREAT_MODEL = `${GITHUB_URL}/blob/main/docs/THREAT_MODEL.md`;
@@ -207,6 +219,15 @@ export default function DocsPage() {
               The full source on GitHub
             </a>{' '}
             — read it, audit it, run it yourself.
+          </li>
+          <li>
+            <a
+              href="/faq"
+              className="text-[color:var(--color-gold)] underline-offset-4 hover:underline"
+            >
+              FAQ
+            </a>{' '}
+            — common questions about the data pipeline, privacy guarantees, and Bitcoin basics.
           </li>
         </ul>
       </section>

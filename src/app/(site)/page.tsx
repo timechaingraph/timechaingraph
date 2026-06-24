@@ -35,8 +35,8 @@ export default function HomePage() {
 
 function Hero() {
   return (
-    <section className="grid items-center gap-12 py-4 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-8 lg:gap-20 lg:py-10">
-      <div className="flex flex-col gap-8 self-start">
+    <section className="grid grid-cols-1 items-center gap-12 py-4 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-8 lg:gap-20 lg:py-10">
+      <div className="flex min-w-0 flex-col gap-8 self-start">
         <h1
           className="text-display hero-gradient text-5xl font-bold leading-[1.02] tracking-tight md:text-7xl lg:text-[5.5rem]"
           style={{ animation: 'drift-up 0.7s ease-out 0.15s both' }}
@@ -46,7 +46,7 @@ function Hero() {
           {VIEW_HERO_BOTTOM}
         </h1>
         <p
-          className="max-w-xl text-pretty text-base leading-relaxed text-[color:var(--color-text-secondary)] md:text-lg"
+          className="max-w-xl text-pretty text-base leading-relaxed text-[rgba(244,246,250,0.82)] md:text-lg"
           style={{ animation: 'drift-up 0.7s ease-out 0.25s both' }}
         >
           {VIEW_HERO_DESCRIPTION}
@@ -57,12 +57,12 @@ function Hero() {
         >
           <Link
             href="/graph"
-            className="brass-panel rounded-full px-7 py-3.5 text-mono text-base uppercase tracking-[0.2em] transition-all hover:border-[color:var(--color-amber)] hover:shadow-[0_0_24px_rgba(255,215,0,0.18)]"
-            style={{ color: 'var(--color-gold)' }}
+            className="rounded-full px-7 py-3.5 text-mono text-base font-semibold uppercase tracking-[0.2em] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_30px_rgba(255,215,0,0.5)]"
+            style={{ background: 'var(--color-accent)', color: 'var(--color-background)' }}
           >
             Open the graph ⟶
           </Link>
-          <span className="flex items-center gap-2 whitespace-nowrap text-mono text-base uppercase tracking-[0.24em] text-[color:var(--color-text-muted)]">
+          <span className="flex items-center gap-2 text-mono text-base uppercase tracking-[0.24em] text-[rgba(244,246,250,0.58)] md:whitespace-nowrap">
             <span
               aria-hidden
               className="inline-block h-1.5 w-1.5 rounded-full"
@@ -77,7 +77,7 @@ function Hero() {
       </div>
 
       <div
-        className="relative flex aspect-square items-center justify-center"
+        className="relative flex aspect-square w-full min-w-0 items-center justify-center overflow-hidden"
         style={{ animation: 'drift-up 0.9s ease-out 0.4s both' }}
       >
         <HeroVisual />
@@ -129,10 +129,10 @@ function Pillars() {
             key={it.label}
             className="bg-[color:var(--color-background)] p-7 md:p-9"
           >
-            <p className="text-mono text-base uppercase tracking-[0.28em] text-[color:var(--color-brass-bright)]">
+            <p className="text-mono text-base uppercase tracking-[0.28em] text-[color:var(--color-accent)]">
               {it.label}
             </p>
-            <p className="mt-5 leading-relaxed text-[color:var(--color-text-secondary)]">
+            <p className="mt-5 leading-relaxed text-[rgba(244,246,250,0.72)]">
               {it.body}
             </p>
           </div>
@@ -152,7 +152,7 @@ function Promise() {
           Free. Forever. Funded by the people who see Bitcoin clearer
           because of it.
         </p>
-        <ul className="space-y-3 text-base text-[color:var(--color-text-secondary)]">
+        <ul className="space-y-3 text-base text-[rgba(244,246,250,0.72)]">
           {[
             'Self-hosted node · no third-party calls',
             'No analytics · no tracking · no sign-up',

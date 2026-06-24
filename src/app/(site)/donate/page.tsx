@@ -5,6 +5,7 @@ import {
   VIEW_BRAND_NAME,
 } from '@/lib/site-config';
 import { DonateAddress } from '@/components/DonateAddress';
+import { TreasuryPanel } from '@/components/TreasuryPanel';
 
 export const metadata: Metadata = {
   title: 'Support the work',
@@ -106,6 +107,8 @@ export default function DonatePage() {
         audit. If it&apos;s useful and you can spare a few sats, the node thanks
         you. If you can&apos;t — it&apos;s still free, forever.
       </p>
+
+      <TreasuryPanel />
     </div>
   );
 }
