@@ -30,6 +30,7 @@ const SITEMAP: Array<{ heading: string; links: Array<{ href: string; label: stri
     heading: 'Project',
     links: [
       { href: '/about', label: 'About' },
+      { href: '/faq', label: 'FAQ' },
       { href: '/status', label: 'Status' },
     ],
   },
