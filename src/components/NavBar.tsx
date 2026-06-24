@@ -43,7 +43,7 @@ export function NavBar() {
   const accent = ACCENT_VAR[VIEW_ACCENT];
 
   return (
-    <header className="relative z-10 flex items-center justify-between gap-4 pb-1">
+    <header className="relative z-10 flex items-center justify-between gap-2 pb-1 md:gap-4">
       <Link
         href="/"
         className="flex items-center gap-4 text-mono text-base transition-opacity hover:opacity-80 md:gap-8"
