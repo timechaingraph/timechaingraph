@@ -234,7 +234,7 @@ export default function FaqPage() {
               Is Timechain {VIEW_BRAND_NAME} GDPR compliant?
             </dt>
             <dd className="mt-2 text-[color:var(--color-text-secondary)]">
-              Because no personal data is collected, stored, or processed, the GDPR's
+              Because no personal data is collected, stored, or processed, the GDPR&apos;s
               consent, data-subject rights, and controller-registration obligations do not
               arise — there is nothing to consent to and no data to delete or export.
               {SUPPORT_EMAIL && (
@@ -273,8 +273,8 @@ export default function FaqPage() {
               roughly every ten minutes by a miner who solves a proof-of-work puzzle.
               No single party controls it; anyone with a full node can verify the whole
               history independently.{' '}
-              <em>Satoshi Nakamoto called it the "timechain"</em> — a chain of
-              timestamped proofs. That name is this project's.
+              <em>Satoshi Nakamoto called it the &quot;timechain&quot;</em> — a chain of
+              timestamped proofs. That name is this project&apos;s.
             </dd>
           </div>
 

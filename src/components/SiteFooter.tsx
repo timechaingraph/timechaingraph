@@ -50,9 +50,10 @@ const SITEMAP: Array<{ heading: string; links: Array<{ href: string; label: stri
   },
 ];
 
-const ACCENT_VAR: Record<'cyan' | 'gold', string> = {
+const ACCENT_VAR: Record<'cyan' | 'gold' | 'amber', string> = {
   cyan: 'var(--color-accent-cyan)',
   gold: 'var(--color-gold)',
+  amber: 'var(--color-amber)',
 };
 
 export function SiteFooter() {
