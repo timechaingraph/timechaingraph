@@ -52,7 +52,7 @@ function Endpoint({ method, path, desc }: { method: string; path: string; desc: 
         <span
           className="rounded px-2 py-0.5 text-mono text-[10px] uppercase tracking-wider"
           style={{
-            background: 'rgba(0, 212, 255, 0.12)',
+            background: 'color-mix(in srgb, var(--color-accent) 12%, transparent)',
             color: 'var(--color-accent)',
           }}
         >
