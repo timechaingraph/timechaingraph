@@ -7,9 +7,22 @@ import {
   SUPPORT_EMAIL,
 } from '@/lib/site-config';
 
+const PAGE_DESCRIPTION = `Frequently asked questions about Timechain ${VIEW_BRAND_NAME} — what it visualises, where the Bitcoin data comes from, how privacy is enforced, and Bitcoin basics explained.`;
+
 export const metadata: Metadata = {
   title: 'FAQ',
-  description: `Frequently asked questions about Timechain ${VIEW_BRAND_NAME} — what it visualises, where the Bitcoin data comes from, how privacy is enforced, and Bitcoin basics explained.`,
+  description: PAGE_DESCRIPTION,
+  openGraph: {
+    title: `FAQ · Timechain ${VIEW_BRAND_NAME}`,
+    description: PAGE_DESCRIPTION,
+    images: [{ url: '/og2.png', width: 1200, height: 630, alt: `Timechain ${VIEW_BRAND_NAME}` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `FAQ · Timechain ${VIEW_BRAND_NAME}`,
+    description: PAGE_DESCRIPTION,
+    images: ['/og2.png'],
+  },
 };
 
 // JSON-LD structured data for Google's FAQ rich results.
