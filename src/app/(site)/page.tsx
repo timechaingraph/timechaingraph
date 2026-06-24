@@ -35,8 +35,8 @@ export default function HomePage() {
 
 function Hero() {
   return (
-    <section className="grid items-center gap-12 py-4 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-8 lg:gap-20 lg:py-10">
-      <div className="flex flex-col gap-8 self-start">
+    <section className="grid grid-cols-1 items-center gap-12 py-4 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-8 lg:gap-20 lg:py-10">
+      <div className="flex min-w-0 flex-col gap-8 self-start">
         <h1
           className="text-display hero-gradient text-5xl font-bold leading-[1.02] tracking-tight md:text-7xl lg:text-[5.5rem]"
           style={{ animation: 'drift-up 0.7s ease-out 0.15s both' }}
@@ -62,7 +62,7 @@ function Hero() {
           >
             Open the graph ⟶
           </Link>
-          <span className="flex items-center gap-2 whitespace-nowrap text-mono text-base uppercase tracking-[0.24em] text-[rgba(244,246,250,0.58)]">
+          <span className="flex items-center gap-2 text-mono text-base uppercase tracking-[0.24em] text-[rgba(244,246,250,0.58)] md:whitespace-nowrap">
             <span
               aria-hidden
               className="inline-block h-1.5 w-1.5 rounded-full"
@@ -77,7 +77,7 @@ function Hero() {
       </div>
 
       <div
-        className="relative flex aspect-square items-center justify-center"
+        className="relative flex aspect-square w-full min-w-0 items-center justify-center overflow-hidden"
         style={{ animation: 'drift-up 0.9s ease-out 0.4s both' }}
       >
         <HeroVisual />
