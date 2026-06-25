@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTimegridStore } from '@/store/timegridStore';
 import { SPEED_OPTIONS, blocksPerTick } from '@/components/Playback';
 import { blockDate, formatBlockDate } from '@/lib/blockDate';
+import { getActiveSubstrate } from '@/data/substrate';
 
 // Static facts per halving epoch (index = ordinal 1-based → use halvings[i]).
 const HALVING_DATA = [
@@ -85,6 +86,16 @@ export function GraphPlayBar() {
     setOpenHalvingIdx(null);
     setPlaying(true);
     setTourMode(true);
+  }
+
+  function discoverWallet(): void {
+    const sub = getActiveSubstrate();
+    const interesting = sub.wallets.filter(
+      (w) => w.role === 'whale' || w.role === 'miner' || w.role === 'significant' || w.role === 'satoshi',
+    );
+    if (interesting.length === 0) return;
+    const pick = interesting[Math.floor(Math.random() * interesting.length)];
+    if (pick) useTimegridStore.getState().setSelectedWallet(pick.address);
   }
 
   const ready = latestBlock > 0;
@@ -257,6 +268,19 @@ export function GraphPlayBar() {
             {tourMode ? '✕ Tour' : 'Tour'}
           </button>
         </div>
+      )}
+
+      {/* Discover — jump to a random interesting wallet (whale/miner/significant) */}
+      {ready && (
+        <button
+          type="button"
+          onClick={discoverWallet}
+          aria-label="Discover a random interesting wallet"
+          title="Discover: jump to a random whale, miner, or significant wallet"
+          className="text-mono shrink-0 rounded-full px-2 py-0.5 text-[9px] text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-gold)]"
+        >
+          ✦
+        </button>
       )}
 
       {/* Scrubber — flexes to fill remaining space; halving ticks behind it */}
