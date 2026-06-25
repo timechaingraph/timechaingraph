@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTimegridStore } from '@/store/timegridStore';
 import { SPEED_OPTIONS, blocksPerTick } from '@/components/Playback';
 import { blockDate, formatBlockDate } from '@/lib/blockDate';
@@ -56,6 +56,28 @@ export function GraphPlayBar() {
   const setSpeedIdx = useTimegridStore((s) => s.setPlaybackSpeedIdx);
   // Index (0-based) of the halving whose card is currently open; null = closed.
   const [openHalvingIdx, setOpenHalvingIdx] = useState<number | null>(null);
+  // Tour mode: auto-plays from genesis, pauses 3s at each halving with epoch card.
+  const [tourMode, setTourMode] = useState(false);
+  const tourNextIdxRef = useRef(0); // next halving index the tour will pause at
+  const tourTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function cancelTour(): void {
+    if (tourTimerRef.current) clearTimeout(tourTimerRef.current);
+    tourTimerRef.current = null;
+    tourNextIdxRef.current = 0;
+    setTourMode(false);
+    setOpenHalvingIdx(null);
+  }
+
+  function startTour(): void {
+    cancelTour();
+    tourNextIdxRef.current = 0;
+    setCurrentBlock(0);
+    setSpeedIdx(SPEED_OPTIONS.length - 1); // Fast
+    setOpenHalvingIdx(null);
+    setPlaying(true);
+    setTourMode(true);
+  }
 
   const ready = latestBlock > 0;
   const atTip = ready && currentBlock >= latestBlock;
@@ -82,7 +104,36 @@ export function GraphPlayBar() {
     return () => clearInterval(id);
   }, [playing, speed, ready, setCurrentBlock]);
 
+  // Tour waypoint monitor — fires on each currentBlock update during a tour.
+  // When we reach (or pass) the next halving, pause, open its epoch card,
+  // wait 3 s, close the card, advance the tour index, and resume.
+  useEffect(() => {
+    if (!tourMode) return;
+    const nextH = halvings[tourNextIdxRef.current];
+    if (nextH === undefined) {
+      // Past all halvings — let natural playback finish, then cancel tour.
+      if (atTip) cancelTour();
+      return;
+    }
+    if (currentBlock < nextH) return; // not there yet
+
+    // Arrived at a halving block.
+    setPlaying(false);
+    setOpenHalvingIdx(tourNextIdxRef.current);
+    tourTimerRef.current = setTimeout(() => {
+      setOpenHalvingIdx(null);
+      tourNextIdxRef.current += 1;
+      setPlaying(true);
+    }, 3000);
+
+    return () => {
+      if (tourTimerRef.current) clearTimeout(tourTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentBlock, tourMode]);
+
   function togglePlay(): void {
+    if (tourMode) { cancelTour(); return; }
     if (atTip) {
       setCurrentBlock(0);
       setPlaying(true);
@@ -142,6 +193,24 @@ export function GraphPlayBar() {
           );
         })}
       </div>
+
+      {/* Tour button — starts/cancels the guided Bitcoin history experience */}
+      {ready && (
+        <button
+          type="button"
+          onClick={tourMode ? cancelTour : startTour}
+          aria-label={tourMode ? 'Cancel tour' : 'Start guided Bitcoin history tour'}
+          title={tourMode ? 'Cancel tour' : 'Guided tour: auto-plays through all 4 halvings'}
+          className={[
+            'text-mono shrink-0 rounded-full px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] transition-colors',
+            tourMode
+              ? 'bg-[color:var(--color-amber)]/20 text-[color:var(--color-amber)] hover:bg-[color:var(--color-amber)]/30'
+              : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)]',
+          ].join(' ')}
+        >
+          {tourMode ? '✕ Tour' : 'Tour'}
+        </button>
+      )}
 
       {/* Scrubber — flexes to fill remaining space; halving ticks behind it */}
       <div className="relative min-w-0 flex-1">
@@ -229,8 +298,8 @@ export function GraphPlayBar() {
           step={1}
           disabled={!ready}
           onChange={(e) => {
-            // Manual scrub pauses auto-play; the user has grabbed the
-            // wheel and Narrate-mode shouldn't fight them.
+            // Manual scrub pauses auto-play and cancels tour.
+            if (tourMode) cancelTour();
             setPlaying(false);
             setCurrentBlock(Number(e.target.value));
           }}
