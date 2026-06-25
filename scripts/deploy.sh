@@ -49,6 +49,32 @@ echo "  none — good."
 echo "▸ privacy audit (no third-party domains in the build)"
 npm run privacy-audit
 
+echo "▸ guard: build's DuckDB wasm must match the copy served from R2"
+# Why: the >25MB wasm is stripped from the upload and served from R2, decoupled
+# from the build. If the build's @duckdb/duckdb-wasm version != the .wasm on R2,
+# the browser throws "function signature mismatch" — and this slips past every
+# other gate (none load wasm in a real browser). This guard is that missing gate.
+WASM_BASE="${NEXT_PUBLIC_DUCKDB_WASM_BASE:-}"
+if [ -z "$WASM_BASE" ] && [ -f .env.production ]; then
+  WASM_BASE=$(grep -E '^NEXT_PUBLIC_DUCKDB_WASM_BASE=' .env.production 2>/dev/null | head -1 | cut -d= -f2- | sed 's/^"//;s/"$//' | tr -d '\r ' || true)
+fi
+if [ -z "$WASM_BASE" ]; then
+  echo "✗ NEXT_PUBLIC_DUCKDB_WASM_BASE unset (shell + .env.production). The >25MB wasm is" >&2
+  echo "  stripped from the upload → runtime fetches /duckdb/duckdb-eh.wasm same-origin → 404" >&2
+  echo "  → graph hangs at 'Initialising DuckDB-Wasm…'. Set it (e.g. https://data.timechaingraph.com)." >&2
+  exit 1
+fi
+LOCAL_WASM=$(wc -c < public/duckdb/duckdb-eh.wasm | tr -d ' ')
+R2_WASM=$(curl -fsSI "$WASM_BASE/duckdb/duckdb-eh.wasm" 2>/dev/null | grep -i '^content-length:' | tr -dc '0-9' || true)
+if [ "$LOCAL_WASM" != "$R2_WASM" ]; then
+  echo "✗ DuckDB wasm MISMATCH — build=$LOCAL_WASM B vs R2=${R2_WASM:-unreachable} B ($WASM_BASE)." >&2
+  echo "  Runtime fetches the R2 copy; mismatched against this build's JS glue → in-browser" >&2
+  echo "  'function signature mismatch'. Re-upload the matching .wasm to R2, or align the" >&2
+  echo "  @duckdb/duckdb-wasm pin (keep it EXACT, no caret). See docs/DEPLOY_r2_hosting.md." >&2
+  exit 1
+fi
+echo "  wasm match ✓ (build = R2 = $LOCAL_WASM B @ $WASM_BASE)"
+
 echo "▸ deploy to Cloudflare Pages"
 npx wrangler pages deploy out --project-name=timechaingraph --branch=main
 
