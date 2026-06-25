@@ -3,11 +3,36 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { InsightsSignup } from '../InsightsSignup';
 
 describe('<InsightsSignup> — coming soon (no subscribeUrl)', () => {
-  it('renders coming soon callout without a form', () => {
+  it('renders coming-soon callout with a pre-capture form', () => {
     render(<InsightsSignup subscribeUrl="" />);
     expect(screen.getByText(/coming soon/i)).toBeTruthy();
-    expect(screen.queryByRole('textbox')).toBeNull();
-    expect(screen.queryByRole('button', { name: /subscribe/i })).toBeNull();
+    expect(screen.getByLabelText(/notify me/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /notify me/i })).toBeTruthy();
+  });
+
+  it('disables the notify button when the pre-capture field is empty', () => {
+    render(<InsightsSignup subscribeUrl="" />);
+    const btn = screen.getByRole('button', { name: /notify me/i });
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('shows confirmation after valid email is submitted', () => {
+    render(<InsightsSignup subscribeUrl="" />);
+    fireEvent.change(screen.getByLabelText(/notify me/i), {
+      target: { value: 'early@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /notify me/i }));
+    expect(screen.getByText(/got it/i)).toBeTruthy();
+    expect(screen.getByText('early@example.com')).toBeTruthy();
+  });
+
+  it('does not submit on invalid email', () => {
+    render(<InsightsSignup subscribeUrl="" />);
+    fireEvent.change(screen.getByLabelText(/notify me/i), {
+      target: { value: 'not-an-email' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /notify me/i }));
+    expect(screen.queryByText(/got it/i)).toBeNull();
   });
 
   it('mentions self-hosted listmonk', () => {

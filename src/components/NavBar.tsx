@@ -27,14 +27,16 @@ interface NavLink {
 
 const SECTIONS: NavLink[] = [
   { href: '/about', label: 'About' },
+  { href: '/insights', label: 'Insights' },
   { href: '/api', label: 'API', inDev: true },
   { href: '/docs', label: 'Docs' },
   { href: '/status', label: 'Status' },
 ];
 
-const ACCENT_VAR: Record<'cyan' | 'gold', string> = {
+const ACCENT_VAR: Record<'cyan' | 'gold' | 'amber', string> = {
   cyan: 'var(--color-accent-cyan)',
   gold: 'var(--color-gold)',
+  amber: 'var(--color-amber)',
 };
 
 export function NavBar() {

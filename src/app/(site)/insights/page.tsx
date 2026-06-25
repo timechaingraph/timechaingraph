@@ -12,6 +12,13 @@ export const metadata: Metadata = {
       'On-chain analysis from the operators of timechaingraph.com — epoch by epoch, delivered to your inbox.',
     url: `${SITE_URL}/insights`,
     type: 'website',
+    images: [{ url: `${SITE_URL}/og-insights.svg`, width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Timechain Insights',
+    description: 'On-chain analysis from the operators of timechaingraph.com — epoch by epoch, delivered to your inbox.',
+    images: [`${SITE_URL}/og-insights.svg`],
   },
 };
 
