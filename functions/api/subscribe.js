@@ -13,9 +13,18 @@
 
 const ALLOWED_ORIGIN = 'timechaingraph.com';
 
+function isAllowedOrigin(origin) {
+  try {
+    const host = new URL(origin).hostname.toLowerCase().replace(/\.$/, '');
+    return host === ALLOWED_ORIGIN || host.endsWith(`.${ALLOWED_ORIGIN}`);
+  } catch {
+    return false;
+  }
+}
+
 function corsHeaders(origin) {
   return {
-    'access-control-allow-origin': origin?.includes(ALLOWED_ORIGIN) ? origin : `https://${ALLOWED_ORIGIN}`,
+    'access-control-allow-origin': isAllowedOrigin(origin) ? origin : `https://${ALLOWED_ORIGIN}`,
     'access-control-allow-methods': 'POST, OPTIONS',
     'access-control-allow-headers': 'content-type',
   };

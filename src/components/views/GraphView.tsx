@@ -647,10 +647,24 @@ export function GraphView() {
         endPan();
       });
 
-      // ESC clears focus mode. document-level so it works regardless of
-      // canvas focus state. No-op when nothing is focused.
+      // Keyboard controls — document-level so they work regardless of canvas
+      // focus state. Space = play/pause, arrow keys = ±1 block, Esc = clear focus.
       const onKeyDown = (event: KeyboardEvent): void => {
-        if (event.key === 'Escape') clearFocus();
+        if (event.key === 'Escape') {
+          clearFocus();
+        } else if (event.key === ' ') {
+          event.preventDefault(); // prevent page scroll
+          const { playbackPlaying, setPlaybackPlaying } = useTimegridStore.getState();
+          setPlaybackPlaying(!playbackPlaying);
+        } else if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          const { currentBlock, setCurrentBlock } = useTimegridStore.getState();
+          setCurrentBlock(currentBlock - 1);
+        } else if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          const { currentBlock, setCurrentBlock } = useTimegridStore.getState();
+          setCurrentBlock(currentBlock + 1);
+        }
       };
       document.addEventListener('keydown', onKeyDown);
       cleanupFns.push(() => {
