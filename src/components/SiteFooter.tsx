@@ -31,6 +31,7 @@ const SITEMAP: Array<{ heading: string; links: Array<{ href: string; label: stri
     links: [
       { href: '/about', label: 'About' },
       { href: '/faq', label: 'FAQ' },
+      { href: '/insights', label: 'Insights' },
       { href: '/status', label: 'Status' },
     ],
   },
