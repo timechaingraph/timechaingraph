@@ -1,9 +1,37 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTimegridStore } from '@/store/timegridStore';
 import { SPEED_OPTIONS, blocksPerTick } from '@/components/Playback';
 import { blockDate, formatBlockDate } from '@/lib/blockDate';
+
+// Static facts per halving epoch (index = ordinal 1-based → use halvings[i]).
+const HALVING_DATA = [
+  {
+    name: 'First Halving',
+    subsidy: '50 → 25 BTC',
+    cumulativeBTC: '10,500,000 BTC',
+    note: "Bitcoin's first supply shock. The block reward dropped overnight.",
+  },
+  {
+    name: 'Second Halving',
+    subsidy: '25 → 12.5 BTC',
+    cumulativeBTC: '15,750,000 BTC',
+    note: 'Ethereum had launched the year before. ~75% of all BTC ever.',
+  },
+  {
+    name: 'Third Halving',
+    subsidy: '12.5 → 6.25 BTC',
+    cumulativeBTC: '18,375,000 BTC',
+    note: 'Mined during the COVID-19 pandemic. ~87.5% of all BTC ever.',
+  },
+  {
+    name: 'Fourth Halving',
+    subsidy: '6.25 → 3.125 BTC',
+    cumulativeBTC: '19,687,500 BTC',
+    note: 'Spot ETFs approved 3 months prior. ~93.75% of all BTC ever.',
+  },
+] as const;
 
 /**
  * GraphPlayBar — graph-only compact playback control. A single-row
@@ -26,6 +54,8 @@ export function GraphPlayBar() {
   const setPlaying = useTimegridStore((s) => s.setPlaybackPlaying);
   const speedIdx = useTimegridStore((s) => s.playbackSpeedIdx);
   const setSpeedIdx = useTimegridStore((s) => s.setPlaybackSpeedIdx);
+  // Index (0-based) of the halving whose card is currently open; null = closed.
+  const [openHalvingIdx, setOpenHalvingIdx] = useState<number | null>(null);
 
   const ready = latestBlock > 0;
   const atTip = ready && currentBlock >= latestBlock;
@@ -124,21 +154,69 @@ export function GraphPlayBar() {
           <div className="pointer-events-none absolute inset-0 z-10">
             {halvings.map((h, i) => {
               const { date } = blockDate(h);
+              const isOpen = openHalvingIdx === i;
+              const data = HALVING_DATA[i];
+              const pct = (h / latestBlock) * 100;
               return (
-                <button
+                <div
                   key={h}
-                  type="button"
-                  onClick={() => {
-                    setPlaying(false);
-                    setCurrentBlock(h);
-                  }}
-                  title={`Halving ${i + 1} · block ${h.toLocaleString()} · ${formatBlockDate(date)}`}
-                  aria-label={`Jump to halving ${i + 1}, block ${h.toLocaleString()}`}
-                  className="group pointer-events-auto absolute top-0 bottom-0 w-2.5 -translate-x-1/2 cursor-pointer"
-                  style={{ left: `${(h / latestBlock) * 100}%` }}
+                  className="absolute top-0 bottom-0 w-2.5 -translate-x-1/2"
+                  style={{ left: `${pct}%` }}
                 >
-                  <span className="absolute left-1/2 top-1/2 h-2.5 w-px -translate-x-1/2 -translate-y-1/2 bg-[color:var(--color-amber)]/70 transition-all group-hover:h-4 group-hover:bg-[color:var(--color-amber)]" />
-                </button>
+                  {/* Tick marker + click target */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPlaying(false);
+                      setCurrentBlock(h);
+                      setOpenHalvingIdx(isOpen ? null : i);
+                    }}
+                    title={`${data?.name ?? `Halving ${i + 1}`} · block ${h.toLocaleString()} · ${formatBlockDate(date)}`}
+                    aria-label={`Jump to halving ${i + 1}, block ${h.toLocaleString()}`}
+                    aria-expanded={isOpen}
+                    className="group pointer-events-auto absolute top-0 bottom-0 w-2.5 -translate-x-1/2 cursor-pointer"
+                  >
+                    <span
+                      className={[
+                        'absolute left-1/2 top-1/2 w-px -translate-x-1/2 -translate-y-1/2 transition-all',
+                        isOpen
+                          ? 'h-4 bg-[color:var(--color-amber)]'
+                          : 'h-2.5 bg-[color:var(--color-amber)]/70 group-hover:h-4 group-hover:bg-[color:var(--color-amber)]',
+                      ].join(' ')}
+                    />
+                  </button>
+
+                  {/* Epoch card — floats above the scrubber row */}
+                  {isOpen && data && (
+                    <div
+                      className="brass-panel pointer-events-auto absolute bottom-full mb-3 w-52 rounded-lg px-3.5 py-3 text-left"
+                      style={{
+                        // Keep the card inside the scrubber's visible width.
+                        // Cards near edges shift left/right to avoid clipping.
+                        left: pct < 25 ? '0' : pct > 75 ? 'auto' : '-50%',
+                        right: pct > 75 ? '0' : 'auto',
+                      }}
+                    >
+                      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--color-amber)]">
+                        {data.name}
+                      </div>
+                      <div className="space-y-1 text-mono text-[10px]">
+                        <div className="text-[color:var(--color-text-secondary)]">
+                          Block {h.toLocaleString()} · {formatBlockDate(date)}
+                        </div>
+                        <div className="text-[color:var(--color-text-primary)]">
+                          {data.subsidy} per block
+                        </div>
+                        <div className="text-[color:var(--color-text-secondary)]">
+                          {data.cumulativeBTC} mined
+                        </div>
+                        <div className="mt-1.5 border-t border-[color:var(--color-card-border)] pt-1.5 text-[9px] leading-snug text-[color:var(--color-text-muted)]">
+                          {data.note}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
