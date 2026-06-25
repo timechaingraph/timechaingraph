@@ -75,6 +75,15 @@ export const DONATION_LIVE =
  * same gating idea as DONATION_LIVE). These MUST diverge between Graph and Grid.
  * Typed `: string` so the "is it set?" conditionals aren't constant-folded.
  */
+/**
+ * Insights newsletter — Timechain Insights free-tier (S5).
+ * INSIGHTS_SUBSCRIBE_URL: the same-origin CF Pages Function endpoint.
+ * Set to '/api/subscribe' once the listmonk VM is live (S5 step 1).
+ * Empty string = "coming soon" state rendered on /insights.
+ */
+export const INSIGHTS_SUBSCRIBE_URL: string = ''; // set to '/api/subscribe' when listmonk is live
+export const INSIGHTS_ENABLED = INSIGHTS_SUBSCRIBE_URL.length > 0;
+
 export const SUPPORT_EMAIL: string = 'support@timechaingraph.com';
 export const X_HANDLE: string = 'TimechainGraph'; // x.com/TimechainGraph (no @)
 export const NOSTR_NPUB: string = 'npub12ynwkvuxjxv5qjqpzn3gsrvvfaydafjwfhsved2y6du6u3462pgs6sp0au'; // @TimechainGraph; footer → njump.me/<npub>; verifies as timechaingraph.com via /.well-known/nostr.json
