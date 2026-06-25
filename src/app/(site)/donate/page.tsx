@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
 import {
   DONATION_BTC_ADDRESS,
+  DONATION_LIGHTNING_ADDRESS,
   DONATION_LIVE,
   VIEW_BRAND_NAME,
 } from '@/lib/site-config';
 import { DonateAddress } from '@/components/DonateAddress';
+import { DonateLightning } from '@/components/DonateLightning';
 import { TreasuryPanel } from '@/components/TreasuryPanel';
 
 export const metadata: Metadata = {
@@ -78,13 +80,20 @@ export default function DonatePage() {
               Lightning
             </span>
             <span className="text-mono text-base uppercase tracking-wider text-[color:var(--color-text-muted)]">
-              coming
+              {DONATION_LIGHTNING_ADDRESS ? 'live' : 'coming'}
             </span>
           </div>
           <p className="mt-3 text-sm leading-relaxed text-[color:var(--color-text-secondary)]">
             Instant, low-fee sats for small tips — served from our own
-            self-custodial node when it lands, never a custodial third party.
+            self-custodial node, never a custodial third party.
           </p>
+          {DONATION_LIGHTNING_ADDRESS ? (
+            <DonateLightning address={DONATION_LIGHTNING_ADDRESS} />
+          ) : (
+            <p className="text-mono mt-4 text-[11px] text-[color:var(--color-text-muted)]">
+              Self-hosted Lightning node coming — phoenixd on our own server.
+            </p>
+          )}
         </div>
       </div>
 
