@@ -8,7 +8,7 @@
  * components and pages are copied 1:1 — only this file diverges.
  */
 
-export type ViewId = 'grid' | 'graph';
+export type ViewId = 'grid' | 'graph' | 'map';
 
 export const VIEW: ViewId = 'graph';
 
@@ -22,10 +22,10 @@ export const VIEW_HERO_BOTTOM = 'of Bitcoin.';
 export const VIEW_HERO_DESCRIPTION =
   '“Timechain” was Satoshi’s name for the blockchain — a chain of timestamped blocks. Here it is, the living network it always was: every wallet a node, every transaction an edge, the ledger legible in your browser. Public to watch, private to use.';
 
-export const OTHER_VIEW_BRAND = 'GRID';
-export const OTHER_VIEW_DOMAIN = 'timechaingrid.com';
-export const OTHER_VIEW_TAGLINE = "Bitcoin's digital real estate";
-export const OTHER_VIEW_ACCENT = 'gold' as const;
+export const OTHER_VIEW_BRAND = 'MAP';
+export const OTHER_VIEW_DOMAIN = 'timechainmap.com';
+export const OTHER_VIEW_TAGLINE = 'the geography of Bitcoin';
+export const OTHER_VIEW_ACCENT = 'amber' as const;
 export const OTHER_VIEW_URL = `https://${OTHER_VIEW_DOMAIN}`;
 
 export const BRAND_TAGLINE = 'Bitcoin Visualised';
