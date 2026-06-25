@@ -112,7 +112,8 @@ export function GraphPlayBar() {
     const nextH = halvings[tourNextIdxRef.current];
     if (nextH === undefined) {
       // Past all halvings — let natural playback finish, then cancel tour.
-      if (atTip) cancelTour();
+      // Deferred to avoid synchronous setState inside effect body.
+      if (atTip) setTimeout(() => cancelTour(), 0);
       return;
     }
     if (currentBlock < nextH) return; // not there yet
