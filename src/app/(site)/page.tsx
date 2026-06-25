@@ -58,7 +58,7 @@ function Hero() {
           <Link
             href="/graph"
             className="rounded-full px-7 py-3.5 text-mono text-base font-semibold uppercase tracking-[0.2em] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_30px_rgba(255,215,0,0.5)]"
-            style={{ background: 'var(--color-accent)', color: 'var(--color-background)' }}
+            style={{ background: 'linear-gradient(135deg, var(--color-accent-deep) 0%, var(--color-accent-dim) 100%)', color: 'var(--color-background)' }}
           >
             Open the graph ⟶
           </Link>
