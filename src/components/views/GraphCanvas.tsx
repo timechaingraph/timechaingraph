@@ -18,6 +18,7 @@ import { useTimegridStore } from '@/store/timegridStore';
 import { GraphPlayBar } from './GraphPlayBar';
 import { WalletInspector } from '@/components/WalletInspector';
 import { BlockStats } from '@/components/BlockStats';
+import { WalletLegend } from '@/components/WalletLegend';
 
 export function GraphCanvas() {
   const [Graph, setGraph] = useState<ComponentType | null>(null);
@@ -76,6 +77,13 @@ export function GraphCanvas() {
       <div className="pointer-events-none absolute top-3 left-3 z-10 hidden w-[200px] max-w-[calc(100vw-1.5rem)] lg:block">
         <div className="pointer-events-auto">
           <BlockStats />
+        </div>
+      </div>
+
+      {/* Wallet legend — color key bottom-left, dismissible (lg+). */}
+      <div className="pointer-events-none absolute bottom-16 left-3 z-10 hidden w-[220px] max-w-[calc(100vw-1.5rem)] lg:block">
+        <div className="pointer-events-auto">
+          <WalletLegend />
         </div>
       </div>
 
