@@ -109,7 +109,9 @@ export function getActiveSubstrate(): ChainSubstrate {
  * loaded data. The r2-substrate import is dynamic so DuckDB-Wasm never
  * enters the fixture path or SSR.
  */
-export async function loadSubstrate(): Promise<ChainSubstrate> {
+export async function loadSubstrate(
+  onProgress?: (stage: string) => void,
+): Promise<ChainSubstrate> {
   const useR2 =
     process.env.NEXT_PUBLIC_USE_R2 !== '0' && process.env.NEXT_PUBLIC_USE_R2 !== 'false';
   if (useR2) {
@@ -119,7 +121,7 @@ export async function loadSubstrate(): Promise<ChainSubstrate> {
       // from R2 (NEXT_PUBLIC_DATA_BASE_URL, full versioned base e.g.
       // https://data.timechaingraph.com/data/v0.1.0).
       const baseUrl = process.env.NEXT_PUBLIC_DATA_BASE_URL || '/data/v0.1.0';
-      activeSubstrate = await new R2ChainSubstrate(baseUrl).init();
+      activeSubstrate = await new R2ChainSubstrate(baseUrl).init(onProgress);
       return activeSubstrate;
     } catch (err) {
       console.warn('[substrate] R2 load failed; falling back to fixture:', err);

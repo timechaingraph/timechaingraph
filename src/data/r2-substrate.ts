@@ -87,7 +87,7 @@ export class R2ChainSubstrate implements ChainSubstrate {
     return t > 0 ? t : undefined;
   }
 
-  async init(): Promise<this> {
+  async init(onProgress?: (stage: string) => void): Promise<this> {
     if (this._ready) return this;
 
     const manifest: Manifest = await fetch(`${this.baseUrl}/manifest.json`).then((r) => {
@@ -95,7 +95,9 @@ export class R2ChainSubstrate implements ChainSubstrate {
       return r.json();
     });
     this._tipBlock = manifest.tipBlock;
+    onProgress?.('Reading chain manifest…');
 
+    onProgress?.('Initialising DuckDB-Wasm…');
     const db = await getDuckDB();
     const abs = (p: string) => new URL(`${this.baseUrl}/${p}`, window.location.origin).href;
     await db.registerFileURL('wallets.parquet', abs(manifest.wallets.path), DuckDBDataProtocol.HTTP, false);
@@ -113,6 +115,7 @@ export class R2ChainSubstrate implements ChainSubstrate {
       // When the file is absent (old bundles), fall back to is_miner.
       let coinbaseMinerSet: Set<string> | null = null;
       if (manifest.blockMiners) {
+        onProgress?.(`Identifying miners (${manifest.blockMiners.rows.toLocaleString()} blocks)…`);
         const mres = await conn.query(
           `SELECT DISTINCT miner FROM parquet_scan('block-miners.parquet') WHERE miner != ''`,
         );
@@ -122,6 +125,7 @@ export class R2ChainSubstrate implements ChainSubstrate {
         }
       }
 
+      onProgress?.(`Mapping ${manifest.wallets.rows.toLocaleString()} wallets…`);
       const wres = await conn.query(
         `SELECT address, first_seen_block, last_active_block, total_received_sats, tx_count, is_miner
          FROM parquet_scan('wallets.parquet')`,
@@ -149,6 +153,7 @@ export class R2ChainSubstrate implements ChainSubstrate {
         this._byAddr.set(address, w);
       }
 
+      onProgress?.(`Building ${manifest.bonds.rows.toLocaleString()} bonds…`);
       const bres = await conn.query(
         `SELECT from_address, to_address, sats, formation_block FROM parquet_scan('bonds.parquet')`,
       );
@@ -169,6 +174,7 @@ export class R2ChainSubstrate implements ChainSubstrate {
       // height-indexed Uint32Array for O(1) blockTime() (the scrubber spans
       // 0..tip regardless of tier). ~3.8MB at full chain; absent in old bundles.
       if (manifest.timestamps) {
+        onProgress?.(`Syncing ${manifest.timestamps.rows.toLocaleString()} block timestamps…`);
         await db.registerFileURL(
           'timestamps.parquet',
           abs(manifest.timestamps.path),

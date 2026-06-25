@@ -22,6 +22,7 @@ import { BlockStats } from '@/components/BlockStats';
 export function GraphCanvas() {
   const [Graph, setGraph] = useState<ComponentType | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadStage, setLoadStage] = useState<string>('Loading the living network…');
   // Live chain-tip polling (same-origin relay) — extends the scrubber range
   // and drives the BlockStats live ticker as new blocks are mined.
   useLiveTip();
@@ -30,7 +31,9 @@ export function GraphCanvas() {
     let cancelled = false;
     (async () => {
       try {
-        const sub = await loadSubstrate();
+        const sub = await loadSubstrate((stage) => {
+          if (!cancelled) setLoadStage(stage);
+        });
         const store = useTimegridStore.getState();
         store.setLatestBlock(sub.tipBlock);
         store.setCurrentBlock(sub.tipBlock); // open at the tip — full network visible
@@ -56,7 +59,7 @@ export function GraphCanvas() {
     return (
       <div className="flex h-full w-full items-center justify-center px-6 text-center">
         <p className="text-mono text-sm uppercase tracking-[0.24em] text-[color:var(--color-brass-bright)]">
-          Loading the living network…
+          {loadStage}
         </p>
       </div>
     );
