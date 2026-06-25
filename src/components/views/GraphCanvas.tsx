@@ -49,6 +49,15 @@ export function GraphCanvas() {
     };
   }, []);
 
+  // Apply ?wallet= deep-link once the graph is ready (substrate must be loaded first).
+  useEffect(() => {
+    if (!Graph) return;
+    try {
+      const walletAddr = new URLSearchParams(window.location.search).get('wallet');
+      if (walletAddr) useTimegridStore.getState().setSelectedWallet(walletAddr);
+    } catch { /* SSR guard */ }
+  }, [Graph]);
+
   if (error) {
     return (
       <div className="flex h-full w-full items-center justify-center px-6 text-center">

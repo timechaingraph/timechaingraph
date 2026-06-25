@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTimegridStore } from '@/store/timegridStore';
 import { getActiveSubstrate } from '@/data/substrate';
 import { ROLE_LABEL, ROLE_CSS } from '@/lib/role-visuals';
@@ -90,6 +90,29 @@ function MinimizeButton({ onClick }: { onClick: () => void }) {
 export function WalletInspector() {
   const selectedAddress = useTimegridStore((s) => s.selectedWallet);
   const [collapsed, setCollapsed] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Sync browser URL with the selected wallet so links are shareable.
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      if (selectedAddress) {
+        url.searchParams.set('wallet', selectedAddress);
+      } else {
+        url.searchParams.delete('wallet');
+      }
+      window.history.replaceState(null, '', url.toString());
+    } catch { /* SSR or restricted env */ }
+  }, [selectedAddress]);
+
+  async function copyAddress(address: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard unavailable */ }
+  }
+
   const wallet = selectedAddress
     ? getActiveSubstrate().walletByAddress(selectedAddress)
     : undefined;
@@ -149,17 +172,36 @@ export function WalletInspector() {
           <MinimizeButton onClick={() => setCollapsed(true)} />
         </span>
       </div>
-      <p
-        className="mt-3 text-mono text-sm font-medium text-[color:var(--color-text-primary)] break-all"
-        title={wallet.address}
-      >
-        {shortAddress(wallet.address)}
-      </p>
+      <div className="mt-3 flex items-start gap-2">
+        <p
+          className="flex-1 break-all text-mono text-sm font-medium text-[color:var(--color-text-primary)]"
+          title={wallet.address}
+        >
+          {shortAddress(wallet.address)}
+        </p>
+        <button
+          type="button"
+          onClick={() => copyAddress(wallet.address)}
+          aria-label="Copy address to clipboard"
+          title={copied ? 'Copied!' : 'Copy address'}
+          className="shrink-0 text-mono text-sm leading-none text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-gold)]"
+        >
+          {copied ? '✓' : '⎘'}
+        </button>
+      </div>
       <dl className="mt-4 grid grid-cols-2 gap-3 text-mono text-xs">
         <Field label="Total received" value={`${btcFromSats(wallet.totalReceivedSats)} BTC`} />
         <Field label="Tx count" value={wallet.txCount.toLocaleString()} />
-        <Field label="First seen" value={`block ${wallet.firstSeenBlock.toLocaleString()}`} />
-        <Field label="Last active" value={`block ${wallet.lastActiveBlock.toLocaleString()}`} />
+        <Field
+          label="First seen"
+          value={formatBlockDate(blockDate(wallet.firstSeenBlock).date)}
+          sub={`block ${wallet.firstSeenBlock.toLocaleString()}`}
+        />
+        <Field
+          label="Last active"
+          value={formatBlockDate(blockDate(wallet.lastActiveBlock).date)}
+          sub={`block ${wallet.lastActiveBlock.toLocaleString()}`}
+        />
       </dl>
       {coinsOwned > 0 && (
         <p className="mt-4 text-mono text-xs">
@@ -224,13 +266,16 @@ export function WalletInspector() {
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div>
       <dt className="text-[10px] uppercase tracking-wider text-[color:var(--color-text-muted)]">
         {label}
       </dt>
       <dd className="mt-1 text-[color:var(--color-text-primary)]">{value}</dd>
+      {sub && (
+        <dd className="text-[9px] tabular-nums text-[color:var(--color-text-faint)]">{sub}</dd>
+      )}
     </div>
   );
 }

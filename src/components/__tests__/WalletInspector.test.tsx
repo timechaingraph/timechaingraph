@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import { WalletInspector } from '../WalletInspector';
 import { useTimegridStore } from '@/store/timegridStore';
@@ -53,6 +53,54 @@ describe('<WalletInspector>', () => {
     useTimegridStore.getState().setSelectedWallet('1NotInTheFixture');
     const { getByText } = render(<WalletInspector />);
     expect(getByText(/Hover or click a wallet/i)).toBeTruthy();
+  });
+});
+
+describe('<WalletInspector> address card', () => {
+  it('shows a copy-address button when a wallet is selected', () => {
+    const wallet = FREE_TIER_50.find((w) => w.role === 'whale')!;
+    useTimegridStore.getState().setSelectedWallet(wallet.address);
+    const { getByLabelText } = render(<WalletInspector />);
+    expect(getByLabelText(/Copy address/i)).toBeTruthy();
+  });
+
+  it('clicking copy button does not throw (clipboard may be unavailable in test env)', () => {
+    // Clipboard is typically undefined in jsdom; the button must not throw.
+    const wallet = FREE_TIER_50.find((w) => w.role === 'whale')!;
+    useTimegridStore.getState().setSelectedWallet(wallet.address);
+    const { getByLabelText } = render(<WalletInspector />);
+    expect(() => fireEvent.click(getByLabelText(/Copy address/i))).not.toThrow();
+  });
+
+  it('shows a YYYY-MM-DD date for firstSeenBlock', () => {
+    const wallet = FREE_TIER_50.find((w) => w.role === 'whale')!;
+    useTimegridStore.getState().setSelectedWallet(wallet.address);
+    const { container } = render(<WalletInspector />);
+    // formatBlockDate returns YYYY-MM-DD; at least one field should match.
+    expect(container.innerHTML).toMatch(/\d{4}-\d{2}-\d{2}/);
+  });
+
+  it('shows the raw block number as sub-field for first seen', () => {
+    const wallet = FREE_TIER_50.find((w) => w.role === 'satoshi')!;
+    useTimegridStore.getState().setSelectedWallet(wallet.address);
+    const { container } = render(<WalletInspector />);
+    // Block number appears as "block N" in the sub-field.
+    expect(container.innerHTML).toMatch(/block \d/);
+  });
+});
+
+describe('<WalletInspector> URL sync', () => {
+  it('calls history.replaceState with ?wallet= when a wallet is selected', () => {
+    const spy = vi.spyOn(window.history, 'replaceState');
+    const wallet = FREE_TIER_50.find((w) => w.role === 'whale')!;
+    useTimegridStore.getState().setSelectedWallet(wallet.address);
+    render(<WalletInspector />);
+    expect(spy).toHaveBeenCalledWith(
+      null,
+      '',
+      expect.stringContaining(`wallet=${wallet.address}`),
+    );
+    spy.mockRestore();
   });
 });
 
