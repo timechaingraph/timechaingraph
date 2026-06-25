@@ -5,7 +5,7 @@ import { useTimegridStore } from '@/store/timegridStore';
 
 beforeEach(() => {
   useTimegridStore.setState({
-    currentBlock: 1_000_000, // past all fixture bonds
+    currentBlock: 1_000_000,
     latestBlock: 1_000_000,
     selectedWallet: null,
     activeDockPanel: null,
@@ -20,40 +20,64 @@ describe('<TopHubsChip>', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('shows the "Top hubs" header when the substrate has bonds', () => {
-    const { getByText } = render(<TopHubsChip />);
-    expect(getByText(/Top hubs/i)).toBeTruthy();
+  it('shows "Hubs" and "Whales" tab buttons', () => {
+    const { getByRole } = render(<TopHubsChip />);
+    expect(getByRole('button', { name: /hubs/i })).toBeTruthy();
+    expect(getByRole('button', { name: /whales/i })).toBeTruthy();
   });
 
-  it('renders at most 5 hub rows', () => {
-    const { getAllByRole } = render(<TopHubsChip />);
-    // Each hub is a <button> inside <li>; there is also the dismiss button.
-    const buttons = getAllByRole('button');
-    // dismiss button + up to 5 hub buttons = at most 6 total.
-    expect(buttons.length).toBeGreaterThanOrEqual(2); // at least 1 hub + dismiss
-    expect(buttons.length).toBeLessThanOrEqual(6);    // dismiss + 5 hubs
+  it('defaults to Hubs view — shows ↔ connection count suffix', () => {
+    const { container } = render(<TopHubsChip />);
+    expect(container.innerHTML).toMatch(/\d+↔/);
   });
 
-  it('clicking a hub sets selectedWallet in the store', () => {
+  it('switches to Whales view on click — shows BTC suffix', () => {
+    const { getByRole, container } = render(<TopHubsChip />);
+    fireEvent.click(getByRole('button', { name: /whales/i }));
+    expect(container.innerHTML).toMatch(/BTC/);
+  });
+
+  it('renders at most 5 rows in Hubs view', () => {
     const { getAllByRole } = render(<TopHubsChip />);
-    // First button is the hub at rank 1 (dismiss is the last button in render order).
-    const hubButtons = getAllByRole('button').filter((b) =>
-      b.getAttribute('aria-label')?.startsWith('Select hub'),
+    const rankRows = getAllByRole('button').filter((b) =>
+      b.getAttribute('aria-label')?.startsWith('Select rank'),
     );
-    expect(hubButtons.length).toBeGreaterThan(0);
-    fireEvent.click(hubButtons[0]);
+    expect(rankRows.length).toBeGreaterThanOrEqual(1);
+    expect(rankRows.length).toBeLessThanOrEqual(5);
+  });
+
+  it('renders at most 5 rows in Whales view', () => {
+    const { getAllByRole, getByRole } = render(<TopHubsChip />);
+    fireEvent.click(getByRole('button', { name: /whales/i }));
+    const rankRows = getAllByRole('button').filter((b) =>
+      b.getAttribute('aria-label')?.startsWith('Select rank'),
+    );
+    expect(rankRows.length).toBeGreaterThanOrEqual(1);
+    expect(rankRows.length).toBeLessThanOrEqual(5);
+  });
+
+  it('clicking a row sets selectedWallet in the store', () => {
+    const { getAllByRole } = render(<TopHubsChip />);
+    const hubRows = getAllByRole('button').filter((b) =>
+      b.getAttribute('aria-label')?.startsWith('Select rank'),
+    );
+    fireEvent.click(hubRows[0]);
+    expect(useTimegridStore.getState().selectedWallet).toBeTruthy();
+  });
+
+  it('clicking a whale row sets selectedWallet in the store', () => {
+    const { getAllByRole, getByRole } = render(<TopHubsChip />);
+    fireEvent.click(getByRole('button', { name: /whales/i }));
+    const whaleRows = getAllByRole('button').filter((b) =>
+      b.getAttribute('aria-label')?.startsWith('Select rank'),
+    );
+    fireEvent.click(whaleRows[0]);
     expect(useTimegridStore.getState().selectedWallet).toBeTruthy();
   });
 
   it('dismisses when the ✕ button is clicked', () => {
-    const { getByLabelText, queryByText } = render(<TopHubsChip />);
-    fireEvent.click(getByLabelText(/Dismiss top hubs/i));
-    expect(queryByText(/Top hubs/i)).toBeNull();
-  });
-
-  it('shows connection count with ↔ suffix for each hub', () => {
-    const { container } = render(<TopHubsChip />);
-    // Each hub row renders "<n>↔" for its bond count.
-    expect(container.innerHTML).toMatch(/\d+↔/);
+    const { getByLabelText, queryByRole } = render(<TopHubsChip />);
+    fireEvent.click(getByLabelText(/Dismiss scoreboard/i));
+    expect(queryByRole('button', { name: /whales/i })).toBeNull();
   });
 });
