@@ -60,6 +60,14 @@ export function GraphPlayBar() {
   const [tourMode, setTourMode] = useState(false);
   const tourNextIdxRef = useRef(0); // next halving index the tour will pause at
   const tourTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // First-visit nudge — localStorage-gated; dismissed on any click or after 8 s.
+  const [tourNudge, setTourNudge] = useState<boolean>(() => {
+    try { return !localStorage.getItem('tcg-tour-nudge-seen'); } catch { return false; }
+  });
+  function dismissNudge(): void {
+    try { localStorage.setItem('tcg-tour-nudge-seen', '1'); } catch { /* ignore */ }
+    setTourNudge(false);
+  }
 
   function cancelTour(): void {
     if (tourTimerRef.current) clearTimeout(tourTimerRef.current);
@@ -133,6 +141,26 @@ export function GraphPlayBar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentBlock, tourMode]);
 
+  // Cancel tour when GraphView's Escape handler fires the 'tour:cancel' event.
+  // cancelTour only closes over stable refs + setState — empty deps is correct.
+  useEffect(() => {
+    const handler = () => cancelTour();
+    window.addEventListener('tour:cancel', handler);
+    return () => window.removeEventListener('tour:cancel', handler);
+  }, []);
+
+  // Auto-dismiss the first-visit tour nudge after 8 s or on any document click.
+  useEffect(() => {
+    if (!tourNudge) return;
+    const id = setTimeout(() => dismissNudge(), 8000);
+    const onAnyClick = () => dismissNudge();
+    document.addEventListener('click', onAnyClick, { once: true });
+    return () => {
+      clearTimeout(id);
+      document.removeEventListener('click', onAnyClick);
+    };
+  }, [tourNudge]);
+
   function togglePlay(): void {
     if (tourMode) { cancelTour(); return; }
     if (atTip) {
@@ -155,16 +183,24 @@ export function GraphPlayBar() {
       }}
       aria-disabled={!ready}
     >
-      {/* Play / Pause / Rewind */}
-      <button
-        type="button"
-        onClick={togglePlay}
-        disabled={!ready}
-        aria-label={playing ? 'Pause playback' : 'Start playback'}
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[color:var(--color-card-border)] text-xs text-[color:var(--color-text-primary)] transition-colors hover:border-[color:var(--color-amber)] hover:text-[color:var(--color-amber)] disabled:opacity-40"
-      >
-        {buttonGlyph}
-      </button>
+      {/* Play / Pause / Rewind — ⎵ Space hint fades in on hover */}
+      <div className="group relative shrink-0">
+        <button
+          type="button"
+          onClick={togglePlay}
+          disabled={!ready}
+          aria-label={playing ? 'Pause playback' : 'Start playback'}
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-[color:var(--color-card-border)] text-xs text-[color:var(--color-text-primary)] transition-colors hover:border-[color:var(--color-amber)] hover:text-[color:var(--color-amber)] disabled:opacity-40"
+        >
+          {buttonGlyph}
+        </button>
+        <kbd
+          className="pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded px-1 py-px font-sans text-[7px] leading-none text-[color:var(--color-text-faint)] opacity-0 transition-opacity group-hover:opacity-100"
+          style={{ border: '1px solid rgba(255,255,255,0.10)' }}
+        >
+          ⎵
+        </kbd>
+      </div>
 
       {/* Speed pills — tighter than full Playback panel */}
       <div
@@ -197,20 +233,30 @@ export function GraphPlayBar() {
 
       {/* Tour button — starts/cancels the guided Bitcoin history experience */}
       {ready && (
-        <button
-          type="button"
-          onClick={tourMode ? cancelTour : startTour}
-          aria-label={tourMode ? 'Cancel tour' : 'Start guided Bitcoin history tour'}
-          title={tourMode ? 'Cancel tour' : 'Guided tour: auto-plays through all 4 halvings'}
-          className={[
-            'text-mono shrink-0 rounded-full px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] transition-colors',
-            tourMode
-              ? 'bg-[color:var(--color-amber)]/20 text-[color:var(--color-amber)] hover:bg-[color:var(--color-amber)]/30'
-              : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)]',
-          ].join(' ')}
-        >
-          {tourMode ? '✕ Tour' : 'Tour'}
-        </button>
+        <div className="relative shrink-0">
+          {/* First-visit nudge — pulsing amber arrow, auto-dismissed after 8 s */}
+          {tourNudge && !tourMode && (
+            <div className="pointer-events-none absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 whitespace-nowrap">
+              <span className="animate-pulse text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-amber)]">
+                ↑ tour
+              </span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={tourMode ? cancelTour : startTour}
+            aria-label={tourMode ? 'Cancel tour' : 'Start guided Bitcoin history tour'}
+            title={tourMode ? 'Cancel tour' : 'Guided tour: auto-plays through all 4 halvings'}
+            className={[
+              'text-mono rounded-full px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] transition-colors',
+              tourMode
+                ? 'bg-[color:var(--color-amber)]/20 text-[color:var(--color-amber)] hover:bg-[color:var(--color-amber)]/30'
+                : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)]',
+            ].join(' ')}
+          >
+            {tourMode ? '✕ Tour' : 'Tour'}
+          </button>
+        </div>
       )}
 
       {/* Scrubber — flexes to fill remaining space; halving ticks behind it */}

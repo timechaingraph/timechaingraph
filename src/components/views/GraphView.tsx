@@ -652,6 +652,8 @@ export function GraphView() {
       const onKeyDown = (event: KeyboardEvent): void => {
         if (event.key === 'Escape') {
           clearFocus();
+          // Let GraphPlayBar know so it can cancel an active tour.
+          window.dispatchEvent(new CustomEvent('tour:cancel'));
         } else if (event.key === ' ') {
           event.preventDefault(); // prevent page scroll
           const { playbackPlaying, setPlaybackPlaying } = useTimegridStore.getState();
