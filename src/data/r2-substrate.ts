@@ -40,6 +40,7 @@ interface Manifest {
   wallets: { path: string; rows: number };
   bonds: { path: string; rows: number };
   timestamps?: { path: string; rows: number };
+  blockMiners?: { path: string; rows: number };
 }
 
 export class R2ChainSubstrate implements ChainSubstrate {
@@ -99,9 +100,28 @@ export class R2ChainSubstrate implements ChainSubstrate {
     const abs = (p: string) => new URL(`${this.baseUrl}/${p}`, window.location.origin).href;
     await db.registerFileURL('wallets.parquet', abs(manifest.wallets.path), DuckDBDataProtocol.HTTP, false);
     await db.registerFileURL('bonds.parquet', abs(manifest.bonds.path), DuckDBDataProtocol.HTTP, false);
+    if (manifest.blockMiners) {
+      await db.registerFileURL('block-miners.parquet', abs(manifest.blockMiners.path), DuckDBDataProtocol.HTTP, false);
+    }
 
     const conn = await db.connect();
     try {
+      // Coinbase-proven miner set: block-miners.parquet maps each block to its
+      // primary coinbase recipient (the mining pool / solo miner). This is more
+      // precise than wallets.parquet's heuristic is_miner flag, which marks ALL
+      // coinbase output recipients including downstream pool-payout addresses.
+      // When the file is absent (old bundles), fall back to is_miner.
+      let coinbaseMinerSet: Set<string> | null = null;
+      if (manifest.blockMiners) {
+        const mres = await conn.query(
+          `SELECT DISTINCT miner FROM parquet_scan('block-miners.parquet') WHERE miner != ''`,
+        );
+        coinbaseMinerSet = new Set<string>();
+        for (const r of mres) {
+          coinbaseMinerSet.add(String((r as unknown as Record<string, string>).miner));
+        }
+      }
+
       const wres = await conn.query(
         `SELECT address, first_seen_block, last_active_block, total_received_sats, tx_count, is_miner
          FROM parquet_scan('wallets.parquet')`,
@@ -113,7 +133,9 @@ export class R2ChainSubstrate implements ChainSubstrate {
         const total = BigInt(row.total_received_sats as bigint | number);
         const firstSeenBlock = Number(row.first_seen_block);
         const txCount = Number(row.tx_count);
-        const isMiner = Boolean(row.is_miner);
+        const isMiner = coinbaseMinerSet
+          ? coinbaseMinerSet.has(address)
+          : Boolean(row.is_miner);
         const w: WalletData = {
           address,
           role: deriveRole(firstSeenBlock, total, txCount, isMiner),
