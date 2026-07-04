@@ -70,7 +70,7 @@ export default function DocsPage() {
 
       <div className="mt-10 max-w-2xl space-y-6 text-base leading-relaxed text-[color:var(--color-text-secondary)] md:text-lg">
         <p>
-          Timechain {VIEW_BRAND_NAME} draws the whole Bitcoin chain in your
+          Timechain {VIEW_BRAND_NAME} makes the Bitcoin chain observable in your
           browser — and it does so without telling anyone you looked. That
           isn’t a promise printed on a page; it’s a property of how the thing
           is built, and you can check it yourself in under a minute (
@@ -154,8 +154,9 @@ export default function DocsPage() {
             <strong className="text-[color:var(--color-text-primary)]">
               Open DevTools → Network
             </strong>{' '}
-            and reload. Every request targets {VIEW_DOMAIN}. If you ever see a
-            third-party domain, that is a bug — please report it.
+            and reload. Every request goes to a host we control — {VIEW_DOMAIN}{' '}
+            for the page and data, and data.timechaingraph.com for the DuckDB-Wasm
+            engine. If you ever see any other domain, that is a bug — please report it.
           </li>
           <li>
             <strong className="text-[color:var(--color-text-primary)]">

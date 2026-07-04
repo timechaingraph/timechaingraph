@@ -5,8 +5,8 @@ import type { LatticeNode } from '@/types/lattice';
  *
  *   satoshi      → brass-gold, special-cased; reserved for the genesis miner
  *   miner        → red;        every coinbase recipient ever
- *   whale        → gold;       > 1,000 BTC ever held
- *   significant  → cyan;       > 1 BTC ever held OR > 100 lifetime txs
+ *   whale        → gold;       ≥ 1,000 BTC ever received (lifetime inflow, not a balance)
+ *   significant  → cyan;       ≥ 1 BTC ever received OR ≥ 100 lifetime received-outputs
  *   dust         → grey;       below the significance threshold
  */
 export type WalletRole = 'satoshi' | 'miner' | 'whale' | 'significant' | 'dust';
@@ -31,7 +31,11 @@ export interface WalletData {
   lastActiveBlock: number;
   /** Total satoshis ever received (lifetime cumulative). */
   totalReceivedSats: bigint;
-  /** Lifetime count of transactions referencing this address. */
+  /**
+   * Lifetime count of outputs RECEIVED by this address (received-output count).
+   * Spends are not counted, and a tx paying the same address twice counts twice —
+   * so this is not a full transaction count. Surfaced in the UI as "Received outputs".
+   */
   txCount: number;
   /** True if this address has ever received a coinbase output. */
   isMiner: boolean;

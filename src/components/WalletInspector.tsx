@@ -191,7 +191,7 @@ export function WalletInspector() {
       </div>
       <dl className="mt-4 grid grid-cols-2 gap-3 text-mono text-xs">
         <Field label="Total received" value={`${btcFromSats(wallet.totalReceivedSats)} BTC`} />
-        <Field label="Tx count" value={wallet.txCount.toLocaleString()} />
+        <Field label="Received outputs" value={wallet.txCount.toLocaleString()} />
         <Field
           label="First seen"
           value={formatBlockDate(blockDate(wallet.firstSeenBlock).date)}

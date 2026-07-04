@@ -4,14 +4,14 @@ import { useState } from 'react';
 import { ROLE_CSS, ROLE_LABEL } from '@/lib/role-visuals';
 import type { WalletRole } from '@/types/wallet';
 
-// Ordered from rarest/most-significant to most-common, matching the graph's
-// visual hierarchy. Satoshi is omitted — it's a unique node at the origin,
-// self-explaining via its size and central position.
+// Only the roles the current free-tier bundle can actually contain: miners and
+// whales (≥ 1,000 BTC received). The significant/dust tiers don't populate until
+// the data floor lowers (v0.3), so the legend names them as forthcoming in the
+// footnote rather than implying dots that can't appear yet. Satoshi is omitted —
+// a unique node at the origin, self-explaining via its size and central position.
 const LEGEND_ROLES: { role: WalletRole; threshold: string }[] = [
   { role: 'miner', threshold: 'coinbase recipient' },
-  { role: 'whale', threshold: '> 1,000 BTC ever' },
-  { role: 'significant', threshold: '> 1 BTC or ≥ 100 txs' },
-  { role: 'dust', threshold: '< 1 BTC, < 100 txs' },
+  { role: 'whale', threshold: '≥ 1,000 BTC received' },
 ];
 
 export function WalletLegend() {
@@ -48,6 +48,10 @@ export function WalletLegend() {
           </li>
         ))}
       </ul>
+      <p className="mt-2.5 border-t border-[color:var(--color-card-border)] pt-2 text-mono text-[9px] leading-snug text-[color:var(--color-text-muted)]">
+        Classified by lifetime BTC received, not current balance. Lower tiers
+        (significant · dust) join as the data floor drops — v0.3.
+      </p>
     </div>
   );
 }
