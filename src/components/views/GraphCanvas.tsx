@@ -20,6 +20,7 @@ import { WalletInspector } from '@/components/WalletInspector';
 import { BlockStats } from '@/components/BlockStats';
 import { WalletLegend } from '@/components/WalletLegend';
 import { TopHubsChip } from '@/components/TopHubsChip';
+import { MobileWalletSheet } from './MobileWalletSheet';
 
 export function GraphCanvas() {
   const [Graph, setGraph] = useState<ComponentType | null>(null);
@@ -122,12 +123,26 @@ export function GraphCanvas() {
         </div>
       </div>
 
+      {/* Mobile (<lg) legend — top-right (top-left holds the Reset chip). The
+          lg+ legend above is hidden on phones, so without this the node colors
+          are undecodable — the top comprehension-killer on shared-link traffic. */}
+      <div className="pointer-events-none absolute top-3 right-3 z-10 w-[172px] max-w-[calc(100vw-1.5rem)] lg:hidden">
+        <div className="pointer-events-auto">
+          <WalletLegend />
+        </div>
+      </div>
+
       {/* Wallet inspector — appears when a wallet is selected (lg+). */}
       <div className="pointer-events-none absolute top-3 right-3 bottom-20 z-10 hidden w-[300px] max-w-[calc(100vw-1.5rem)] flex-col gap-3 overflow-y-auto pr-1 lg:flex">
         <div className="pointer-events-auto">
           <WalletInspector />
         </div>
       </div>
+
+      {/* Mobile (<lg) tap-to-inspect bottom sheet — the lg+ inspector is hidden
+          on phones, so a tap would otherwise select a wallet with nowhere to
+          show it (a dead end). Self-subscribes; only mounts when one is picked. */}
+      <MobileWalletSheet />
 
       {/* Bottom: scrubber + playback (block 0 → tip). The whole strip captures
           pointer events so hovering near the scrubber never reaches — and
