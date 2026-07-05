@@ -115,9 +115,18 @@ const jsonLd = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  // Warm the DNS+TLS handshake to the R2 wasm origin during hydration so the
+  // ~7.5MB DuckDB-Wasm fetch (the /graph cold-load critical path) doesn't wait
+  // on a cold connect. Only emitted when the wasm base is configured (prod);
+  // React 19 hoists the <link> into <head>. crossOrigin matches the CORS fetch
+  // so the warmed connection is actually reused.
+  const wasmOrigin = process.env.NEXT_PUBLIC_DUCKDB_WASM_BASE;
   return (
     <html lang="en">
       <body>
+        {wasmOrigin ? (
+          <link rel="preconnect" href={wasmOrigin} crossOrigin="anonymous" />
+        ) : null}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

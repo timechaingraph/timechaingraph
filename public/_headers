@@ -7,3 +7,18 @@
 /.well-known/nostr.json
   Access-Control-Allow-Origin: *
   Content-Type: application/json
+
+# Cache the heavy runtime assets so repeat + shared-link visits don't refetch
+# ~21MB of parquet every time (the default was max-age=0 → a full refetch on
+# every click, a tax on the referral funnel). Finite max-age, not `immutable`:
+# self-healing, so a bundle refresh still propagates without a manual purge.
+#
+# DuckDB-Wasm worker/engine assets are version-pinned (the deploy gate enforces
+# the exact wasm hash), so a week is safe — a duckdb bump changes the deploy.
+/duckdb/*
+  Cache-Control: public, max-age=604800
+# Versioned parquet bundle + manifest. A day balances instant repeat/shared
+# visits against picking up a periodic refresh. Manifest + parquet share the
+# window, so a repeat visit never pairs a fresh manifest with a stale parquet.
+/data/*
+  Cache-Control: public, max-age=86400
