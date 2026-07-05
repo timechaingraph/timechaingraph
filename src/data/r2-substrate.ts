@@ -18,6 +18,7 @@ import type { ChainSubstrate } from '@/types/substrate';
 import type { Coin } from '@/types/coin';
 import type { WalletBond, WalletData, WalletRole } from '@/types/wallet';
 import { getDuckDB } from './duckdb';
+import { wasmLoadStage } from './wasmProgress';
 
 const BTC = 100_000_000n;
 
@@ -87,7 +88,7 @@ export class R2ChainSubstrate implements ChainSubstrate {
     return t > 0 ? t : undefined;
   }
 
-  async init(onProgress?: (stage: string) => void): Promise<this> {
+  async init(onProgress?: (stage: string, pct?: number) => void): Promise<this> {
     if (this._ready) return this;
 
     const manifest: Manifest = await fetch(`${this.baseUrl}/manifest.json`).then((r) => {
@@ -98,7 +99,12 @@ export class R2ChainSubstrate implements ChainSubstrate {
     onProgress?.('Reading chain manifest…');
 
     onProgress?.('Initialising DuckDB-Wasm…');
-    const db = await getDuckDB();
+    // Report real download+compile progress for the 34MB engine — the longest,
+    // previously-silent step. Feeds the determinate bar in GraphCanvas.
+    const db = await getDuckDB((p) => {
+      const { stage, pct } = wasmLoadStage(p);
+      onProgress?.(stage, pct);
+    });
     const abs = (p: string) => new URL(`${this.baseUrl}/${p}`, window.location.origin).href;
     await db.registerFileURL('wallets.parquet', abs(manifest.wallets.path), DuckDBDataProtocol.HTTP, false);
     await db.registerFileURL('bonds.parquet', abs(manifest.bonds.path), DuckDBDataProtocol.HTTP, false);

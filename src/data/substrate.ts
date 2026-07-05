@@ -110,7 +110,7 @@ export function getActiveSubstrate(): ChainSubstrate {
  * enters the fixture path or SSR.
  */
 export async function loadSubstrate(
-  onProgress?: (stage: string) => void,
+  onProgress?: (stage: string, pct?: number) => void,
 ): Promise<ChainSubstrate> {
   const useR2 =
     process.env.NEXT_PUBLIC_USE_R2 !== '0' && process.env.NEXT_PUBLIC_USE_R2 !== 'false';

@@ -10,6 +10,7 @@
  * (so the WASM never enters SSR / static prerender).
  */
 import * as duckdb from '@duckdb/duckdb-wasm';
+import type { WasmProgress } from './wasmProgress';
 
 // The big .wasm modules (mvp 39MB, eh 34MB) exceed Cloudflare Pages' 25MB/file
 // limit, so in prod they're served from our R2 bucket via
@@ -35,7 +36,10 @@ const BUNDLES: duckdb.DuckDBBundles = {
 
 let instance: Promise<duckdb.AsyncDuckDB> | null = null;
 
-export function getDuckDB(): Promise<duckdb.AsyncDuckDB> {
+// onProgress fires during the wasm download+compile — the single longest step
+// of a cold load. Only the first call instantiates (the instance is memoized),
+// so progress is reported once, on the load that actually blocks the view.
+export function getDuckDB(onProgress?: (p: WasmProgress) => void): Promise<duckdb.AsyncDuckDB> {
   if (instance) return instance;
   instance = (async () => {
     // selectBundle inspects browser WASM features (exception handling) and
@@ -44,7 +48,7 @@ export function getDuckDB(): Promise<duckdb.AsyncDuckDB> {
     if (!bundle.mainWorker) throw new Error('DuckDB-Wasm: no worker in selected bundle');
     const worker = new Worker(bundle.mainWorker);
     const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(), worker);
-    await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+    await db.instantiate(bundle.mainModule, bundle.pthreadWorker, onProgress);
     return db;
   })();
   return instance;

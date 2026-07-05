@@ -25,6 +25,9 @@ export function GraphCanvas() {
   const [Graph, setGraph] = useState<ComponentType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadStage, setLoadStage] = useState<string>('Loading the living network…');
+  // Determinate percent during the wasm download+compile (the long silent step);
+  // null for the fast discrete stages, which show an indeterminate pulse instead.
+  const [loadPct, setLoadPct] = useState<number | null>(null);
   // Live chain-tip polling (same-origin relay) — extends the scrubber range
   // and drives the BlockStats live ticker as new blocks are mined.
   useLiveTip();
@@ -33,8 +36,10 @@ export function GraphCanvas() {
     let cancelled = false;
     (async () => {
       try {
-        const sub = await loadSubstrate((stage) => {
-          if (!cancelled) setLoadStage(stage);
+        const sub = await loadSubstrate((stage, pct) => {
+          if (cancelled) return;
+          setLoadStage(stage);
+          setLoadPct(pct ?? null);
         });
         const store = useTimegridStore.getState();
         store.setLatestBlock(sub.tipBlock);
@@ -68,10 +73,27 @@ export function GraphCanvas() {
   }
   if (!Graph) {
     return (
-      <div className="flex h-full w-full items-center justify-center px-6 text-center">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center">
         <p className="text-mono text-sm uppercase tracking-[0.24em] text-[color:var(--color-brass-bright)]">
           {loadStage}
         </p>
+        <div
+          className="h-1 w-48 max-w-[70vw] overflow-hidden rounded-full bg-[color:var(--color-card-border)]"
+          role="progressbar"
+          aria-label="Loading progress"
+          aria-valuenow={loadPct ?? undefined}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div
+            className={
+              loadPct === null
+                ? 'h-full w-1/3 rounded-full bg-[color:var(--color-gold)] animate-pulse motion-reduce:animate-none'
+                : 'h-full rounded-full bg-[color:var(--color-gold)] transition-[width] duration-300 ease-out'
+            }
+            style={loadPct === null ? undefined : { width: `${loadPct}%` }}
+          />
+        </div>
       </div>
     );
   }
