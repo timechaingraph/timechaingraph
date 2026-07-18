@@ -6,6 +6,7 @@ import { getActiveSubstrate } from '@/data/substrate';
 import { ROLE_COLOR, ROLE_CSS, ROLE_LABEL } from '@/lib/role-visuals';
 import { useTimegridStore } from '@/store/timegridStore';
 import { AUTOSTART_SPEED_IDX } from '@/components/Playback';
+import { prefersReducedMotion } from '@/lib/prefersReducedMotion';
 import { BRAND_TAGLINE } from '@/lib/site-config';
 import { LiveTipPanel } from '@/components/LiveTipPanel';
 import { step as physicsStep, type PhysicsLink } from '@/lib/forceLayout';
@@ -285,10 +286,15 @@ export function GraphView() {
     // at block 0, then wallets + bonds appear at their real blocks. Max runs the
     // full chain in ~3 min; the visitor can pause / scrub / change speed.
     setLatestBlock(FIXTURE_LATEST_BLOCK);
-    setCurrentBlock(0);
-    const { setPlaybackSpeedIdx, setPlaybackPlaying } = useTimegridStore.getState();
-    setPlaybackSpeedIdx(AUTOSTART_SPEED_IDX); // 'Max' (~3 min full chain)
-    setPlaybackPlaying(true);
+    // UX#3: honor prefers-reduced-motion — show the settled full graph at tip
+    // instead of auto-scrubbing from genesis, and don't autoplay.
+    const reduceMotion = prefersReducedMotion();
+    setCurrentBlock(reduceMotion ? FIXTURE_LATEST_BLOCK : 0);
+    if (!reduceMotion) {
+      const { setPlaybackSpeedIdx, setPlaybackPlaying } = useTimegridStore.getState();
+      setPlaybackSpeedIdx(AUTOSTART_SPEED_IDX); // 'Max' (~3 min full chain)
+      setPlaybackPlaying(true);
+    }
 
     function applyCamera(): void {
       const cam = useTimegridStore.getState().camera;
@@ -856,12 +862,21 @@ export function GraphView() {
       applyScrubberState();
       applyCamera();
 
+      // UX#3: under prefers-reduced-motion, integrate physics only until the
+      // layout settles (~3.5s), then freeze it — the render below still runs so
+      // manual scrubbing keeps updating node/edge visibility. Normal motion
+      // keeps the continuous sim (settleMsLeft stays Infinity).
+      const REDUCED_MOTION_SETTLE_MS = 3500;
+      let settleMsLeft = reduceMotion ? REDUCED_MOTION_SETTLE_MS : Infinity;
       function tick(): void {
         // Physics is pure functions in src/lib/forceLayout — gravity +
         // repulsion + springs + damping/integrate, all mutating bodies
         // in place. The graphics resync below is the only PIXI-coupled
         // part of the tick.
-        physicsStep(bodies, links, app.ticker.deltaMS / 1000, PHYSICS);
+        if (settleMsLeft > 0) {
+          physicsStep(bodies, links, app.ticker.deltaMS / 1000, PHYSICS);
+          settleMsLeft -= app.ticker.deltaMS;
+        }
 
         for (const body of bodies) {
           body.node.position.set(cx + body.x, cy + body.y);

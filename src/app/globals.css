@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+/* Reduced motion (a11y, UX#3): honor the OS "reduce motion" setting by
+   neutralizing the decorative keyframe animations (gears, pulses, scanline,
+   shimmer, drift, scrub, ticker, blink) and transitions. The graph canvas
+   force-sim is frozen separately in JS (prefersReducedMotion). !important +
+   near-zero duration resolves animations to their end state instantly. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /*
  * Timechain Grid — cyber-steampunk landing CSS.
  * Brass + cyan palette. No third-party fonts. Mechanical motifs.
@@ -38,7 +54,7 @@
   /* Text */
   --color-text-primary: #F4F6FA;
   --color-text-secondary: #94A3B8;
-  --color-text-muted: #64748B;
+  --color-text-muted: #8894A8;
   --color-text-faint: #778699;
   --color-text-rivet: rgba(245, 246, 250, 0.4);
 

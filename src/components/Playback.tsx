@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useTimegridStore } from '@/store/timegridStore';
+import { prefersReducedMotion } from '@/lib/prefersReducedMotion';
 
 /**
  * Playback — auto-advance the scrubber so the lattice plays itself.
@@ -75,6 +76,8 @@ export function Playback({ autoStart = false }: PlaybackProps) {
   // touched, rewind to genesis and play at the showcase speed.
   useEffect(() => {
     if (!autoStart || !ready) return;
+    // UX#3: no autoplay under prefers-reduced-motion — leave the view at tip.
+    if (prefersReducedMotion()) return;
     const cur = useTimegridStore.getState().currentBlock;
     const tip = useTimegridStore.getState().latestBlock;
     if (cur === tip && !useTimegridStore.getState().playbackPlaying) {
