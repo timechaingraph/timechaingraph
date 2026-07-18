@@ -52,7 +52,10 @@ WALLETS_SCHEMA = pa.schema([
     pa.field('tx_count', pa.uint32(), nullable=False,
              metadata={b'doc': b'Lifetime distinct tx references'}),
     pa.field('is_miner', pa.bool_(), nullable=False,
-             metadata={b'doc': b'Has ever received a coinbase output'}),
+             metadata={b'doc': b'Coinbase-PROVEN block miner (a block coinbase recipient) '
+                               b'when the bundle manifest sets minersFolded (perf#2 build '
+                               b'fold); otherwise the walker heuristic (has ever received a '
+                               b'coinbase output)'}),
 ])
 
 

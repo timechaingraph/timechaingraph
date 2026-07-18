@@ -67,10 +67,21 @@ Brief field reference:
 | `last_active_block`   | uint32  | Block height of most recent appearance             |
 | `total_received_sats` | uint64  | Lifetime cumulative satoshis received              |
 | `tx_count`            | uint32  | Lifetime distinct tx references                    |
-| `is_miner`            | bool    | Has ever received a coinbase output                |
+| `is_miner`            | bool    | Coinbase-proven block miner when manifest `minersFolded`; else walker heuristic (see note) |
 
 Filtered by the significance floor in `reduce_substrate.py`: miners +
 (>1 BTC ever received OR >100 lifetime txs).
+
+**`is_miner` semantics + the `minersFolded` manifest flag (perf#2).** When
+`build_bundle.py` finds `block-miners.jsonl`, it folds the *coinbase-proven*
+miner set (the DISTINCT per-block coinbase recipients) into `is_miner` and
+stamps `manifest.minersFolded: true`. The browser then reads `is_miner`
+directly and drops the separate ~9MB `block-miners.parquet` fetch. On bundles
+built without that fold the flag is absent/false, `is_miner` carries the
+walker's broader heuristic (any coinbase-output recipient), and the browser
+keeps fetching `block-miners.parquet` and overriding at runtime. The *value*
+the column can hold tightens under the flag, but the field name + `bool` type
+are unchanged, so this stays additive / forward-compatible.
 
 ### BONDS_SCHEMA — `bonds.parquet`
 

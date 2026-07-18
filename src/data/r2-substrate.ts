@@ -19,6 +19,7 @@ import type { Coin } from '@/types/coin';
 import type { WalletBond, WalletData, WalletRole } from '@/types/wallet';
 import { getDuckDB } from './duckdb';
 import { wasmLoadStage } from './wasmProgress';
+import { minersFolded } from './minerFold';
 
 const BTC = 100_000_000n;
 
@@ -42,6 +43,7 @@ interface Manifest {
   bonds: { path: string; rows: number };
   timestamps?: { path: string; rows: number };
   blockMiners?: { path: string; rows: number };
+  minersFolded?: boolean;
 }
 
 export class R2ChainSubstrate implements ChainSubstrate {
@@ -96,6 +98,11 @@ export class R2ChainSubstrate implements ChainSubstrate {
       return r.json();
     });
     this._tipBlock = manifest.tipBlock;
+    // perf#2: when the bundle folded the coinbase-proven miner set INTO
+    // wallets.is_miner at build time, is_miner is authoritative — skip the
+    // separate ~9MB block-miners.parquet fetch. Pre-fold bundles (no flag)
+    // keep fetching it and overriding is_miner (unchanged behavior).
+    const foldMiners = minersFolded(manifest);
     onProgress?.('Reading chain manifest…');
 
     onProgress?.('Initialising DuckDB-Wasm…');
@@ -108,7 +115,7 @@ export class R2ChainSubstrate implements ChainSubstrate {
     const abs = (p: string) => new URL(`${this.baseUrl}/${p}`, window.location.origin).href;
     await db.registerFileURL('wallets.parquet', abs(manifest.wallets.path), DuckDBDataProtocol.HTTP, false);
     await db.registerFileURL('bonds.parquet', abs(manifest.bonds.path), DuckDBDataProtocol.HTTP, false);
-    if (manifest.blockMiners) {
+    if (manifest.blockMiners && !foldMiners) {
       await db.registerFileURL('block-miners.parquet', abs(manifest.blockMiners.path), DuckDBDataProtocol.HTTP, false);
     }
 
@@ -118,9 +125,12 @@ export class R2ChainSubstrate implements ChainSubstrate {
       // primary coinbase recipient (the mining pool / solo miner). This is more
       // precise than wallets.parquet's heuristic is_miner flag, which marks ALL
       // coinbase output recipients including downstream pool-payout addresses.
-      // When the file is absent (old bundles), fall back to is_miner.
+      // perf#2: once the bundle folds this set INTO wallets.is_miner at build
+      // time (manifest.minersFolded), is_miner is already authoritative and we
+      // skip this fetch+scan entirely. When the file is absent (old bundles),
+      // fall back to is_miner.
       let coinbaseMinerSet: Set<string> | null = null;
-      if (manifest.blockMiners) {
+      if (manifest.blockMiners && !foldMiners) {
         onProgress?.(`Identifying miners (${manifest.blockMiners.rows.toLocaleString()} blocks)…`);
         const mres = await conn.query(
           `SELECT DISTINCT miner FROM parquet_scan('block-miners.parquet') WHERE miner != ''`,

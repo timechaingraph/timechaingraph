@@ -37,6 +37,38 @@ except ImportError as exc:
 SATS = 100_000_000
 
 
+def load_coinbase_miners(bm_src: Path) -> tuple[set[str], list[dict]]:
+    """Read block-miners.jsonl -> (proven-miner address set, dedup'd rows).
+
+    The proven miner set is the DISTINCT non-empty coinbase recipients (one per
+    block: the mining pool / solo miner). This is the precise miner set the
+    browser used to compute at runtime from block-miners.parquet; perf#2 folds
+    it into wallets.is_miner at build time so the browser can drop the ~9MB
+    runtime fetch. Absent file -> (empty set, []) = the pre-fold path, where
+    is_miner stays the walker heuristic and no fold flag is emitted.
+    """
+    if not bm_src.exists():
+        return set(), []
+    seen: set[int] = set()
+    rows: list[dict] = []
+    miners: set[str] = set()
+    with bm_src.open() as f:
+        for line in f:
+            if not line.strip():
+                continue
+            r = json.loads(line)
+            b = int(r['block'])
+            if b in seen:  # dedup (crash-resume safety)
+                continue
+            seen.add(b)
+            addr = r['address'] or ''
+            rows.append({'block': b, 'miner': addr})
+            if addr:
+                miners.add(addr)
+    rows.sort(key=lambda r: r['block'])
+    return miners, rows
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     p.add_argument('--substrate-dir', type=Path, required=True)
@@ -65,6 +97,12 @@ def main() -> None:
     tip_block = int(meta.get('tipBlock', 0))
     floor_sats = int(args.min_btc * SATS)
 
+    # perf#2: load the coinbase-proven miner set BEFORE carving wallets so
+    # is_miner can be folded to the precise (block-recipient) set at build time.
+    # Absent block-miners.jsonl -> empty set -> is_miner stays the heuristic flag.
+    coinbase_miners, bm_rows = load_coinbase_miners(sub / 'block-miners.jsonl')
+    miners_folded = bool(bm_rows)
+
     # ---- Pass 1: wallets above the public floor (single dataset, no tiers) --
     wallet_rows: list[dict] = []
     addr_set: set[str] = set()
@@ -85,7 +123,12 @@ def main() -> None:
                 'last_active_block': int(w['lastActiveBlock']),
                 'total_received_sats': total,
                 'tx_count': int(w['txCount']),
-                'is_miner': miner,
+                # perf#2 fold: write the coinbase-PROVEN flag (is this address a
+                # block coinbase recipient?), not the walker heuristic, when
+                # block-miners.jsonl is present. Inclusion above still uses the
+                # heuristic `miner`, so the node set is unchanged — only the
+                # column value tightens.
+                'is_miner': (w['address'] in coinbase_miners) if miners_folded else miner,
             })
             addr_set.add(w['address'])
 
@@ -131,6 +174,8 @@ def main() -> None:
                    use_dictionary=['from_address', 'to_address'])
     print(f'  wallets: {len(wallet_rows):>9,} ({wpath.stat().st_size:>11,}B)  '
           f'bonds: {len(bond_rows):>10,} ({bpath.stat().st_size:>12,}B)')
+    print(f'  is_miner: {"coinbase-proven (folded)" if miners_folded else "walker heuristic"}'
+          f' -> {sum(1 for r in wallet_rows if r["is_miner"]):,} miners in the public set')
 
     # ---- timestamps: block -> unix-seconds (scrubber wall-clock) -----------
     # The scrubber spans block 0..tip; this single asset carries real per-block
@@ -162,23 +207,12 @@ def main() -> None:
     # One row per block — the miner is the first owner of that block's issued
     # coins. The Grid derives all ~19.9M coins from this + the deterministic
     # subsidy/spiral, so this single ~952k-row column is the whole ownership
-    # dataset. Produced by chain-tools/ingest/walk_coinbases.mjs.
+    # dataset. Produced by chain-tools/ingest/walk_coinbases.mjs, loaded once up
+    # front (see load_coinbase_miners) and reused here for the parquet.
+    # NOTE: with minersFolded set, the browser Graph view no longer FETCHES this
+    # (is_miner is authoritative); it is still emitted for the Grid coin view.
     bm_entry = None
-    bm_src = sub / 'block-miners.jsonl'
-    if bm_src.exists():
-        seen: set[int] = set()
-        bm_rows: list[dict] = []
-        with bm_src.open() as f:
-            for line in f:
-                if not line.strip():
-                    continue
-                r = json.loads(line)
-                b = int(r['block'])
-                if b in seen:  # dedup (crash-resume safety)
-                    continue
-                seen.add(b)
-                bm_rows.append({'block': b, 'miner': r['address'] or ''})
-        bm_rows.sort(key=lambda r: r['block'])
+    if bm_rows:
         bm_schema = pa.schema([('block', pa.uint32()), ('miner', pa.string())])
         bmt = pa.Table.from_pylist(bm_rows, schema=bm_schema)
         bmpath = out / 'block-miners.parquet'
@@ -201,6 +235,10 @@ def main() -> None:
                   'bytes': bpath.stat().st_size},
         'timestamps': ts_entry,
         'blockMiners': bm_entry,
+        # perf#2: when true, wallets.is_miner is the coinbase-proven flag and the
+        # browser SKIPS the block-miners.parquet fetch. Absent/false on pre-fold
+        # bundles (browser then fetches block-miners and overrides is_miner).
+        'minersFolded': miners_folded,
         'nodeCount': len(wallet_rows),
     }
     (out / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
