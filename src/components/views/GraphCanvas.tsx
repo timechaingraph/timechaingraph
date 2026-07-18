@@ -20,6 +20,7 @@ import { WalletInspector } from '@/components/WalletInspector';
 import { BlockStats } from '@/components/BlockStats';
 import { WalletLegend } from '@/components/WalletLegend';
 import { TopHubsChip } from '@/components/TopHubsChip';
+import { WalletDirectory } from '@/components/WalletDirectory';
 import { MobileWalletSheet } from './MobileWalletSheet';
 
 export function GraphCanvas() {
@@ -158,6 +159,11 @@ export function GraphCanvas() {
           <GraphPlayBar />
         </div>
       </div>
+
+      {/* UX#5 follow-up: off-screen, keyboard/SR-focusable wallet directory —
+          the full-list entry to the canvas wallets beyond TopHubsChip's top-5.
+          Rendered last so it follows the visible controls in tab/reading order. */}
+      <WalletDirectory />
     </div>
   );
 }
