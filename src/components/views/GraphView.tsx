@@ -7,6 +7,7 @@ import { ROLE_COLOR, ROLE_CSS, ROLE_LABEL } from '@/lib/role-visuals';
 import { useTimegridStore } from '@/store/timegridStore';
 import { AUTOSTART_SPEED_IDX } from '@/components/Playback';
 import { prefersReducedMotion } from '@/lib/prefersReducedMotion';
+import { lowerBound, upperBound } from '@/lib/binarySearch';
 import { BRAND_TAGLINE } from '@/lib/site-config';
 import { LiveTipPanel } from '@/components/LiveTipPanel';
 import { step as physicsStep, type PhysicsLink } from '@/lib/forceLayout';
@@ -829,6 +830,11 @@ export function GraphView() {
         links.push({ a, b, strength, formationBlock });
       }
 
+      // perf#7: sort links by formation block once so the per-frame edge-fade
+      // window is a binary-searched slice, not a full scan of every link.
+      const linksByFormation = [...links].sort((l1, l2) => l1.formationBlock - l2.formationBlock);
+      const formationBlocks = linksByFormation.map((l) => l.formationBlock);
+
       function applyScrubberState(): void {
         // Pin/un-pin per current-block; alpha is computed downstream by
         // applyAlpha() (activity bloom + focus).
@@ -906,12 +912,15 @@ export function GraphView() {
           }
         } else {
           // Default — transient per-block edges: a bond appears at its real
-          // formation block and fades out over EDGE_FADE_BLOCKS, then it's
-          // gone. Only bonds formed within the fade window of the scrubber
-          // render, so the frame is bounded — no persistent-hairball lag.
-          for (const link of links) {
-            const age = currentBlock - link.formationBlock;
-            if (age < 0 || age >= EDGE_FADE_BLOCKS) continue;
+          // formation block and fades out over EDGE_FADE_BLOCKS, then it's gone.
+          // perf#7: the fade window is [currentBlock - EDGE_FADE_BLOCKS + 1,
+          // currentBlock] over the formation-block-sorted links — binary-search
+          // the slice instead of scanning every link each frame.
+          const lo = lowerBound(formationBlocks, currentBlock - EDGE_FADE_BLOCKS + 1);
+          const hi = upperBound(formationBlocks, currentBlock);
+          for (let i = lo; i < hi; i++) {
+            const link = linksByFormation[i];
+            const age = currentBlock - link.formationBlock; // in [0, EDGE_FADE_BLOCKS)
             const a = bodies[link.a];
             const b = bodies[link.b];
             // Endpoints must be born/visible.
