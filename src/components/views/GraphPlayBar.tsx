@@ -79,6 +79,7 @@ export function GraphPlayBar() {
   }
 
   function startTour(): void {
+    dismissNudge(); // UX#2: starting the tour retires the nudge (persists "seen")
     cancelTour();
     tourNextIdxRef.current = 0;
     setCurrentBlock(0);
@@ -160,17 +161,9 @@ export function GraphPlayBar() {
     return () => window.removeEventListener('tour:cancel', handler);
   }, []);
 
-  // Auto-dismiss the first-visit tour nudge after 8 s or on any document click.
-  useEffect(() => {
-    if (!tourNudge) return;
-    const id = setTimeout(() => dismissNudge(), 8000);
-    const onAnyClick = () => dismissNudge();
-    document.addEventListener('click', onAnyClick, { once: true });
-    return () => {
-      clearTimeout(id);
-      document.removeEventListener('click', onAnyClick);
-    };
-  }, [tourNudge]);
+  // UX#2: the first-visit tour nudge dismisses ONLY on an explicit close (✕) or
+  // when the tour starts (startTour → dismissNudge) — never on an unrelated
+  // document click, which autoplay's canvas clicks used to trigger instantly.
 
   function togglePlay(): void {
     if (tourMode) { cancelTour(); return; }
@@ -245,12 +238,21 @@ export function GraphPlayBar() {
       {/* Tour button — starts/cancels the guided Bitcoin history experience */}
       {ready && (
         <div className="relative shrink-0">
-          {/* First-visit nudge — pulsing amber arrow, auto-dismissed after 8 s */}
+          {/* First-visit nudge — a dismissable pill; persists until the ✕ or
+              the tour starts (UX#2), never auto-dismissed on a stray click. */}
           {tourNudge && !tourMode && (
-            <div className="pointer-events-none absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 whitespace-nowrap">
-              <span className="animate-pulse text-[9px] uppercase tracking-[0.12em] text-[color:var(--color-amber)]">
-                ↑ tour
+            <div className="absolute bottom-full left-1/2 mb-1.5 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full border border-[color:var(--color-amber)]/40 bg-[rgba(8,8,12,0.9)] px-2.5 py-1">
+              <span className="animate-pulse text-[10px] uppercase tracking-[0.12em] text-[color:var(--color-amber)]">
+                Take the tour
               </span>
+              <button
+                type="button"
+                onClick={dismissNudge}
+                aria-label="Dismiss tour hint"
+                className="text-[11px] leading-none text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text-secondary)]"
+              >
+                ✕
+              </button>
             </div>
           )}
           <button
