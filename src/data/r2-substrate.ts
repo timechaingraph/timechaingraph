@@ -20,6 +20,7 @@ import type { WalletBond, WalletData, WalletRole } from '@/types/wallet';
 import { getDuckDB } from './duckdb';
 import { wasmLoadStage } from './wasmProgress';
 import { minersFolded } from './minerFold';
+import { buildBlockTimeIndex, blockTimeAt } from './blockTimeIndex';
 
 const BTC = 100_000_000n;
 
@@ -54,6 +55,7 @@ export class R2ChainSubstrate implements ChainSubstrate {
   private _tipBlock = 0;
   private _blockTime: Uint32Array | null = null; // height → unix seconds (0 = unknown)
   private _ready = false;
+  private _timestampsLoad: Promise<void> | null = null; // perf#3 lazy fill (post-ready)
 
   constructor(private readonly baseUrl: string = '/data/v0.1.0') {}
 
@@ -84,10 +86,7 @@ export class R2ChainSubstrate implements ChainSubstrate {
   }
 
   blockTime(height: number): number | undefined {
-    const arr = this._blockTime;
-    if (!arr || height < 0 || height >= arr.length) return undefined;
-    const t = arr[height];
-    return t > 0 ? t : undefined;
+    return blockTimeAt(this._blockTime, height);
   }
 
   async init(onProgress?: (stage: string, pct?: number) => void): Promise<this> {
@@ -185,35 +184,49 @@ export class R2ChainSubstrate implements ChainSubstrate {
         this.indexBond(b.fromAddress, b);
         this.indexBond(b.toAddress, b);
       }
-
-      // Timestamps: tier-independent block → unix-seconds, loaded into a
-      // height-indexed Uint32Array for O(1) blockTime() (the scrubber spans
-      // 0..tip regardless of tier). ~3.8MB at full chain; absent in old bundles.
-      if (manifest.timestamps) {
-        onProgress?.(`Syncing ${manifest.timestamps.rows.toLocaleString()} block timestamps…`);
-        await db.registerFileURL(
-          'timestamps.parquet',
-          abs(manifest.timestamps.path),
-          DuckDBDataProtocol.HTTP,
-          false,
-        );
-        const tres = await conn.query(
-          `SELECT block, t FROM parquet_scan('timestamps.parquet')`,
-        );
-        const arr = new Uint32Array(this._tipBlock + 1);
-        for (const r of tres) {
-          const row = r as unknown as Record<string, number | bigint>;
-          const b = Number(row.block);
-          if (b >= 0 && b < arr.length) arr[b] = Number(row.t);
-        }
-        this._blockTime = arr;
-      }
     } finally {
       await conn.close();
     }
 
+    // perf#3: resolve ready on wallets+bonds — the ~6.9MB timestamps parquet no
+    // longer blocks first paint. Lazy-fill it after paint; blockTime() returns
+    // undefined until then and the scrubber degrades to the 10-min estimate.
     this._ready = true;
+    if (manifest.timestamps) {
+      this._timestampsLoad = this.loadTimestamps(db, abs, manifest.timestamps, onProgress);
+    }
     return this;
+  }
+
+  /**
+   * Lazy block→unix-seconds fill (perf#3), kicked off after init() resolves.
+   * A failure here must NEVER break an already-ready substrate: blockTime()
+   * then stays undefined and the UI falls back to the 10-min per-block estimate.
+   */
+  private async loadTimestamps(
+    db: Awaited<ReturnType<typeof getDuckDB>>,
+    abs: (p: string) => string,
+    entry: { path: string; rows: number },
+    onProgress?: (stage: string, pct?: number) => void,
+  ): Promise<void> {
+    try {
+      onProgress?.(`Syncing ${entry.rows.toLocaleString()} block timestamps…`);
+      await db.registerFileURL('timestamps.parquet', abs(entry.path), DuckDBDataProtocol.HTTP, false);
+      const conn = await db.connect();
+      try {
+        const tres = await conn.query(`SELECT block, t FROM parquet_scan('timestamps.parquet')`);
+        const rows: { block: number; t: number }[] = [];
+        for (const r of tres) {
+          const row = r as unknown as Record<string, number | bigint>;
+          rows.push({ block: Number(row.block), t: Number(row.t) });
+        }
+        this._blockTime = buildBlockTimeIndex(rows, this._tipBlock);
+      } finally {
+        await conn.close();
+      }
+    } catch {
+      // graceful: leave _blockTime null → estimated dates.
+    }
   }
 
   private indexBond(addr: string, b: WalletBond): void {
