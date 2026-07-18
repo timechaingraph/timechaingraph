@@ -123,12 +123,18 @@ export function GraphCanvas() {
         </div>
       </div>
 
-      {/* Mobile (<lg) legend — top-right (top-left holds the Reset chip). The
-          lg+ legend above is hidden on phones, so without this the node colors
-          are undecodable — the top comprehension-killer on shared-link traffic. */}
-      <div className="pointer-events-none absolute top-3 right-3 z-10 w-[172px] max-w-[calc(100vw-1.5rem)] lg:hidden">
+      {/* Mobile (<lg) top-right column — legend + TopHubsChip scoreboard. The
+          lg+ legend/scoreboard (top-left) are hidden on phones; without the
+          legend the node colors are undecodable, and without TopHubsChip
+          keyboard/SR users have NO reachable entry to the wallets (the canvas
+          sprites aren't focusable). UX#5: TopHubsChip is that accessible entry,
+          now present on ALL breakpoints. */}
+      <div className="pointer-events-none absolute top-3 right-3 z-10 flex w-[184px] max-w-[calc(100vw-1.5rem)] flex-col gap-2 lg:hidden">
         <div className="pointer-events-auto">
           <WalletLegend />
+        </div>
+        <div className="pointer-events-auto">
+          <TopHubsChip />
         </div>
       </div>
 

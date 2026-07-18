@@ -76,7 +76,7 @@ export function TopHubsChip() {
   if (dismissed || rows.length === 0) return null;
 
   return (
-    <div className="brass-panel rounded-lg p-3">
+    <div className="brass-panel rounded-lg p-3" role="region" aria-label="Top wallets scoreboard">
       {/* Header: toggle tabs + dismiss */}
       <div className="mb-2 flex items-center gap-1.5">
         <button
@@ -117,8 +117,12 @@ export function TopHubsChip() {
         </button>
       </div>
 
-      {/* Rows */}
-      <ol className="space-y-1.5">
+      {/* Rows — the accessible keyboard/SR entry to the wallets (the canvas
+          sprites aren't focusable); each row selects a wallet in the inspector. */}
+      <ol
+        className="space-y-1.5"
+        aria-label={view === 'hubs' ? 'Top wallets by connections' : 'Top wallets by holdings'}
+      >
         {rows.map(({ wallet, metric }, i) => (
           <li key={wallet.address}>
             <button

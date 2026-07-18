@@ -80,4 +80,16 @@ describe('<TopHubsChip>', () => {
     fireEvent.click(getByLabelText(/Dismiss scoreboard/i));
     expect(queryByRole('button', { name: /whales/i })).toBeNull();
   });
+
+  it('exposes an accessible region landmark (the SR/keyboard entry to wallets)', () => {
+    const { getByRole } = render(<TopHubsChip />);
+    expect(getByRole('region', { name: /top wallets/i })).toBeTruthy();
+  });
+
+  it('labels the wallet list by the active view', () => {
+    const { getByRole } = render(<TopHubsChip />);
+    expect(getByRole('list', { name: /by connections/i })).toBeTruthy();
+    fireEvent.click(getByRole('button', { name: /whales/i }));
+    expect(getByRole('list', { name: /by holdings/i })).toBeTruthy();
+  });
 });
