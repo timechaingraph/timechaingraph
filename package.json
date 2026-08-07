@@ -43,7 +43,7 @@
   },
   "dependencies": {
     "@duckdb/duckdb-wasm": "1.33.1-dev45.0",
-    "next": "^16.2.11",
+    "next": "^16.3.0",
     "pixi.js": "^8.19.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.7",
